@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\OfficeLocation\LocationController;
 use App\Http\Controllers\Admin\IssuedBankMFS\IssuedBankMFSController;
 use App\Http\Controllers\Admin\PaymentAccount\PaymentAccountSController;
 use App\Http\Controllers\Admin\AircraftType\AircraftTypeDesignatorController;
+use App\Http\Controllers\Admin\Traveler\TravelerController;
 
 Route::post('login', [AuthController::class, 'login'])->name('login');
 Route::post('register', [AuthController::class, 'register'])->name('register');
@@ -139,6 +140,10 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('/user-details/update', [UserController::class, 'update'])->name('user.update');
     Route::post('/deleteUser', [UserController::class, 'destroy'])->name('user.deleteUser');
     Route::post('/user-status/update', [UserController::class, 'statusUpdate'])->name('user.statusUpdate');
+
+    // traveler section
+    Route::get('getTraveler', [TravelerController::class, 'index'])->name('traveler.getTraveler');
+    Route::post('/traveler/data/save', [TravelerController::class, 'store'])->name('traveler.store');
 
     //Internal API
     Route::post('/Lowfaresearch', [APIController::class, 'Lowfaresearch']);

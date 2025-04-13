@@ -11,6 +11,7 @@ import { useAuthStore } from '../../../stores/authStore';
 const authStore = useAuthStore();
 import axiosInstance from "../../../axiosInstance";
 import { ref, reactive, onMounted, render } from "vue";
+import moment from "moment";
 
 DataTable.use(DataBS5);
 DataBS5.Buttons.jszip(jszip);
@@ -73,16 +74,25 @@ const options = {
         {
             title: "Traveler Info",
             render: function (data, type, row) {
+                if(row.pax_type==1){
+                    row.pax_type = 'Adult';
+                }else if(row.pax_type==2){
+                    row.pax_type = 'Child';
+                }else if(row.pax_type==3){
+                    row.pax_type = 'Infant';
+                }
                 var html = "";
 
                 html += '<div class="col-md-8">'
-                html += row.name;
+                html += row.full_name;
                 html += "<br>";
-                html +='19-Oct-1992';
+                html += '<small class="text-primary">';
 
+                html += moment(row.dob).format("DD-MMM-YYYY");
+                html += "</small>";
                 html += "<br>";
-                html += '<span class="text-primary">';
-                html +='Male|Adult'+'</span>';
+                html += '<small class="text-primary">';
+                html += row.gender +'| '+ row.pax_type+'</small>';
                 html += "</div>";
                 return html;
             },
@@ -92,11 +102,11 @@ const options = {
             title: "Passport Info",
             render: function (data, type, row) {
                 var html = "";
-                html += '023948bdf93450';
+                html += row.passport_number;
                 html += "<br>";
-                html += '12-Dec-2026';
+                html += moment(row.passport_issue_date).format("DD-MMM-YYYY");
                 html += "<br>";
-                html += '<span class="text-primary">Bangladeshi</span>';
+                html += '<span class="text-primary">'+row.nationality+'</span>';
                 return html;
             },
             width: '30%',
@@ -155,7 +165,7 @@ const options = {
             render: function (data, type, row) {
                 var html = "";
                 var idd = row.idd;
-                var status = row.status;
+                var status = row.pax_type;
 
                 html += '<button  style="size: 30px; width: 30px; height: 30px" class="btn btn-outline-only-edit rounded-circle edit-item" placement="top" id="edit_tool" data-item-id=' + idd + '> <i class="fa-solid fa-eye" style="margin: 0px 0px 10px -6px; font-size: 14px;" ></i> </button>';
 
@@ -163,7 +173,7 @@ const options = {
 
                 html += '<button type="button" v-tippy="Lock" style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-timer rounded-circle history-data" data-item-id=' + idd + '> <i class="fa-solid fa-clock-rotate-left" style="margin: 2px 0px 10px -5px; font-size: 14px;"></i> </button>';
 
-                // html += '<button style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-danger rounded-circle delete-item" data-item-id=' + idd + '> <i class="fa-solid fa-trash" style="margin: 2px 0px 10px  -4px; font-size: 14px;"></i> </button>';
+                html += '<button style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-danger rounded-circle delete-item" data-item-id=' + idd + '> <i class="fa-solid fa-trash" style="margin: 2px 0px 10px  -4px; font-size: 14px;"></i> </button>';
 
                 return html;
             },
@@ -255,7 +265,8 @@ async function getListValues() {
     try {
 
         authStore.GlobalLoading = true;
-        const response = await axiosInstance.get("getInternalUsers");
+
+        const response = await axiosInstance.get("getTraveler");
         rData.value = response.data.data;
         authStore.GlobalLoading = false;
     } catch (error) {
