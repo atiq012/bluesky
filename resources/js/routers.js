@@ -181,7 +181,7 @@ const routes = [
     //traveler
     { path: '/all-traveler-list', component: TravelerList, name: 'TravelerList', meta: { auth: true } },
     { path: '/create-traveler', component: CreateTraveller, name: 'CreateTraveller', meta: { auth: true } },
-    { path: '/view-traveler/', component: TravelerView, name: 'TravelerView', meta: { auth: true } },
+    { path: '/view-traveler/:ids', component: TravelerView, name: 'TravelerView', meta: { auth: true }, props:true },
 ]
 
 const router = createRouter({

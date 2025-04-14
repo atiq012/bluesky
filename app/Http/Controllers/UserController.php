@@ -196,7 +196,7 @@ class UserController extends BaseController
             }
             $user->delete();
             $success = '';
-            return $this->SuccessResponse($success, 'Successfully Department deleted.');
+            return $this->SuccessResponse($success, 'Successfully User Deleted.');
 
         } else {
             $error = 'Id can not be null.';

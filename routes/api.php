@@ -144,6 +144,8 @@ Route::middleware(['auth:api'])->group(function () {
     // traveler section
     Route::get('getTraveler', [TravelerController::class, 'index'])->name('traveler.getTraveler');
     Route::post('/traveler/data/save', [TravelerController::class, 'store'])->name('traveler.store');
+    Route::post('/viewTraveler', [TravelerController::class, 'viewData'])->name('traveler.viewData');
+    Route::post('/deleteTraveler', [TravelerController::class, 'destroy'])->name('traveler.destroy');
 
     //Internal API
     Route::post('/Lowfaresearch', [APIController::class, 'Lowfaresearch']);

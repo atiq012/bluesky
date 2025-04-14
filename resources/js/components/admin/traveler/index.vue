@@ -136,30 +136,30 @@ const options = {
                 return html;
             },
         },
-        // {
-        //     title: "Created",
-        //     render: function (data, type, row) {
-        //         var html = "";
-        //         html += row.created_by;
-        //         html += "<br>";
+        {
+            title: "Created",
+            render: function (data, type, row) {
+                var html = "";
+                html += row.created_by;
+                html += "<br>";
 
-        //         html += '<span class="text-primary">';
-        //         html += row.created_at + "</span>";
-        //         return html;
-        //     },
-        // },
-        // {
-        //     title: "Updated",
-        //     render: function (data, type, row) {
-        //         var html = "";
-        //         html += row.updated_by || "";
-        //         html += "<br>";
+                html += '<span class="text-primary">';
+                html += row.created_at + "</span>";
+                return html;
+            },
+        },
+        {
+            title: "Updated",
+            render: function (data, type, row) {
+                var html = "";
+                html += row.updated_by || "";
+                html += "<br>";
 
-        //         html += '<span class="text-primary">';
-        //         html += row.updated_at + "</span>";
-        //         return html;
-        //     },
-        // },
+                html += '<span class="text-primary">';
+                html += row.updated_at + "</span>";
+                return html;
+            },
+        },
         {
             title: "Action",
             render: function (data, type, row) {
@@ -167,10 +167,8 @@ const options = {
                 var idd = row.idd;
                 var status = row.pax_type;
 
-                html += '<button  style="size: 30px; width: 30px; height: 30px" class="btn btn-outline-only-edit rounded-circle edit-item" placement="top" id="edit_tool" data-item-id=' + idd + '> <i class="fa-solid fa-eye" style="margin: 0px 0px 10px -6px; font-size: 14px;" ></i> </button>';
-
-                html += '<button type="button" style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-purple rounded-circle status-change" data-item-id=' + idd + ' data-status=' + status + '> <i class="fa fa-file" style="margin: 2px 0px 10px -3px; font-size: 14px;"></i> </button>';
-
+                html += '<button  style="size: 30px; width: 30px; height: 30px" class="btn btn-outline-only-edit rounded-circle edit-item" placement="top" id="edit_tool" data-item-id=' + idd + '> <i class="fa-solid fa-pencil" style="margin: 1px 0px 10px -4px;; font-size: 14px;" ></i> </button>';
+                html += '<button  style="size: 30px; width: 30px; height: 30px;margin-left: 4px" class="btn btn-outline-only-edit rounded-circle view-item" placement="top" id="view_tool" data-item-id=' + idd + '> <i class="fa-solid fa-eye" style="margin: 1px 0px 10px -5px;; font-size: 14px;" ></i> </button>';
                 html += '<button type="button" v-tippy="Lock" style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-timer rounded-circle history-data" data-item-id=' + idd + '> <i class="fa-solid fa-clock-rotate-left" style="margin: 2px 0px 10px -5px; font-size: 14px;"></i> </button>';
 
                 html += '<button style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-danger rounded-circle delete-item" data-item-id=' + idd + '> <i class="fa-solid fa-trash" style="margin: 2px 0px 10px  -4px; font-size: 14px;"></i> </button>';
@@ -186,7 +184,14 @@ const options = {
 
             var itemIdd = $(this).attr('data-item-id');
 
-            router.push({ name: 'TravelerView' });
+            router.push({ name: 'TravelerView',params: { ids: itemIdd }  });
+        });
+        // view function
+        $(".view-item").on('click', function (e) {
+
+            var itemIdd = $(this).attr('data-item-id');
+
+            router.push({ name: 'TravelerView', params: { ids: itemIdd }  });
         });
 
         // delete function
@@ -204,7 +209,7 @@ const options = {
                 displayMode: 'once',
                 id: 'question',
                 zindex: 999,
-                message: 'Want to delete this user?',
+                message: 'Want to delete this traveler?',
                 position: 'center',
                 buttons: [
                     ['<button><b>No</b></button>', function (instance, toast) {
@@ -221,9 +226,9 @@ const options = {
                 onClosed: async function (instance, toast, closedBy) {
 
                     if (closedBy == 'yes') {
-                        const response = axiosInstance.post("deleteUser", { 'id': idd });
+                        const response = axiosInstance.post("deleteTraveler", { 'id': idd });
                         getListValues();
-                        Notification.showToast('s', 'Successfully User Deleted.');
+                        Notification.showToast('s', 'Successfully Traveler Deleted.');
                     } else {
 
                     }

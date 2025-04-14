@@ -16,11 +16,8 @@ class TravelerController extends Controller
      */
     public function index()
     {
-        // $data = DB::table('users as u')->where('type', 1)
-        //     ->join('roles as r', 'r.id', 'u.user_role')
-        //     ->selectRaw('u.name,u.email,u.img_path as img,u.phone,u.status,r.name as r_name,u.img_path,u.id as idd,u.created_at,u.updated_at,f_department(u.dept_id) as dept,f_designation(u.designation_id) as desg,u.emp_id,f_off_loc(u.office_loc_id) as off_loc,f_username(u.updated_by) as updated_by,f_username(u.created_by) as created_by')->get();
         $data = DB::table('travellers')
-        ->selectRaw('id as idd,full_name,pax_type,first_name,last_name,dob,email,gender,phone,passport_number,passport_expiry_date,nationality,dob')
+        ->selectRaw('id as idd,full_name,pax_type,first_name,last_name,dob,email,gender,phone,passport_number,passport_expiry_date,nationality,dob,f_username(travellers.created_by) as created_by,created_at,f_username(travellers.updated_by) as updated_by,updated_at')
         ->get();
         return DataTables::of($data)->addIndexColumn()->make(true);
     }
@@ -107,6 +104,12 @@ class TravelerController extends Controller
         //
     }
 
+    public function viewData(Request $request)
+    {
+        $traveler = Traveller::find($request->id);
+        return response()->json($traveler);
+    }
+
     /**
      * Show the form for editing the specified resource.
      */
@@ -126,8 +129,26 @@ class TravelerController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(Request $request)
     {
-        //
+        if ($request->id) {
+
+            $traveler = Traveller::where('id', $request->id)->first();
+            if($traveler->passport_path){
+                if ($traveler->passport_path) {
+
+                    $filePath = public_path().$traveler->passport_path;
+                    File::delete($filePath);
+                }
+            }
+            $traveler->delete();
+            $success = '';
+            return $this->SuccessResponse($success, 'Successfully Traveler deleted.');
+
+        } else {
+            $error = 'Id can not be null.';
+            return $this->ErrorResponse($error);
+
+        }
     }
 }
