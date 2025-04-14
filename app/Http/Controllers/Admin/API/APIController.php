@@ -281,4 +281,9 @@ class APIController extends BaseController
         return $response;
 
     }
+
+    public function PricingRequestBody(Request $request)
+    {
+        dd($request->all());
+    }
 }
