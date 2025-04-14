@@ -15,8 +15,13 @@ const ForcePassChange = () => import('./components/auth/forcePasswordChange.vue'
 const flightSearch = () => import('./components/search/flightSearch.vue')
 const searchResult = () => import('./components/search/searchResult.vue')
 const backupsearchResult = () => import('./components/search/searchResult_copy.vue')
+
+// booking
 const bookingList = () => import('./components/admin/booking/index.vue')
 const bookingCreate = () => import('./components/admin/booking/create.vue')
+
+// ticketing
+const manualticketing = () => import('./components/admin/ticketing/manual_ticketing.vue')
 // agent
 const AgentList = () => import('./components/admin/agent/index.vue')
 const agentDetails = () => import('./components/admin/agent/agentDetails.vue')
@@ -28,6 +33,7 @@ const CreateAgency = () => import('./components/admin/agent/create.vue')
 // deposit management
 const depositList = () => import('./components/admin/deposite/index.vue')
 const depoDetails = () => import('./components/admin/deposite/depoDetails.vue')
+const CreateDeposit = () => import('./components/admin/deposite/CreateDeposit.vue')
 
 
 // user management
@@ -106,6 +112,8 @@ const routes = [
     { path: '/flight-booking-list', component: bookingList, name: 'bookingList', meta: { auth: true } },
     { path: '/flight-booking', component: bookingCreate, name: 'bookingCreate', meta: { auth: true } },
 
+    //ticketing
+    { path: '/manual-ticketing', component: manualticketing, name: 'manualticketing', meta: { auth: true } },
 
     // agent
     { path: '/agent-list', component: AgentList, name: 'AgentList', meta: { auth: true } },
@@ -118,6 +126,7 @@ const routes = [
     //deposit
     { path: '/agent-deposit-list', component: depositList, name: 'depositList', meta: { auth: true } },
     { path: '/agent-deposit-details', component: depoDetails, name: 'depoDetails', meta: { auth: true } },
+    { path: '/new-deposit-request', component: CreateDeposit, name: 'CreateDeposit', meta: { auth: true } },
 
     //user
     { path: '/all-user-list', component: UserList, name: 'UserList', meta: { auth: true } },

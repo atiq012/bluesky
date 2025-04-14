@@ -361,8 +361,10 @@ async function getListValues() {
                     <li class="breadcrumb-item">
                         <router-link :to="{ name: 'Home' }">Dashboard</router-link>
                     </li>
-                    <li class="breadcrumb-item" aria-current="page">Flight Management</li>
-                    <li class="breadcrumb-item active" aria-current="page">Booking Management</li>
+                    <!-- <li class="breadcrumb-item" aria-current="page">
+                        <router-link :to="{ name: 'bookingList' }">Flight Management</router-link>
+                    </li> -->
+                    <li class="breadcrumb-item active" aria-current="page">Booking & Ticketing List</li>
                 </ol>
             </nav>
         </div>
@@ -372,7 +374,7 @@ async function getListValues() {
                     <i class="fa fa-file-import"></i> Import PNR
                 </router-link>
                 &nbsp;
-                <router-link :to="{ name: 'CreateAgency' }" class="btn btn-primary btn-sm">
+                <router-link :to="{ name: 'manualticketing' }" class="btn btn-primary btn-sm">
                     <i class="fa fa-circle-plus"></i> Manual Ticketing
                 </router-link>
 

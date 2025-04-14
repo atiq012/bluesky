@@ -13,14 +13,14 @@
                 </ol>
             </nav>
         </div>
-        <!-- <div class="ms-auto">
+        <div class="ms-auto">
             <div class="btn-group">
-                <router-link :to="{ name: 'CreateUser' }" class="btn btn-primary btn-sm">
-                    <i class="fa fa-circle-plus"></i>Add New User
+                <router-link :to="{ name: 'CreateDeposit' }" class="btn btn-primary btn-sm">
+                    <i class="fa fa-circle-plus"></i> New Deposit Request
                 </router-link>
 
             </div>
-        </div> -->
+        </div>
     </div>
     <div class="row">
         <div class="col-12 col-sm-6 col-md-3">

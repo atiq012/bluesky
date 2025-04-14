@@ -410,6 +410,7 @@ function showRouteDetails(info,index) {
     $('.flight-tab-active-'+index).toggleClass('d-none', isActive);
 }
 
+
 function formatDate(dateString) {
     return new Date(dateString).toLocaleDateString('en-US', {
         day: 'numeric',
@@ -455,7 +456,7 @@ const openReturnPicker = () => {
 </script>
 <template>
     <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
-        <div class="breadcrumb-title pe-3">Settings</div>
+        <div class="breadcrumb-title pe-3">Flight Management</div>
         <div class="ps-3">
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-0 p-0">
@@ -1486,8 +1487,24 @@ const openReturnPicker = () => {
                                                     :data-bs-target="`#flight-package-${index}`" :aria-controls="`flight-package-${index}`">
 
                                                     <div class="text-right">
-                                                        <p class="p-0 m-0"><b> {{ flight.outbound.currency }} {{
-                                                            flight.outbound.totalPrice }}</b></p>
+                                                        <p class="p-0 m-0">
+                                                            <b>
+                                                                <span v-for="itemPrice, index in flight.outbound.priceBreakdown">
+                                                                    <b>
+                                                                        <span v-if="index == 0" >
+                                                                            BDT {{
+                                                                                ['Adult', 'Child', 'Infant'].reduce((total, type) => {
+                                                                                    const breakdown = flight.outbound.priceBreakdown.find(item => item.type === type) || {};
+                                                                                    const count = form[type === 'Adult' ? 'ADT' : type === 'Child' ? 'CNN' : 'INF'];
+                                                                                    return total + (count * (breakdown.taxes || 0)) + (count * (breakdown.baseFare || 0));
+                                                                                }, 0)
+                                                                            }}
+                                                                        </span>
+                                                                    </b>
+                                                                </span>
+                                                                <!-- {{ flight.outbound.currency }} {{flight.outbound.totalPrice }} -->
+                                                            </b>
+                                                            </p>
                                                         <!-- <small style="color: #dbdbdb"><del>
                                                                     BDT 77000</del></small> -->
                                                         <small style="font-size: 10px;">Economy Class</small>
@@ -1500,11 +1517,24 @@ const openReturnPicker = () => {
 
                                             <div class="d-grid">
                                                 <button class="btn btn-sm bluesky-btn-primary" data-bs-toggle="collapse"
-                                                    data-bs-target="#flight-package-2" aria-controls="flight-package-2">
+                                                :data-bs-target="`#flight-package-${index}`" :aria-controls="`flight-package-${index}`">
 
                                                     <div class="text-right">
-                                                        <p class="p-0 m-0"><b> {{ flight.outbound.currency }} {{
-                                                            flight.outbound.totalPrice }}</b></p>
+                                                        <p class="p-0 m-0">
+                                                            <span v-for="itemPrice, index in flight.outbound.priceBreakdown">
+                                                                    <b>
+                                                                        <span v-if="index == 0">
+                                                                            BDT {{
+                                                                                ['Adult', 'Child', 'Infant'].reduce((total, type) => {
+                                                                                    const breakdown = flight.outbound.priceBreakdown.find(item => item.type === type) || {};
+                                                                                    const count = form[type === 'Adult' ? 'ADT' : type === 'Child' ? 'CNN' : 'INF'];
+                                                                                    return total + (count * (breakdown.taxes || 0)) + (count * (breakdown.baseFare || 0));
+                                                                                }, 0)
+                                                                            }}
+                                                                        </span>
+                                                                    </b>
+                                                                </span>
+                                                        </p>
 
                                                         <small style="font-size: 10px;">Economy Class</small>
                                                     </div>
@@ -1628,7 +1658,7 @@ const openReturnPicker = () => {
 
                                             <div class="d-grid">
                                                 <button class="btn btn-sm bluesky-btn-primary" data-bs-toggle="collapse"
-                                                    data-bs-target="#flight-package-2" aria-controls="flight-package-2">
+                                                    :data-bs-target="`flight-package-${index}`" :aria-controls="`flight-package-${index}`">
 
                                                     <div class="text-right">
                                                         <p class="p-0 m-0"><b> {{ flight.outbound.currency }} {{
@@ -2332,8 +2362,7 @@ const openReturnPicker = () => {
                                                                                     <td>
                                                                                         <b>Gross Fare &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</b>
                                                                                     </td>
-                                                                                    <td
-                                                                                        v-for="itemPrice, index in flight.outbound.priceBreakdown">
+                                                                                    <td v-for="itemPrice, index in flight.outbound.priceBreakdown">
                                                                                         <b>
                                                                                             <span v-if="index == 0">
                                                                                                 BDT {{
@@ -2453,11 +2482,18 @@ const openReturnPicker = () => {
                                                         <div :class="`card ${ itere%2==0 ? 'border-eco' : 'border-primium' }`" style="min-height: 460px; ">
                                                             <div class="card-header border-bottom-1">
                                                                 <h5 class="card-title text-center" style="font-size: 15px;">{{ fbrand.name }}</h5>
-                                                                <h6 class="text-center">BDT 0</h6>
+                                                                <h6 class="text-center"> {{ fbrand.price.total }}</h6>
                                                             </div>
                                                             <div class="card-body">
                                                                 <ul style="list-style-type:none;" class="">
-                                                                    <li class="menu-item d-inline-flex">
+                                                                    <li class="menu-item d-inline-flex" v-for="service in fbrand.services">
+                                                                        <i class="fa fa-refresh icon-color mt-1"></i>
+                                                                        <span class="ms-1">
+
+                                                                            {{ service.name }}
+                                                                        </span>
+                                                                    </li>
+                                                                    <!-- <li class="menu-item d-inline-flex">
                                                                         <i class="fa fa-refresh icon-color mt-1"></i>
                                                                         <span class="ms-1">
                                                                             Flexible to make 2 changes
@@ -2511,7 +2547,7 @@ const openReturnPicker = () => {
                                                                             class="fa-solid fa-wifi icon-color mt-1"></i>
                                                                         <span class="ms-1">Free Wi-Fi</span>
 
-                                                                    </li>
+                                                                    </li> -->
                                                                 </ul>
                                                                 <!-- <button >Book</button> -->
                                                                 <router-link class="btn btn-outline-book w-100" :to="{ name: 'bookingCreate' }">Book</router-link>
@@ -2522,8 +2558,20 @@ const openReturnPicker = () => {
                                                         <div class="card border-eco" style="min-height: 480px; ">
                                                             <div class="card-header border-bottom-1">
                                                                 <h5 class="card-title text-center" style="font-size: 15px;">Ecomony Class</h5>
-                                                                <!-- <h6 class="text-center">BDT
-                                                                    000</h6> -->
+                                                                <h6 class="text-center">
+
+                                                                    <span v-for="itemPrice, index in flight.outbound.priceBreakdown">
+                                                                        <span v-if="index == 0" >
+                                                                            BDT {{
+                                                                                ['Adult', 'Child', 'Infant'].reduce((total, type) => {
+                                                                                    const breakdown = flight.outbound.priceBreakdown.find(item => item.type === type) || {};
+                                                                                    const count = form[type === 'Adult' ? 'ADT' : type === 'Child' ? 'CNN' : 'INF'];
+                                                                                    return total + (count * (breakdown.taxes || 0)) + (count * (breakdown.baseFare || 0));
+                                                                                }, 0)
+                                                                            }}
+                                                                        </span>
+                                                                </span>
+                                                                </h6>
                                                             </div>
                                                             <div class="card-body">
                                                                 <ul style="list-style-type:none;" class="">
@@ -2944,7 +2992,7 @@ const openReturnPicker = () => {
 }
 
 .fly-out {
-    animation: flyOut 0.5s ease-in;
+    animation: flyOut 0.4s ease-in;
 }
 
 @keyframes flyOut {

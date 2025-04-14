@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\BaseController;
 use App\Http\Controllers\Admin\API\XmlToJson;
 use App\Http\Controllers\Admin\API\farerulsreq;
+use App\Http\Controllers\Admin\API\RequestXML;
 
 class APIController extends BaseController
 {
