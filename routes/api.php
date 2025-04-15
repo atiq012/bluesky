@@ -150,6 +150,8 @@ Route::middleware(['auth:api'])->group(function () {
     //Internal API
     Route::post('/Lowfaresearch', [APIController::class, 'Lowfaresearch']);
     Route::post('/farerules', [APIController::class, 'getFareRules']);
+    Route::post('/PricingRequestBody', [APIController::class, 'PricingRequestBody'])->name('PricingRequestBody');
+
 
 });
 Route::get('airports', [AreaController::class, 'airports']);

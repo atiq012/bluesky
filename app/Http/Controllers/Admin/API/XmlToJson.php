@@ -16,7 +16,6 @@ class XmlToJson
     private $airlineNames = [];
     private $airportData = []; // New property for airport data
     private $aircraftTypes = []; // New property for aircraft types
-    private $brandCache = []; // Add this new property at the top of the class
 
     public function __construct($xmlContent)
     {
@@ -491,7 +490,6 @@ class XmlToJson
         $solution = $this->xml->xpath("//air:AirPricingSolution[@Key='$solutionKey']")[0] ?? null;
 
         $journey = [
-            'brand' => [],
             'all_segments' => [], // Add this new section
             'outbound' => array_merge(
                 $this->buildJourneySection($outboundSegments, $commonInfo),
@@ -500,7 +498,6 @@ class XmlToJson
         ];
 
         if ($solution) {
-            $journey['brand'] = $this->cacheBrands($solution);
             $journey['all_segments'] = $this->getAllSegmentsRaw($solution);
             $journey['outbound']['connections'] = $this->processConnectionInfo($solution, false);
 
@@ -723,184 +720,6 @@ class XmlToJson
         return ['flights' => $results];
     }
 
-    private function cacheBrands($solution)
-    {
-        $brands = [];
-        $brandPrices = [];
-
-        // Get price breakdown first to get actual totals
-        $priceBreakdown = $this->calculatePriceBreakdown($solution);
-
-        // Get all pricing info elements first
-        $pricingInfos = $solution->xpath('.//air:AirPricingInfo');
-
-        // First pass: Collect all fares by brand and passenger type
-        $brandTotals = [];
-        foreach ($pricingInfos as $pricingInfo) {
-            $passengerCount = (int)($pricingInfo['NumberOfPassengers'] ?? 1);
-            $paxType = $this->mapPassengerType((string)($pricingInfo['PassengerTypeCode'] ?? 'ADT'));
-
-            $fareInfoRefs = $pricingInfo->xpath('.//air:FareInfoRef');
-            foreach ($fareInfoRefs as $fareInfoRef) {
-                $fareInfoKey = (string)$fareInfoRef['Key'];
-                $fareInfo = $this->xml->xpath("//air:FareInfo[@Key='$fareInfoKey']")[0] ?? null;
-
-                if ($fareInfo) {
-                    $brandElement = $fareInfo->xpath('.//air:Brand')[0] ?? null;
-                    if ($brandElement) {
-                        $brandId = (string)($brandElement['BrandID'] ?? '');
-                        $brandTier = (string)($brandElement['BrandTier'] ?? '0');
-
-                        if ($brandId) {
-                            if (!isset($brandTotals[$brandId])) {
-                                $brandTotals[$brandId] = [
-                                    'faresByType' => [],
-                                    'fareBasis' => (string)($fareInfo['FareBasis'] ?? ''),
-                                    'upSellBrandId' => (string)($brandElement['UpSellBrandID'] ?? ''),
-                                    'brandTier' => $brandTier
-                                ];
-                            }
-
-                            // Get the amount for this fare
-                            $amount = $this->extractAmount((string)($fareInfo['Amount'] ?? '0'));
-
-                            // Initialize arrays for this passenger type if not exists
-                            if (!isset($brandTotals[$brandId]['faresByType'][$paxType])) {
-                                $brandTotals[$brandId]['faresByType'][$paxType] = [
-                                    'amount' => 0,
-                                    'count' => 0
-                                ];
-                            }
-
-                            // Add fare amount and passenger count
-                            $brandTotals[$brandId]['faresByType'][$paxType]['amount'] += $amount;
-                            $brandTotals[$brandId]['faresByType'][$paxType]['count'] = $passengerCount;
-                        }
-                    }
-                }
-            }
-        }
-
-        // Sort brands by tier to establish pricing hierarchy
-        uasort($brandTotals, function($a, $b) {
-            return (int)$a['brandTier'] - (int)$b['brandTier'];
-        });
-
-        // Calculate base prices for each brand considering tier relationships
-        $basePrices = [];
-        foreach ($brandTotals as $brandId => $brandData) {
-            $basePrices[$brandId] = array_sum(array_map(function($data) {
-                return $data['amount'] * $data['count'];
-            }, $brandData['faresByType']));
-        }
-
-        // Apply tier-based price adjustments
-        foreach ($brandTotals as $brandId => $brandData) {
-            $basePrice = $basePrices[$brandId];
-            $tierAdjustment = 1.0;
-
-            // Apply tier-based markup
-            switch($brandData['brandTier']) {
-                case '0001': // Basic
-                    $tierAdjustment = 1.0;
-                    break;
-                case '0002': // Standard
-                    $tierAdjustment = 1.15;
-                    break;
-                case '0003': // Premium
-                    $tierAdjustment = 1.3;
-                    break;
-                default:
-                    $tierAdjustment = 1.0;
-            }
-
-
-            // Calculate proportional amounts for each passenger type
-            $totalPriceForBrand = 0;
-            $baseFareForBrand = 0;
-            $taxesForBrand = 0;
-
-            foreach ($priceBreakdown as $breakdown) {
-                $paxType = $breakdown['type'];
-                if (isset($brandData['faresByType'][$paxType])) {
-                    $paxRatio = $brandData['faresByType'][$paxType]['amount'] / $basePrice;
-
-                    $baseFareForBrand += $breakdown['baseFare'] * $paxRatio * $tierAdjustment;
-                    $taxesForBrand += $breakdown['taxes'] * $paxRatio;
-                    $totalPriceForBrand += ($breakdown['totalPrice'] * $paxRatio * $tierAdjustment);
-                }
-            }
-
-            $brandPrices[$brandId] = [
-                'total_price' => $this->formatAmount($totalPriceForBrand),
-                'base_price' => $this->formatAmount($baseFareForBrand),
-                'taxes' => $this->formatAmount($taxesForBrand),
-                'fareBasis' => $brandData['fareBasis'],
-                'upSellBrandId' => $brandData['upSellBrandId'],
-                'passenger_counts' => array_combine(
-                    array_keys($brandData['faresByType']),
-                    array_column($brandData['faresByType'], 'count')
-                )
-            ];
-        }
-
-        // Get brands from BrandList and build final output
-        $brandList = $solution->xpath('.//air:Brand | //air:BrandList/air:Brand');
-        foreach ($brandList as $brand) {
-            $attributes = $brand->attributes();
-            $brandId = (string)($attributes['BrandID'] ?? '');
-
-            if (!isset($brandPrices[$brandId])) {
-                continue;
-            }
-
-            // Get text elements
-            $textElements = $brand->xpath('.//air:Text');
-            $texts = [];
-            foreach ($textElements as $text) {
-                $type = (string)$text['Type'];
-                $content = trim((string)$text);
-                $texts[$type] = $content;
-            }
-
-            // Build services array
-            $services = [];
-            if (isset($texts['MarketingAgent'])) {
-                $serviceLines = explode("\n", $texts['MarketingAgent']);
-                foreach ($serviceLines as $line) {
-                    $line = trim($line);
-                    if (strpos($line, '•') === 0 || strpos($line, '-') === 0) {
-                        $service = trim(ltrim($line, '•- '));
-                        if (!empty($service)) {
-                            $services[] = [
-                                'name' => $service,
-                                'included' => true
-                            ];
-                        }
-                    }
-                }
-            }
-
-            $priceInfo = $brandPrices[$brandId];
-            $brandData = [
-                'brand_id' => $brandId,
-                'name' => (string)($attributes['Name'] ?? ''),
-                'carrier' => (string)($attributes['Carrier'] ?? ''),
-                'upSellMessage' => $texts['Upsell'] ?? '',
-                'services' => $services,
-                'price' => [
-                    'total' => $priceInfo['total_price'],
-                    'base' => $priceInfo['base_price'],
-                    'taxes' => $priceInfo['taxes']
-                ]
-            ];
-
-            $brands[] = $brandData;
-        }
-
-        return $brands;
-    }
-
     private function getAllSegmentsRaw($solution)
     {
         $allSegments = [];
@@ -934,16 +753,5 @@ class XmlToJson
 
         return $allSegments;
     }
-
-    private function extractAmount($amountString) {
-        // Remove currency code and any non-numeric characters except decimal point
-        $amount = preg_replace('/[^0-9.]/', '', preg_replace('/^[A-Z]{3}/', '', $amountString));
-        return (float)$amount;
-    }
-
-    private function formatAmount($amount) {
-        return $this->currency . ' ' . number_format($amount, 2);
-    }
-
 
 }

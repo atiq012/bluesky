@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted, reactive, watch } from "vue";
+import { ref, onMounted, onUnmounted, reactive, computed, nextTick } from "vue";
 import axiosInstance from "../../axiosInstance"
 import VueDatePicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css'
@@ -9,10 +9,8 @@ import "simplebar-vue/dist/simplebar.min.css";
 import { useAuthStore } from '../../stores/authStore';
 import '../../../css/searchpanel.css'
 
-import flightData from './dacjfk.json'; // Import the JSON file
 
 const authStore = useAuthStore();
-
 
 
 const airports = ref([]); // All airports
@@ -26,22 +24,14 @@ const filteredDestinationAirports = ref([]);
 const totalFlights = ref(0);
 const loadging = ref(false);
 const fareRuleloading = ref(false);
-const fdate = ref();
 const sliderMin = ref(150);
 const sliderMax = ref(180);
 const flights = ref([])
 const ExecutionTime = ref([])
 
-const isAutoApply = ref(true);
-const isMultiCalendar = ref(false);
-const isRanges = ref();
-
-const isRounded = 'oneway';
-const tdate = ref();
-
 const form = reactive({
     Way: '',
-    from: '',
+    from: 'DAC',  // Set default origin
     fromInput: '',
     to: '',
     toInput: '',
@@ -53,7 +43,13 @@ const form = reactive({
     INF: ''
 });
 
-const selectedOriginDetails = ref(null);
+
+
+const selectedOriginDetails = ref({
+    id: 'DAC',
+    text: 'Hazrat Shahjalal International Airport',
+    city: 'Dhaka'
+});
 const selectedDestinationDetails = ref(null);
 
 function toggleRule(ruleName) {
@@ -66,10 +62,98 @@ function toggleRule(ruleName) {
     }
 }
 
-onMounted(() => {
+// Create a ref for the input element
+const datePickerRef = ref(null);
+
+// Initialize with today's date
+const today = ref(new Date());
+const selectedDate = ref(new Date());
+const selectedDateRange = ref([new Date(), new Date()]);
+
+const returnDate = ref(new Date());
+const returnDatePickerRef = ref(null);
+const isRangePicker = ref(false);
+
+const formatDisplayDate = (date) => {
+    if (!date) return '';
+    const dateObj = new Date(date);
+    return dateObj.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+    });
+};
+
+const formatDateForForm = (date) => {
+    if (!date) return '';
+    const dateObj = new Date(date);
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const animateDateCard = ref(false);
+const animateReturnDateCard = ref(false);
+
+const dateNumberFlyState = ref('');
+const dateInfoFlyState = ref('');
+const returnDateNumberFlyState = ref('');
+const returnDateInfoFlyState = ref('');
+
+const animateDateElements = (isReturn = false) => {
+    const numberState = isReturn ? returnDateNumberFlyState : dateNumberFlyState;
+    const infoState = isReturn ? returnDateInfoFlyState : dateInfoFlyState;
+
+    // Fly out
+    numberState.value = 'fly-out';
+    infoState.value = 'fly-out';
+
+    // Fly in after a short delay
+    setTimeout(() => {
+        numberState.value = 'fly-in';
+        infoState.value = 'fly-in';
+    }, 300);
+
+    // Reset classes
+    setTimeout(() => {
+        numberState.value = '';
+        infoState.value = '';
+    }, 600);
+};
+
+const handleDateChange = (dates) => {
+    if (form.Way === 1) { // One Way
+        const newDate = new Date(dates);
+        animateDateElements();
+        selectedDate.value = newDate;
+        form.dep_date = formatDateForForm(newDate);
+        form.arrival_date = '';
+    } else if (form.Way === 2 && Array.isArray(dates)) { // Round Trip
+        const [start, end] = dates;
+        if (start && end) {
+            animateDateElements();
+            if (end) animateDateElements(true);
+            selectedDateRange.value = [new Date(start), new Date(end)];
+            form.dep_date = formatDateForForm(start);
+            form.arrival_date = formatDateForForm(end);
+        }
+    }
+};
+
+const handleReturnDateChange = (date) => {
+    if (form.Way === 2) {
+        animateDateElements(true);
+        selectedDateRange.value[1] = date;
+        form.arrival_date = formatDateForForm(date);
+    }
+};
+
+onMounted(async () => {
     form.Way = 1;
     getAirports();
     document.addEventListener("click", handleClickOutside);
+
     //  loadging.value = true;
     const updateTotalPassengers = () => {
         const totalAdult = parseInt($(".adult").val());
@@ -111,84 +195,37 @@ onMounted(() => {
     updatePassengerCount('.infant-right-plus', true, 0, 4);
 });
 
-const format = (fdate) => {
-    const day = fdate.getDate();
-    const month = fdate.getMonth() + 1;
-    const year = fdate.getFullYear();
-    const date = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-
-
-    form.dep_date = date;
-    return date;
-}
-
-const formats = (fdates) => {
-
-    const day = fdates[0].getDate();
-    const month = fdates[0].getMonth() + 1;
-    const year = fdates[0].getFullYear();
-    $("#fromdateVal input").val(`${day}/${month}/${year}`);
-
-    if (fdates[1]) {
-
-        const day2 = fdates[1].getDate();
-        const month2 = fdates[1].getMonth() + 1;
-        const year2 = fdates[1].getFullYear();
-        const date2 = `${year2}-${String(month2).padStart(2, "0")}-${String(day2).padStart(2, "0")}`;
-        $("#todateVal input").val(date2);
-
-        form.arrival_date = date2;
-    }
-
-    // return `${day}/${month}/${year}`;
-    const date = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    form.dep_date = date;
-    return date;
-}
 
 function tourTypeChange(type) {
-
-    if (type == 1) {
+    if (type == 1) { // One Way
         form.Way = 1;
+        selectedDate.value = new Date();
+        form.dep_date = formatDateForForm(selectedDate.value);
+        form.arrival_date = '';
         $('.one-way').addClass('bg-checkbox-active');
         $('.round-way').removeClass('bg-checkbox-active');
         $('.multi-city').removeClass('bg-checkbox-active');
-        $('.one-way').removeClass('bg-checkbox');
-        $('.round-way').addClass('bg-checkbox');
-        $('.multi-city').addClass('bg-checkbox');
-        $('#toDateChange').addClass('d-none');
-        this.isAutoApply = !this.isAutoApply;
-        this.isMultiCalendar = !this.isMultiCalendar;
-        this.isRanges = !this.isRanges;
-        this.isRounded = 'oneway';
-
-
-    } else if (type == 2) {
+    } else if (type == 2) { // Round Trip
         form.Way = 2;
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        selectedDateRange.value = [new Date(), tomorrow];
+        form.dep_date = formatDateForForm(selectedDateRange.value[0]);
+        form.arrival_date = formatDateForForm(selectedDateRange.value[1]);
         $('.one-way').removeClass('bg-checkbox-active');
         $('.round-way').addClass('bg-checkbox-active');
         $('.multi-city').removeClass('bg-checkbox-active');
-        $('.round-way').removeClass('bg-checkbox');
-        $('.one-way').addClass('bg-checkbox');
-        $('.multi-city').addClass('bg-checkbox');
-
-        $('#toDateChange').removeClass('d-none');
-        this.isAutoApply = !this.isAutoApply;
-        this.isMultiCalendar = !this.isMultiCalendar;
-        this.isRanges = !this.isRanges;
-        this.isRounded = 'round';
-
-
-    } else {
+    } else if (type == 3) {
         form.Way = 3;
+        isRangePicker.value = true;
         $('.one-way').removeClass('bg-checkbox-active');
         $('.round-way').removeClass('bg-checkbox-active');
         $('.multi-city').addClass('bg-checkbox-active');
         $('.multi-city').removeClass('bg-checkbox');
         $('.one-way').addClass('bg-checkbox');
         $('.round-way').addClass('bg-checkbox');
+        this.isRounded = 'multicity';
     }
-
 }
 
 onUnmounted(() => {
@@ -291,6 +328,12 @@ function selectOrigin(airport) {
     form.fromInput = '';
     selectedOriginDetails.value = airport;
     showOriginList.value = false;
+    setTimeout(() => {
+        selectedDestinationDetails.value = null;
+        showDestinationList.value = true;
+        filteredDestinationAirports.value = airports.value.slice(0, initialLoadLimit);
+        $('#destination_id').focus();
+    }, 100);
 }
 
 function selectDestination(airport) {
@@ -377,18 +420,6 @@ function formatDate(dateString) {
 };
 
 
-function number_format(nStr) {
-    nStr += '';
-    x = nStr.split('.');
-    x1 = x[0];
-    x2 = x.length > 1 ? '.' + x[1] : '';
-    var rgx = /(\d+)(\d{3})/;
-    while (rgx.test(x1)) {
-        x1 = x1.replace(rgx, '$1' + ',' + '$2');
-    }
-    return x1;
-}
-
 async function fareRuleClick(param) {
     $(".segment-container").hide();
     fareRuleloading.value = true;
@@ -407,6 +438,20 @@ function swapLocations() {
     [showOriginList.value, showDestinationList.value] = [showDestinationList.value, showOriginList.value];
     [filteredOriginAirports.value, filteredDestinationAirports.value] = [filteredDestinationAirports.value, filteredOriginAirports.value];
 }
+
+// Add this function to handle click
+const openPicker = () => {
+    if (datePickerRef.value) {
+        datePickerRef.value.openMenu();
+    }
+};
+
+const openReturnPicker = () => {
+    if (returnDatePickerRef.value) {
+        returnDatePickerRef.value.openMenu();
+    }
+};
+
 
 </script>
 <template>
@@ -772,12 +817,12 @@ function swapLocations() {
                     <div class="row">
                         <div class="col-md-7">
                             <div class="row position-relative">
-                                <div class="col-md-6">
+                                <div class="col-md-6 mt-2">
                                     <div class="location-input-wrapper">
                                         <div v-if="form.from && selectedOriginDetails" class="selected-location">
 
                                             <div class="hstack align-items-center">
-                                                <div id="oFrom" class="font-12 fw-bold pe-2 fly-in" style="color: rgb(62, 73, 87);">{{ form.from }}</div>
+                                                <div id="oFrom" class="pe-2 fly-in" style="color: rgb(62, 73, 87); font-size: 1.2rem; font-weight: 900;">{{ form.from }}</div>
                                                 <div id="oCityAirport" class="flex-grow-1 border-start ps-2 fly-in">
                                                     <div class="font-11 fw-bold fcolor">{{ selectedOriginDetails.city }}</div>
                                                     <div class="text-muted font-10">{{ selectedOriginDetails.text }}</div>
@@ -788,7 +833,7 @@ function swapLocations() {
                                         <input id="origin_id" v-model="form.fromInput" name="origin_name" class="form-control origin_name"
                                         :class="{ 'has-value': form.from && !showOriginList}"
                                         @input="filterOriginAirports($event.target.value)"
-                                        @focus="onOriginFocus" placeholder="From" autocomplete="off" />
+                                        @focus="onOriginFocus" autocomplete="off" />
                                         <span v-if="form.from" @click="clearOrigin" class="clear-icon">✖</span>
                                         <div v-if="showOriginList" id="origin_results" class="position-absolute w-100 mt-2" style="z-index: 1000; animation: fadeIn 0.3s ease-in-out">
                                             <SimpleBar style="max-height: 300px" class="search-results-simplebar">
@@ -811,12 +856,12 @@ function swapLocations() {
                                     <div class="swap-icon-wrapper" @click="swapLocations">
                                         <i class="fa-solid fa-arrow-right-arrow-left"></i>
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-md-6 mt-2">
                                     <div class="location-input-wrapper">
                                         <div v-if="form.to && selectedDestinationDetails" class="selected-location">
 
                                             <div class="hstack align-items-center">
-                                                <div id="dFrom" class="font-12 fw-bold pe-2 fly-in" style="color: rgb(62, 73, 87);">{{ form.to }}</div>
+                                                <div id="dFrom" class="pe-2 fly-in" style="color: rgb(62, 73, 87); font-size: 1.2rem; font-weight: 900;">{{ form.to }}</div>
                                                 <div id="dCityAirport" class="flex-grow-1 border-start ps-2 fly-in">
                                                     <div class="font-11 fw-bold fcolor fly-in">{{ selectedDestinationDetails.city }}</div>
                                                     <div class="text-muted font-10 fly-in">{{ selectedDestinationDetails.text }}</div>
@@ -862,33 +907,87 @@ function swapLocations() {
                             </div>
                         </div>
                         <div class="col-md-5">
-                            <div class="row">
-                                <div class="col-md-4 mt-2 mt-md-0" v-if="isRounded == 'oneway'">
-                                    <VueDatePicker class="dateChange" id="fromdateVal" v-model="fdate" placeholder="Select Date"
-                                        :enable-time-picker="false" :format="format" :auto-apply="isAutoApply"
-                                        :multi-calendars="isMultiCalendar" :range="isRanges"></VueDatePicker>
+                            <div class="d-flex gap-3">
+                                <div class="date-picker-wrapper" :class="{ animate: animateDateCard }">
+                                    <div class="date-card" @click="openPicker" :class="{ animate: animateDateCard }">
+                                        <div class="date-number" :class="dateNumberFlyState">
+                                            {{ form.Way === 2 && selectedDateRange[0] ?
+                                                new Date(selectedDateRange[0]).getDate() :
+                                                (selectedDate ? new Date(selectedDate).getDate() : new Date().getDate())
+                                            }}
+                                        </div>
+                                        <div class="date-info" :class="dateInfoFlyState">
+                                            <div class="day">
+                                                {{ form.Way === 2 && selectedDateRange[0] ?
+                                                    new Date(selectedDateRange[0]).toLocaleDateString('en-US', { month: 'long' }) :
+                                                    (selectedDate ? new Date(selectedDate).toLocaleDateString('en-US', { month: 'long' }) :
+                                                    new Date().toLocaleDateString('en-US', { month: 'long' }))
+                                                }}
+                                            </div>
+                                            <div class="month-year">
+                                                {{ form.Way === 2 && selectedDateRange[0] ?
+                                                    `${new Date(selectedDateRange[0]).toLocaleDateString('en-US', { weekday: 'short' })}, ${new Date(selectedDateRange[0]).getFullYear()}` :
+                                                    (selectedDate ?
+                                                        `${new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'short' })}, ${new Date(selectedDate).getFullYear()}` :
+                                                        `${new Date().toLocaleDateString('en-US', { weekday: 'short' })}, ${new Date().getFullYear()}`)
+                                                }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <VueDatePicker
+                                        ref="datePickerRef"
+                                        :model-value="form.Way === 1 ? selectedDate.value : selectedDateRange.value"
+                                        @update:model-value="handleDateChange"
+                                        :enable-time-picker="false"
+                                        :format="formatDisplayDate"
+                                        :range="form.Way === 2"
+                                        :min-date="new Date()"
+                                        :multi-calendars="form.Way === 2 ? 2 : undefined"
+                                        :multi-calendars-solo="form.Way === 2"
+                                        :month-picker="false"
+                                        :auto-apply="true"
+                                        :close-on-auto-apply="true"
+                                        :partial-range="false"
+                                        :text-input="false"
+                                        :columns="form.Way === 2 ? 2 : 1"
+                                    >
 
-                                </div>
-                                <div class="col-md-4 mt-2 mt-md-0" v-if="isRounded == 'round'">
-                                    <VueDatePicker class="dateChange" id="fromdateVal" v-model="fdate" placeholder="Select Date"
-                                        :enable-time-picker="false" :format="formats" :auto-apply="isAutoApply"
-                                        :multi-calendars="isMultiCalendar" :range="isRanges"></VueDatePicker>
-                                </div>
-
-                                <div class="col-md-2 d-none mt-2 mt-md-0" id="toDateChange">
-                                    <VueDatePicker v-model="tdate" id="todateVal" placeholder="Select Date"
-                                        :enable-time-picker="false">
                                     </VueDatePicker>
                                 </div>
-                                <div class="col-md-1 mt-2 mt-md-0">
-                                    <!-- <router-link> -->
-                                    <img @click="Lowfaresearch()"
-                                        src="../../../../public/theme/appimages/Mobile_Button With_Icon.jpg" alt=""
-                                        class="d-sm-block d-md-none" style="width: 100%;" id="img">
-                                    <img @click="Lowfaresearch()" src="../../../../public/theme/appimages/s_With_Icon.jpg"
-                                        alt="" style="width: 53px; cursor:pointer" @mouseover="onHover();"
-                                        @mouseout="offHover();" id="s_image" class="d-none d-md-block">
-                                    <!-- </router-link> -->
+
+                                <div v-if="form.Way === 2" class="date-picker-wrapper" :class="{ animate: animateReturnDateCard }">
+                                    <div class="date-card" @click="openReturnPicker" :class="{ animate: animateReturnDateCard }">
+                                        <div class="date-number" :class="returnDateNumberFlyState">
+                                            {{ selectedDateRange[1] ?
+                                                new Date(selectedDateRange[1]).getDate() :
+                                                new Date().getDate()
+                                            }}
+                                        </div>
+                                        <div class="date-info" :class="returnDateInfoFlyState">
+                                            <div class="day">
+                                                {{ selectedDateRange[1] ?
+                                                    new Date(selectedDateRange[1]).toLocaleDateString('en-US', { month: 'long' }) :
+                                                    new Date().toLocaleDateString('en-US', { month: 'long' })
+                                                }}
+                                            </div>
+                                            <div class="month-year">
+                                                {{ selectedDateRange[1] ?
+                                                    `${new Date(selectedDateRange[1]).toLocaleDateString('en-US', { weekday: 'short' })}, ${new Date(selectedDateRange[1]).getFullYear()}` :
+                                                    `${new Date().toLocaleDateString('en-US', { weekday: 'short' })}, ${new Date().getFullYear()}`
+                                                }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <VueDatePicker
+                                        ref="returnDatePickerRef"
+                                        v-model="selectedDateRange[1]"
+                                        :enable-time-picker="false"
+                                        auto-apply
+                                        :format="formatSelectedDate"
+                                        @update:model-value="handleReturnDateChange"
+                                        :teleport="true"
+                                        :auto-position="true"
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -1310,7 +1409,7 @@ function swapLocations() {
                                                                 </div>
                                                                 <div>
                                                                     <small style="font-size: 12px; color: #5e6878;">
-                                                                        {{ formatDate(flight.outbound.departure_date) }}
+                                                                        {{ formatDisplayDate(flight.outbound.departure_date) }}
                                                                     </small>
                                                                 </div>
                                                                 <div>
@@ -1369,7 +1468,7 @@ function swapLocations() {
                                                                 </div>
                                                                 <div>
                                                                     <small style="font-size: 12px; color: #5e6878;">
-                                                                        {{ formatDate(flight.outbound.arrival_date)
+                                                                        {{ formatDisplayDate(flight.outbound.arrival_date)
                                                                         }}</small>
                                                                 </div>
                                                                 <div>
@@ -1483,7 +1582,7 @@ function swapLocations() {
                                                                 </div>
                                                                 <div>
                                                                     <small style="font-size: 12px; color: #5e6878;">{{
-                                                                        formatDate(flight.inbound.departure_date)
+                                                                        formatDisplayDate(flight.inbound.departure_date)
                                                                         }}</small>
                                                                 </div>
                                                                 <div>
@@ -1729,7 +1828,7 @@ function swapLocations() {
                                                                                         <span
                                                                                             class="vertical-line">|</span></b></small>
                                                                                 <span style="font-size: 11px;">{{
-                                                                                    formatDate(route.departure_date)
+                                                                                    formatDisplayDate(route.departure_date)
                                                                                 }}</span>
                                                                             </div>
                                                                             <div>
@@ -1762,7 +1861,7 @@ function swapLocations() {
                                                                                         <span
                                                                                             class="vertical-line">|</span></b></small>
                                                                                 <span style="font-size: 11px;">{{
-                                                                                    formatDate(route.arrival_date)
+                                                                                    formatDisplayDate(route.arrival_date)
                                                                                     }}</span>
                                                                             </div>
                                                                             <div>
@@ -1920,7 +2019,7 @@ function swapLocations() {
                                                                                             class="vertical-line">|</span>
                                                                                     </b></small>
                                                                                 <span style="font-size: 11px;">{{
-                                                                                    formatDate(returnRoute.departure_date)
+                                                                                    formatDisplayDate(returnRoute.departure_date)
                                                                                 }}</span>
                                                                             </div>
                                                                             <div>
@@ -1954,7 +2053,7 @@ function swapLocations() {
                                                                                             class="vertical-line">|</span></b></small>
                                                                                 <span style="font-size: 11px;">
                                                                                     {{
-                                                                                        formatDate(returnRoute.arrival_date)
+                                                                                        formatDisplayDate(returnRoute.arrival_date)
                                                                                     }}</span>
                                                                             </div>
                                                                             <div>
@@ -2907,4 +3006,103 @@ function swapLocations() {
     }
 }
 
+</style>
+
+
+
+<style>
+/* Update styles */
+.location-input-wrapper.fd {
+    position: relative;
+    background: white;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.to_date {
+    padding: 12px;
+}
+
+.custom-datepicker-menu {
+    z-index: 1000;
+}
+
+.custom-datepicker-input {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    cursor: pointer;
+}
+
+/* Hide the original input but keep it functional */
+.dp__input_wrap {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+}
+
+.dp__input_icon {
+    display: none;
+}
+</style>
+
+
+<style scoped>
+.date-picker-wrapper {
+    position: relative;
+    min-width: 180px;
+}
+
+.date-card {
+    background: white;
+    border-radius: 8px;
+    height: 64px;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    cursor: pointer;
+    margin-top: 8px;
+    border: 1px solid #ddd;
+}
+
+.date-number {
+    font-size: 1.6rem;
+    font-weight: bold;
+    margin-left: 5px;
+    color: rgb(62, 73, 87);
+    line-height: 1;
+}
+
+.date-info {
+    border-left: 1px solid #dee2e6;
+    padding-left: 15px;
+}
+
+.day {
+    font-size: .9rem;
+    font-weight: bold;
+    color: rgb(62, 73, 87);
+}
+
+.month-year {
+    font-size: .9rem;
+    color: #6c757d;
+}
+
+.dp__input {
+    display: none;
+}
+
+.dp__menu {
+    position: absolute;
+    z-index: 1000;
+    margin-top: 5px;
+}
 </style>

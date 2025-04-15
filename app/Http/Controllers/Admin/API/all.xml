@@ -353,6 +353,14 @@
             </air:AirSegmentList>
             <air:FareInfoList>
 
+
+
+
+
+
+
+
+                <!-- DAC-JFK ADT-->
                 <air:FareInfo Key="OpBiNVSqWDKAD6PXNAAAAA==" FareBasis="UK2YXSDC" PassengerTypeCode="ADT" Origin="DAC" Destination="JFK" EffectiveDate="2025-03-11T12:06:00.000+06:00" DepartureDate="2025-03-21" Amount="BDT43193" NegotiatedFare="false" NotValidBefore="2025-03-22" NotValidAfter="2025-03-22">
                     <air:FareSurcharge Key="OpBiNVSqWDKAb6PXNAAAAA==" Type="Weekend Surcharge" Amount="NUC30.00"/>
                     <air:BaggageAllowance>
@@ -364,7 +372,7 @@
                         <air:UpsellBrand FareBasis="UK2YWSDC" FareInfoRef="OpBiNVSqWDKA82QXNAAAAA=="/>
                     </air:Brand>
                 </air:FareInfo>
-
+                <!-- JFK-DAC ADT -->
                 <air:FareInfo Key="OpBiNVSqWDKAT6PXNAAAAA==" FareBasis="UK2YXSDC" PassengerTypeCode="ADT" Origin="JFK" Destination="DAC" EffectiveDate="2025-03-11T12:06:00.000+06:00" DepartureDate="2025-03-28" Amount="BDT43193" NegotiatedFare="false" NotValidBefore="2025-03-29" NotValidAfter="2025-03-29">
                     <air:FareSurcharge Key="OpBiNVSqWDKAU6PXNAAAAA==" Type="Weekend Surcharge" Amount="NUC30.00"/>
                     <air:BaggageAllowance>
@@ -376,6 +384,13 @@
                         <air:UpsellBrand FareBasis="UK2YWSDC" FareInfoRef="OpBiNVSqWDKAM3QXNAAAAA=="/>
                     </air:Brand>
                 </air:FareInfo>
+
+
+
+
+
+
+                <!-- DAC-JFK CNN-->
                 <air:FareInfo Key="OpBiNVSqWDKAv6PXNAAAAA==" FareBasis="UK2YXSDC" PassengerTypeCode="CNN" Origin="DAC" Destination="JFK" EffectiveDate="2025-03-11T12:06:00.000+06:00" DepartureDate="2025-03-21" Amount="BDT32395" NegotiatedFare="false" NotValidBefore="2025-03-22" NotValidAfter="2025-03-22">
                     <air:FareTicketDesignator Value="CH25"/>
                     <air:FareSurcharge Key="OpBiNVSqWDKAF7PXNAAAAA==" Type="Weekend Surcharge" Amount="NUC22.50"/>
@@ -388,6 +403,7 @@
                         <air:UpsellBrand FareBasis="UK2YWSDC" FareInfoRef="OpBiNVSqWDKAk3QXNAAAAA=="/>
                     </air:Brand>
                 </air:FareInfo>
+                <!-- JFK-DAC CNN -->
                 <air:FareInfo Key="OpBiNVSqWDKA/6PXNAAAAA==" FareBasis="UK2YXSDC" PassengerTypeCode="CNN" Origin="JFK" Destination="DAC" EffectiveDate="2025-03-11T12:06:00.000+06:00" DepartureDate="2025-03-28" Amount="BDT32395" NegotiatedFare="false" NotValidBefore="2025-03-29" NotValidAfter="2025-03-29">
                     <air:FareTicketDesignator Value="CH25"/>
                     <air:FareSurcharge Key="OpBiNVSqWDKAA7PXNAAAAA==" Type="Weekend Surcharge" Amount="NUC22.50"/>
@@ -400,6 +416,12 @@
                         <air:UpsellBrand FareBasis="UK2YWSDC" FareInfoRef="OpBiNVSqWDKA03QXNAAAAA=="/>
                     </air:Brand>
                 </air:FareInfo>
+
+
+
+
+
+                <!-- DAC-JFK INF-->
                 <air:FareInfo Key="OpBiNVSqWDKAU7PXNAAAAA==" FareBasis="UK2YXSDC" PassengerTypeCode="INF" Origin="DAC" Destination="JFK" EffectiveDate="2025-03-11T12:06:00.000+06:00" DepartureDate="2025-03-21" Amount="BDT4320" NegotiatedFare="false" NotValidBefore="2025-03-22" NotValidAfter="2025-03-22">
                     <air:FareTicketDesignator Value="IN90"/>
                     <air:FareSurcharge Key="OpBiNVSqWDKAl7PXNAAAAA==" Type="Weekend Surcharge" Amount="NUC3.00"/>
@@ -411,6 +433,7 @@
                         <air:UpsellBrand FareBasis="UK2YWSDC" FareInfoRef="OpBiNVSqWDKAH4QXNAAAAA=="/>
                     </air:Brand>
                 </air:FareInfo>
+                <!-- JFK-DAC INF-->
                 <air:FareInfo Key="OpBiNVSqWDKAf7PXNAAAAA==" FareBasis="UK2YXSDC" PassengerTypeCode="INF" Origin="JFK" Destination="DAC" EffectiveDate="2025-03-11T12:06:00.000+06:00" DepartureDate="2025-03-28" Amount="BDT4319" NegotiatedFare="false" NotValidBefore="2025-03-29" NotValidAfter="2025-03-29">
                     <air:FareTicketDesignator Value="IN90"/>
                     <air:FareSurcharge Key="OpBiNVSqWDKAg7PXNAAAAA==" Type="Weekend Surcharge" Amount="NUC3.00"/>
@@ -422,6 +445,13 @@
                         <air:UpsellBrand FareBasis="UK2YWSDC" FareInfoRef="OpBiNVSqWDKAS4QXNAAAAA=="/>
                     </air:Brand>
                 </air:FareInfo>
+
+
+
+
+
+
+
                 <air:FareInfo Key="OpBiNVSqWDKAH8PXNAAAAA==" FareBasis="QLWESBD" PassengerTypeCode="ADT" Origin="DAC" Destination="JFK" EffectiveDate="2025-03-11T12:06:00.000+06:00" DepartureDate="2025-03-21" Amount="BDT25376" NegotiatedFare="false" NotValidBefore="2025-03-21" NotValidAfter="2025-03-21">
                     <air:BaggageAllowance>
                         <air:NumberOfPieces>2</air:NumberOfPieces>
@@ -1603,13 +1633,24 @@
                     <air:Leg Key="OpBiNVSqWDKAz5PXNAAAAA==" Group="1" Origin="NYC" Destination="DAC"/>
                 </air:Route>
             </air:RouteList>
+
+
+
+
+
+
+
             <air:AirPricingSolution Key="OpBiNVSqWDKAp5PXNAAAAA==" TotalPrice="BDT310939" BasePrice="USD1332.00" ApproximateTotalPrice="BDT310939" ApproximateBasePrice="BDT159815" EquivalentBasePrice="BDT159815" Taxes="BDT151124" ApproximateTaxes="BDT151124">
                 <air:Journey TravelTime="P0DT20H55M0S">
+                    <!-- DAC-DEL -->
                     <air:AirSegmentRef Key="OpBiNVSqWDKAq5PXNAAAAA=="/>
+                    <!-- DEL-JFK -->
                     <air:AirSegmentRef Key="OpBiNVSqWDKAs5PXNAAAAA=="/>
                 </air:Journey>
                 <air:Journey TravelTime="P0DT22H5M0S">
+                    <!-- JFK-DEL -->
                     <air:AirSegmentRef Key="OpBiNVSqWDKAu5PXNAAAAA=="/>
+                    <!-- DEL-DAC -->
                     <air:AirSegmentRef Key="OpBiNVSqWDKAw5PXNAAAAA=="/>
                 </air:Journey>
                 <air:LegRef Key="OpBiNVSqWDKAy5PXNAAAAA=="/>
@@ -1706,6 +1747,13 @@
                 <air:Connection SegmentIndex="0"/>
                 <air:Connection SegmentIndex="2"/>
             </air:AirPricingSolution>
+
+
+
+
+
+
+
             <air:AirPricingSolution Key="OpBiNVSqWDKAq7PXNAAAAA==" TotalPrice="BDT310939" BasePrice="USD1332.00" ApproximateTotalPrice="BDT310939" ApproximateBasePrice="BDT159815" EquivalentBasePrice="BDT159815" Taxes="BDT151124" ApproximateTaxes="BDT151124">
                 <air:Journey TravelTime="P1DT2H55M0S">
                     <air:AirSegmentRef Key="OpBiNVSqWDKAW6PXNAAAAA=="/>
