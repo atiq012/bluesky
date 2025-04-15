@@ -121,9 +121,56 @@ class TravelerController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request)
     {
-        //
+        // Get the authenticated user
+        $user = auth()->user();
+
+        // Create a new traveler
+        $traveler = Traveller::find($request->pax_id);
+        $traveler->pax_type = $request->pax_type;
+        $traveler->title = $request->title_val;
+        $traveler->first_name = $request->first_name;
+        $traveler->last_name = $request->last_name;
+        $traveler->full_name = $request->title_val. ' ' . $request->first_name . ' ' . $request->last_name;
+        $traveler->dob = $request->dob;
+        $traveler->email = $request->email;
+        $traveler->gender = $request->gender;
+        $traveler->phone = $request->phone;
+        $traveler->passport_number = $request->passport_no;
+        $traveler->passport_expiry_date = $request->p_expiry_date;
+        $traveler->nationality = $request->nationality;
+        $traveler->updated_by = $user->id;
+
+
+        if ($request->hasFile('passport_picture')) {
+
+            $request_image = $request->file('passport_picture');
+            $image_name = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
+
+            $image_path = public_path('/uploads/travler/passport/');
+            if (!File::exists($image_path)) {
+                File::makeDirectory($image_path, 0777, true);
+            }
+
+            if($traveler->passport_path){
+                if ($traveler->passport_path) {
+
+                    $filePath = public_path().$traveler->passport_path;
+                    File::delete($filePath);
+                }
+            }
+
+            $request_image->move($image_path, $image_name);
+            $traveler->passport_path = '/uploads/travler/passport/' . $image_name;
+
+        } else {
+            $profilePicturePath = null;
+        }
+        $traveler->save();
+
+        // Return a success response
+        return response()->json(['message' => 'Successfully Traveler Details Updated.', 'types' => 's']);
     }
 
     /**

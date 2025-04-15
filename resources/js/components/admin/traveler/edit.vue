@@ -8,7 +8,7 @@ import { ref, reactive, onMounted, render } from "vue";
 import moment from "moment";
 const props = defineProps(['ids']);
 
-const form = reactive({ pax_type: "", title_val: "", first_name: "", last_name: "", dob: "", gender: "", email: "", phone: "", passport_no: "", p_expiry_date: "", nationality: "", passport_picture: "", useEmail: authStore.email });
+const form = reactive({pax_id:"", pax_type: "", title_val: "", first_name: "", last_name: "", dob: "", gender: "", email: "", phone: "", passport_no: "", p_expiry_date: "", nationality: "", passport_picture: "", useEmail: authStore.email });
 
 const previewImage = ref('');
 
@@ -29,13 +29,14 @@ function paxTypeChange(type) {
     form.pax_type = type;
 }
 
-async function save() {
+async function save(props) {
+    form.pax_id = props.ids;
     try {
         // const response = await axiosInstance.post("/traveler/data/save", form);
 
         const authStore = useAuthStore();
         const accessToken = authStore.decryptWithAES(authStore.token);
-        const response = await axios.post('/api/traveler/data/save', form, {
+        const response = await axios.post('/api/traveler/data/update', form, {
             headers: {
                 'Content-Type': 'multipart/form-data',
                 Authorization: "Bearer " + accessToken,
@@ -67,9 +68,8 @@ async function getTravelerData(props) {
 
     try {
         const response = await axiosInstance.post('viewTraveler', { 'id': props.ids });
-        console.log(response.data);
 
-        form.pax_type = response.data.pax_type;
+
         form.title_val = response.data.title;
         $('#title').val(response.data.title);
         form.first_name = response.data.first_name;
@@ -85,7 +85,21 @@ async function getTravelerData(props) {
         $('#nationality').val(response.data.nationality);
 
         form.passport_picture = response.data.passport_path;
-        previewImage.value = response.data.passport_path
+        previewImage.value = response.data.passport_path;
+
+        if (response.data.pax_type == 1) {
+            var pax_type = 'Adult';
+            $('#adult').prop('checked', true);
+            form.pax_type = 1;
+        } else if (response.data.pax_type == 2) {
+            var pax_type = 'Child';
+            $('#child').prop('checked', true);
+            form.pax_type = 2;
+        } else if (response.data.pax_type == 3) {
+            var pax_type = 'Infant';
+            $('#infant').prop('checked', true);
+            form.pax_type = 3;
+        }
 
     }
     catch (error) {
@@ -136,25 +150,24 @@ async function getTravelerData(props) {
                                                     <b>PAX Type</b>
                                                 </span>
                                                 <div class="d-flex align-items-center gap-3 mt-2">
-
                                                     <div class="form-check pt-1">
                                                         <input class="form-check-input" type="radio"
                                                             name="flexRadioDefault" @click="paxTypeChange(1)"
-                                                            id="flexRadioDefault1">
-                                                        <label class="form-check-label" for="flexRadioDefault1">
+                                                            id="adult" >
+                                                        <label class="form-check-label" for="adult">
                                                             <b>Adult</b> </label>
                                                     </div>
                                                     <div class="form-check pt-1">
                                                         <input class="form-check-input" @click="paxTypeChange(2)"
-                                                            type="radio" name="flexRadioDefault" id="flexRadioSuccess">
-                                                        <label class="form-check-label" for="flexRadioSuccess">
+                                                            type="radio" name="flexRadioDefault" id="child">
+                                                        <label class="form-check-label" for="child">
                                                             <b>Children</b>
                                                         </label>
                                                     </div>
                                                     <div class="form-check pt-1">
                                                         <input class="form-check-input" @click="paxTypeChange(3)"
-                                                            type="radio" name="flexRadioDefault" id="flexRadioDanger">
-                                                        <label class="form-check-label" for="flexRadioDanger">
+                                                            type="radio" name="flexRadioDefault" id="infant">
+                                                        <label class="form-check-label" for="infant">
                                                             <b>Infant</b>
                                                         </label>
                                                     </div>
@@ -276,7 +289,7 @@ async function getTravelerData(props) {
                             <div class="d-flex">
                                 <button type="submit" class="btn btn-primary ">Back</button>
                                 <button type="button" class="btn btn-primary ms-auto bd-highligh"
-                                    @click="save()">Save</button>
+                                    @click="save(props)">Update</button>
                             </div>
                         </div>
                     </div>
