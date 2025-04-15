@@ -184,7 +184,7 @@ const options = {
 
             var itemIdd = $(this).attr('data-item-id');
 
-            router.push({ name: 'TravelerView',params: { ids: itemIdd }  });
+            router.push({ name: 'TravelerEdit',params: { ids: itemIdd }  });
         });
         // view function
         $(".view-item").on('click', function (e) {

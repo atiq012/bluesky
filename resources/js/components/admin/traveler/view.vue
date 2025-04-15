@@ -14,7 +14,7 @@ async function getTravelerData(props) {
 
     try {
         const response = await axiosInstance.post('viewTraveler', { 'id': props.ids });
-        console.log(response.data);
+
         $(".full_name").html(response.data.full_name);
         $(".dob").html(moment(response.data.dob).format('DD-MMM-YYYY'));
         $(".gender").html(response.data.gender);
