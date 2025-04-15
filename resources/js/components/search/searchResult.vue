@@ -989,6 +989,8 @@ const openReturnPicker = () => {
                                         :auto-position="true"
                                     />
                                 </div>
+
+                                <button class="btn btn-block search-flight-btn w-100" @click="Lowfaresearch()">Search</button>
                             </div>
                         </div>
                     </div>
