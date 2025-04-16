@@ -390,6 +390,16 @@ async function Lowfaresearch() {
     }
 }
 
+async function priceRequest(index) {
+
+    try{
+        const response = await axiosInstance.post("PricingRequestBody", index);
+
+    }catch (error) {
+        console.log(error);
+    }
+}
+
 function showRouteDetails(info,index) {
     const isActive = info === 2;
 
@@ -949,8 +959,7 @@ const openReturnPicker = () => {
                                     </div>
                                 </div>
                                 <div class="col-md-4">
-                                    <button
-                                        id="search-flight-btn"
+                                    <button id="search-flight-btn"
                                         class="search-flight-btn"
                                         @click="Lowfaresearch()"
                                         aria-label="Search Flights"
@@ -1542,7 +1551,7 @@ const openReturnPicker = () => {
                                         </div>
                                         <div v-show="form.Way == 1" class="col-12 col-sm-12 col-md-2">
                                             <div class="d-grid">
-                                                <button class="btn btn-sm bluesky-btn-primary" data-bs-toggle="collapse"
+                                                <button @click="priceRequest(flight.all_segments)" class="btn btn-sm bluesky-btn-primary" data-bs-toggle="collapse"
                                                     :data-bs-target="`#flight-package-${index}`" :aria-controls="`flight-package-${index}`">
 
                                                     <div class="text-right">
@@ -1575,7 +1584,7 @@ const openReturnPicker = () => {
                                         <div v-show="form.Way == 2" class="col-12 col-sm-12 col-md-2 ">
 
                                             <div class="d-grid">
-                                                <button class="btn btn-sm bluesky-btn-primary" data-bs-toggle="collapse"
+                                                <button @click="priceRequest(flight.all_segments)" class="btn btn-sm bluesky-btn-primary" data-bs-toggle="collapse"
                                                 :data-bs-target="`#flight-package-${index}`" :aria-controls="`flight-package-${index}`">
 
                                                     <div class="text-right">
