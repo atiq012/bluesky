@@ -155,7 +155,6 @@ class TravelerController extends Controller
 
             if($traveler->passport_path){
                 if ($traveler->passport_path) {
-
                     $filePath = public_path().$traveler->passport_path;
                     File::delete($filePath);
                 }
