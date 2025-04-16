@@ -16,9 +16,15 @@ return new class extends Migration
             $table->string('iata_code');
             $table->string('icao_code');
             $table->string('model');
-            $table->string('created_by');
-            $table->string('updated_by')->nullable();
+            $table->unsignedBigInteger('created_by')->nullable();
+            $table->unsignedBigInteger('updated_by')->nullable();
             $table->timestamps();
+
+            $table->index('iata_code');
+            $table->index('icao_code');
+            $table->index('model');
+            $table->foreign('created_by')->references('id')->on('users');
+            $table->foreign('updated_by')->references('id')->on('users');
         });
     }
 

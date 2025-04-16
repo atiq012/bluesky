@@ -17,9 +17,13 @@ return new class extends Migration
             $table->integer('division_id')->nullable();
             $table->integer('district_id')->nullable();
             $table->boolean('status')->default(1);
-            $table->string('created_by')->nullable();
-            $table->string('updated_by')->nullable();
+            $table->unsignedBigInteger('created_by')->nullable();
+            $table->unsignedBigInteger('updated_by')->nullable();
             $table->timestamps();
+
+            $table->index('name');
+            $table->foreign('created_by')->references('id')->on('users');
+            $table->foreign('updated_by')->references('id')->on('users');
         });
     }
 

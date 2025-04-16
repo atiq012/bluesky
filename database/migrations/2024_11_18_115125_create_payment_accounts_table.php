@@ -18,13 +18,19 @@ return new class extends Migration
             $table->string('acc_name',50)->nullable();
             $table->string('acc_no',25)->nullable();
             $table->string('branch',20)->nullable();
-            $table->string('routing_no',15)->nullable();
+            $table->string('routing_no',15)->unique()->nullable();
             $table->decimal('service_charge',4,2)->nullable();
             $table->boolean('status')->default(1);
-            $table->string('created_by')->nullable();
-            $table->string('updated_by')->nullable();
-
+            $table->unsignedBigInteger('created_by')->nullable();
+            $table->unsignedBigInteger('updated_by')->nullable();
             $table->timestamps();
+
+            $table->index('acc_type');
+            $table->index('bank_name');
+            $table->index('acc_name');
+            $table->index('acc_no');
+            $table->foreign('created_by')->references('id')->on('users');
+            $table->foreign('updated_by')->references('id')->on('users');
         });
     }
 

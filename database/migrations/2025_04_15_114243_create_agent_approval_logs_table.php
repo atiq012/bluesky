@@ -13,15 +13,20 @@ return new class extends Migration
     {
         Schema::create('agent_approval_logs', function (Blueprint $table) {
             $table->id();
-            $table->integer('agent_id')->unsigned();
+            $table->unsignedBigInteger('agent_id');
             $table->string('status');
-            $table->integer('approver_id')->unsigned()->nullable();
+            $table->unsignedBigInteger('approver_id')->nullable();
             $table->longText('remarks')->nullable();
-            $table->string('created_by');
-            $table->string('updated_by')->nullable();
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by')->nullable();
             $table->timestamps();
+
+            // Foreign key constraints
+            $table->foreign('created_by')->references('id')->on('users');
+            $table->foreign('updated_by')->references('id')->on('users');
+            $table->foreign('approver_id')->references('id')->on('users');
             $table->foreign('agent_id')->references('id')->on('agents')->onDelete('cascade');
-            $table->index('approver_id');
+
         });
     }
 

@@ -12,13 +12,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('agents', function (Blueprint $table) {
-            $table->increments('id')->unsigned();
+            $table->id();
             $table->string('name', 50);
             $table->string('agent_code', 10)->unique()->nullable();
             $table->string('email', 50)->unique();
             $table->string('phone', 20);
             $table->string('logo_path', 255)->nullable();
-            // $table->string('designation',100)->nullable();
             $table->string('country');
             $table->string('city');
             $table->string('zone');
@@ -32,25 +31,40 @@ return new class extends Migration
             $table->string('iata_number', 50)->nullable()->unique();
             $table->string('hajj_agency_number', 50)->nullable()->unique();
             $table->double('net_balance')->nullable();
-            $table->integer('user_id')->nullable();
-            $table->integer('kam')->nullable();
+            $table->unsignedBigInteger('user_id')->nullable();
+            $table->unsignedBigInteger('kam')->nullable();
             $table->string('remarks')->nullable();
             $table->string('status')->default('Pending')->comment('Approved,Reject,Hold,Pending');
-            $table->string('created_by')->nullable();
-            $table->string('updated_by')->nullable();
-            $table->index('email');
-            $table->index('phone');
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by')->nullable();
+
             $table->timestamps();
+
+            // Add indexes for frequently searched/joined columns
+            $table->index(['country', 'city', 'zone']); // Composite index for location searches
+            $table->index('status');
+            $table->index('user_id');
+            $table->index('kam');
+
+            // Add foreign key constraints
+            $table->foreign('created_by')->references('id')->on('users');
+            $table->foreign('updated_by')->references('id')->on('users');
+            $table->foreign('user_id')->references('id')->on('users');
+            $table->foreign('kam')->references('id')->on('users');
         });
     }
-
-    // $table->string('full_name',100);
 
     /**
      * Reverse the migrations.
      */
     public function down(): void
     {
+        Schema::table('agents', function (Blueprint $table) {
+            $table->dropForeign(['created_by']);
+            $table->dropForeign(['updated_by']);
+            $table->dropForeign(['user_id']);
+            $table->dropForeign(['kam']);
+        });
         Schema::dropIfExists('agents');
     }
 };

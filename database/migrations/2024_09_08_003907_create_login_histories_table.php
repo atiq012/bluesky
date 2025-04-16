@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('login_histories', function (Blueprint $table) {
             $table->id();
-            $table->Integer('user_id')->unsigned()->nullable();
+            $table->unsignedBigInteger('user_id')->nullable();
             $table->string('ip',30)->nullable();
             $table->string('contry_code',10)->nullable();
             $table->string('city',10)->nullable();

@@ -14,13 +14,15 @@ class CreateDistrictsTable extends Migration
     public function up()
     {
         Schema::create('districts', function (Blueprint $table) {
-            $table->bigIncrements('id');
+            $table->id();
             $table->unsignedBigInteger('division_id');
             $table->string('name');
             $table->string('bn_name')->nullable();
             $table->string('lat')->nullable();
             $table->string('lon')->nullable();
             $table->timestamps();
+
+            $table->foreign('division_id')->references('id')->on('divisions');
         });
     }
 

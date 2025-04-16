@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('password_histories', function (Blueprint $table) {
             $table->id();
-            $table->Integer('user_id')->unsigned();
+            $table->unsignedBigInteger('user_id');
             $table->string('password');
             $table->timestamps();
             $table->index('user_id');

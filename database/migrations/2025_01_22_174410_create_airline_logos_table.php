@@ -18,9 +18,14 @@ return new class extends Migration
             $table->string('logo_path');
             $table->string('airline_business_type');
             $table->string('country_name');
-            $table->string('created_by');
-            $table->string('updated_by')->nullable();
+            $table->unsignedBigInteger('created_by')->nullable();
+            $table->unsignedBigInteger('updated_by')->nullable();
             $table->timestamps();
+
+            $table->index('name');
+            $table->index('code');
+            $table->foreign('created_by')->references('id')->on('users');
+            $table->foreign('updated_by')->references('id')->on('users');
         });
     }
 

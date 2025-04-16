@@ -21,10 +21,14 @@ return new class extends Migration
             $table->string('nid',20);
             $table->date('dob',50);
             $table->string('img_path',255)->nullable();
-            $table->string('created_by');
-            $table->string('updated_by')->nullable();
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by')->nullable();
             $table->timestamps();
-            $table->index('agent_id');
+
+            $table->foreign('agent_id')->references('id')->on('agents')->onDelete('cascade');
+            $table->foreign('created_by')->references('id')->on('users');
+            $table->foreign('updated_by')->references('id')->on('users');
+            $table->index(['agent_id', 'email']);
         });
     }
 

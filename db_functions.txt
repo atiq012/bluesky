@@ -1,0 +1,38 @@
+CREATE FUNCTION `f_department`(proid INT) RETURNS varchar(300) CHARSET utf8mb4 COLLATE utf8mb4_unicode_ci
+BEGIN
+  DECLARE dname varchar(300);
+	select name into dname from departments where id=proid;
+  RETURN dname;
+end
+
+
+CREATE FUNCTION `f_designation`(proid INT) RETURNS varchar(300) CHARSET utf8mb4 COLLATE utf8mb4_unicode_ci
+BEGIN
+  DECLARE dname varchar(300);
+	select name into dname from designations where id=proid;
+  RETURN dname;
+end
+
+
+CREATE FUNCTION `f_off_loc`(proid INT) RETURNS varchar(300) CHARSET utf8mb4 COLLATE utf8mb4_unicode_ci
+BEGIN
+  DECLARE dname varchar(300);
+	select name into dname from officelocations where id=proid;
+  RETURN dname;
+end
+
+
+CREATE FUNCTION `f_username`(proid INT) RETURNS varchar(200) CHARSET utf8mb4 COLLATE utf8mb4_unicode_ci
+BEGIN
+  DECLARE pname varchar(200);
+	select u.name  into pname from users u WHERE id=proid;
+  RETURN pname;
+end
+
+
+CREATE FUNCTION `f_zonename`(proid INT) RETURNS varchar(300) CHARSET utf8mb4 COLLATE utf8mb4_unicode_ci
+BEGIN
+  DECLARE dname varchar(300);
+	select name into dname from areas where id=proid;
+  RETURN dname;
+end

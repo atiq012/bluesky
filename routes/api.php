@@ -9,6 +9,8 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\Admin\API\APIController;
 use App\Http\Controllers\Admin\Area\AreaController;
 use App\Http\Controllers\Admin\Agent\AgentController;
+use App\Http\Controllers\Admin\Deposit\DepositController;
+use App\Http\Controllers\Admin\Traveler\TravelerController;
 use App\Http\Controllers\Admin\Role\RolePermissionController;
 use App\Http\Controllers\Admin\Department\DepartmentController;
 use App\Http\Controllers\Admin\AirlineLogo\AirlineLogoController;
@@ -17,7 +19,6 @@ use App\Http\Controllers\Admin\OfficeLocation\LocationController;
 use App\Http\Controllers\Admin\IssuedBankMFS\IssuedBankMFSController;
 use App\Http\Controllers\Admin\PaymentAccount\PaymentAccountSController;
 use App\Http\Controllers\Admin\AircraftType\AircraftTypeDesignatorController;
-use App\Http\Controllers\Admin\Traveler\TravelerController;
 
 Route::post('login', [AuthController::class, 'login'])->name('login');
 Route::post('register', [AuthController::class, 'register'])->name('register');
@@ -147,6 +148,9 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('/viewTraveler', [TravelerController::class, 'viewData'])->name('traveler.viewData');
     Route::post('/deleteTraveler', [TravelerController::class, 'destroy'])->name('traveler.destroy');
     Route::post('/traveler/data/update', [TravelerController::class, 'update'])->name('traveler.update');
+
+    // deposit section
+    Route::get('getDeposit', [DepositController::class, 'index'])->name('deposit.getDeposit');
 
     //Internal API
     Route::post('/Lowfaresearch', [APIController::class, 'Lowfaresearch']);

@@ -16,9 +16,14 @@ return new class extends Migration
             $table->string('name')->nullable();
             $table->string('display_name')->nullable();
             $table->boolean('status')->default(1);
-            $table->string('created_by')->nullable();
-            $table->string('updated_by')->nullable();
+            $table->unsignedBigInteger('created_by')->nullable();
+            $table->unsignedBigInteger('updated_by')->nullable();
             $table->timestamps();
+
+            $table->index('name');
+            $table->index('status');
+            $table->foreign('created_by')->references('id')->on('users');
+            $table->foreign('updated_by')->references('id')->on('users');
         });
     }
 
