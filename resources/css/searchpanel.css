@@ -512,13 +512,30 @@ li.menu-item {
     transform: none;
 }
 
-.search-flight-btn{
-    color: #fff;
-    background-color: #7944eb;
-    border-color: #7944eb;
+.search-flight-btn {
+    background-image: url('/theme/appimages/flightsearchnormal.svg');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-color: transparent;
+    border: none;
+    height: 64px;
+    width: 150px;
+    margin-top: 8px;
+    transition: background-image 0.3s ease;
+    cursor: pointer;
+    flex: 1;
+}
+
+.search-flight-btn:hover {
+    background-image: url('/theme/appimages/flightsearchonhover.svg');
+}
+
+/* Remove the old search-flight-btn styles */
+.search-flight-btn {
+    color: transparent;
+    border-color: transparent;
     padding: 8px 18px 8px 18px;
     border-radius: 8px 8px 8px 8px;
-    height: 64px;
-    width: 100%; margin-top: 8px;
 }
 

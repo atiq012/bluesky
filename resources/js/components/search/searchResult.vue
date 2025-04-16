@@ -360,14 +360,6 @@ function clearDestination() {
     showDestinationList.value = false;
 }
 
-function onHover() {
-    $("#s_image").attr('src', 'http://[::1]:5173/public/theme/appimages/s_Hover_State.jpg');
-}
-
-function offHover() {
-    $("#s_image").attr('src', 'http://[::1]:5173/public/theme/appimages/s_With_Icon.jpg');
-}
-
 async function Lowfaresearch() {
     try {
         // Clear existing data
@@ -815,6 +807,7 @@ const openReturnPicker = () => {
                     <!-- end in small screen -->
 
                     <div class="row">
+
                         <div class="col-md-7">
                             <div class="row position-relative">
                                 <div class="col-md-6 mt-2">
@@ -906,91 +899,155 @@ const openReturnPicker = () => {
                                 </div>
                             </div>
                         </div>
+
                         <div class="col-md-5">
-                            <div class="d-flex gap-3">
-                                <div class="date-picker-wrapper" :class="{ animate: animateDateCard }">
-                                    <div class="date-card" @click="openPicker" :class="{ animate: animateDateCard }">
-                                        <div class="date-number" :class="dateNumberFlyState">
-                                            {{ form.Way === 2 && selectedDateRange[0] ?
-                                                new Date(selectedDateRange[0]).getDate() :
-                                                (selectedDate ? new Date(selectedDate).getDate() : new Date().getDate())
-                                            }}
-                                        </div>
-                                        <div class="date-info" :class="dateInfoFlyState">
-                                            <div class="day">
-                                                {{ form.Way === 2 && selectedDateRange[0] ?
-                                                    new Date(selectedDateRange[0]).toLocaleDateString('en-US', { month: 'long' }) :
-                                                    (selectedDate ? new Date(selectedDate).toLocaleDateString('en-US', { month: 'long' }) :
-                                                    new Date().toLocaleDateString('en-US', { month: 'long' }))
-                                                }}
+
+                            <div v-if="form.Way === 1" class="row">
+                                <div class="col-md-4">
+                                    <div class="date-picker-wrapper" :class="{ animate: animateDateCard }">
+                                            <div class="date-card" @click="openPicker" :class="{ animate: animateDateCard }">
+                                                <div class="date-number" :class="dateNumberFlyState">
+                                                    {{ form.Way === 2 && selectedDateRange[0] ?
+                                                        new Date(selectedDateRange[0]).getDate().toString().padStart(2, '0') :
+                                                        (selectedDate ? new Date(selectedDate).getDate().toString().padStart(2, '0') : new Date().getDate().toString().padStart(2, '0'))
+                                                    }}
+                                                </div>
+                                                <div class="date-info" :class="dateInfoFlyState">
+                                                    <div class="day">
+                                                        {{ form.Way === 2 && selectedDateRange[0] ?
+                                                            new Date(selectedDateRange[0]).toLocaleDateString('en-US', { month: 'long' }) :
+                                                            (selectedDate ? new Date(selectedDate).toLocaleDateString('en-US', { month: 'long' }) :
+                                                            new Date().toLocaleDateString('en-US', { month: 'long' }))
+                                                        }}
+                                                    </div>
+                                                    <div class="month-year">
+                                                        {{ form.Way === 2 && selectedDateRange[0] ?
+                                                            `${new Date(selectedDateRange[0]).toLocaleDateString('en-US', { weekday: 'short' })}, ${new Date(selectedDateRange[0]).getFullYear()}` :
+                                                            (selectedDate ?
+                                                                `${new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'short' })}, ${new Date(selectedDate).getFullYear()}` :
+                                                                `${new Date().toLocaleDateString('en-US', { weekday: 'short' })}, ${new Date().getFullYear()}`)
+                                                        }}
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div class="month-year">
-                                                {{ form.Way === 2 && selectedDateRange[0] ?
-                                                    `${new Date(selectedDateRange[0]).toLocaleDateString('en-US', { weekday: 'short' })}, ${new Date(selectedDateRange[0]).getFullYear()}` :
-                                                    (selectedDate ?
-                                                        `${new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'short' })}, ${new Date(selectedDate).getFullYear()}` :
-                                                        `${new Date().toLocaleDateString('en-US', { weekday: 'short' })}, ${new Date().getFullYear()}`)
-                                                }}
-                                            </div>
-                                        </div>
+                                            <VueDatePicker
+                                                ref="datePickerRef"
+                                                :model-value="form.Way === 1 ? selectedDate.value : selectedDateRange.value"
+                                                @update:model-value="handleDateChange"
+                                                :enable-time-picker="false"
+                                                :format="formatDisplayDate"
+                                                :range="form.Way === 2"
+                                                :min-date="new Date()"
+                                                :multi-calendars="form.Way === 2 ? 2 : undefined"
+                                                :multi-calendars-solo="form.Way === 2"
+                                                :month-picker="false"
+                                                :auto-apply="true"
+                                                :close-on-auto-apply="true"
+                                                :partial-range="false"
+                                                :text-input="false"
+                                                :columns="form.Way === 2 ? 2 : 1"/>
                                     </div>
-                                    <VueDatePicker
-                                        ref="datePickerRef"
-                                        :model-value="form.Way === 1 ? selectedDate.value : selectedDateRange.value"
-                                        @update:model-value="handleDateChange"
-                                        :enable-time-picker="false"
-                                        :format="formatDisplayDate"
-                                        :range="form.Way === 2"
-                                        :min-date="new Date()"
-                                        :multi-calendars="form.Way === 2 ? 2 : undefined"
-                                        :multi-calendars-solo="form.Way === 2"
-                                        :month-picker="false"
-                                        :auto-apply="true"
-                                        :close-on-auto-apply="true"
-                                        :partial-range="false"
-                                        :text-input="false"
-                                        :columns="form.Way === 2 ? 2 : 1"
-                                    >
-
-                                    </VueDatePicker>
                                 </div>
+                                <div class="col-md-4">
+                                    <button
+                                        id="search-flight-btn"
+                                        class="search-flight-btn"
+                                        @click="Lowfaresearch()"
+                                        aria-label="Search Flights"
+                                    ></button>
+                                </div>
+                            </div>
 
-                                <div v-if="form.Way === 2" class="date-picker-wrapper" :class="{ animate: animateReturnDateCard }">
-                                    <div class="date-card" @click="openReturnPicker" :class="{ animate: animateReturnDateCard }">
-                                        <div class="date-number" :class="returnDateNumberFlyState">
-                                            {{ selectedDateRange[1] ?
-                                                new Date(selectedDateRange[1]).getDate() :
-                                                new Date().getDate()
-                                            }}
-                                        </div>
-                                        <div class="date-info" :class="returnDateInfoFlyState">
-                                            <div class="day">
-                                                {{ selectedDateRange[1] ?
-                                                    new Date(selectedDateRange[1]).toLocaleDateString('en-US', { month: 'long' }) :
-                                                    new Date().toLocaleDateString('en-US', { month: 'long' })
-                                                }}
+                            <div v-if="form.Way === 2" class="row">
+                                <div class="col-md-4">
+                                    <div class="date-picker-wrapper" :class="{ animate: animateDateCard }">
+                                            <div class="date-card" @click="openPicker" :class="{ animate: animateDateCard }">
+                                                <div class="date-number" :class="dateNumberFlyState">
+                                                    {{ form.Way === 2 && selectedDateRange[0] ?
+                                                        new Date(selectedDateRange[0]).getDate().toString().padStart(2, '0') :
+                                                        (selectedDate ? new Date(selectedDate).getDate().toString().padStart(2, '0') : new Date().getDate().toString().padStart(2, '0'))
+                                                    }}
+                                                </div>
+                                                <div class="date-info" :class="dateInfoFlyState">
+                                                    <div class="day">
+                                                        {{ form.Way === 2 && selectedDateRange[0] ?
+                                                            new Date(selectedDateRange[0]).toLocaleDateString('en-US', { month: 'long' }) :
+                                                            (selectedDate ? new Date(selectedDate).toLocaleDateString('en-US', { month: 'long' }) :
+                                                            new Date().toLocaleDateString('en-US', { month: 'long' }))
+                                                        }}
+                                                    </div>
+                                                    <div class="month-year">
+                                                        {{ form.Way === 2 && selectedDateRange[0] ?
+                                                            `${new Date(selectedDateRange[0]).toLocaleDateString('en-US', { weekday: 'short' })}, ${new Date(selectedDateRange[0]).getFullYear()}` :
+                                                            (selectedDate ?
+                                                                `${new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'short' })}, ${new Date(selectedDate).getFullYear()}` :
+                                                                `${new Date().toLocaleDateString('en-US', { weekday: 'short' })}, ${new Date().getFullYear()}`)
+                                                        }}
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div class="month-year">
-                                                {{ selectedDateRange[1] ?
-                                                    `${new Date(selectedDateRange[1]).toLocaleDateString('en-US', { weekday: 'short' })}, ${new Date(selectedDateRange[1]).getFullYear()}` :
-                                                    `${new Date().toLocaleDateString('en-US', { weekday: 'short' })}, ${new Date().getFullYear()}`
-                                                }}
-                                            </div>
-                                        </div>
+                                            <VueDatePicker
+                                                ref="datePickerRef"
+                                                :model-value="form.Way === 1 ? selectedDate.value : selectedDateRange.value"
+                                                @update:model-value="handleDateChange"
+                                                :enable-time-picker="false"
+                                                :format="formatDisplayDate"
+                                                :range="form.Way === 2"
+                                                :min-date="new Date()"
+                                                :multi-calendars="form.Way === 2 ? 2 : undefined"
+                                                :multi-calendars-solo="form.Way === 2"
+                                                :month-picker="false"
+                                                :auto-apply="true"
+                                                :close-on-auto-apply="true"
+                                                :partial-range="false"
+                                                :text-input="false"
+                                                :columns="form.Way === 2 ? 2 : 1"/>
                                     </div>
-                                    <VueDatePicker
-                                        ref="returnDatePickerRef"
-                                        v-model="selectedDateRange[1]"
-                                        :enable-time-picker="false"
-                                        auto-apply
-                                        :format="formatSelectedDate"
-                                        @update:model-value="handleReturnDateChange"
-                                        :teleport="true"
-                                        :auto-position="true"
-                                    />
                                 </div>
-
-                                <button class="btn btn-block search-flight-btn w-100" @click="Lowfaresearch()">Search</button>
+                                <div class="col-md-4">
+                                    <div class="date-picker-wrapper" :class="{ animate: animateReturnDateCard }">
+                                        <div class="date-card" @click="openReturnPicker" :class="{ animate: animateReturnDateCard }">
+                                            <div class="date-number" :class="returnDateNumberFlyState">
+                                                {{ selectedDateRange[1] ?
+                                                    new Date(selectedDateRange[1]).getDate().toString().padStart(2, '0') :
+                                                    new Date().getDate().toString().padStart(2, '0')
+                                                }}
+                                            </div>
+                                            <div class="date-info" :class="returnDateInfoFlyState">
+                                                <div class="day">
+                                                    {{ selectedDateRange[1] ?
+                                                        new Date(selectedDateRange[1]).toLocaleDateString('en-US', { month: 'long' }) :
+                                                        new Date().toLocaleDateString('en-US', { month: 'long' })
+                                                    }}
+                                                </div>
+                                                <div class="month-year">
+                                                    {{ selectedDateRange[1] ?
+                                                        `${new Date(selectedDateRange[1]).toLocaleDateString('en-US', { weekday: 'short' })}, ${new Date(selectedDateRange[1]).getFullYear()}` :
+                                                        `${new Date().toLocaleDateString('en-US', { weekday: 'short' })}, ${new Date().getFullYear()}`
+                                                    }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <VueDatePicker
+                                            ref="returnDatePickerRef"
+                                            v-model="selectedDateRange[1]"
+                                            :enable-time-picker="false"
+                                            auto-apply
+                                            :format="formatSelectedDate"
+                                            @update:model-value="handleReturnDateChange"
+                                            :teleport="true"
+                                            :auto-position="true"
+                                        />
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <button
+                                        id="search-flight-btn"
+                                        class="search-flight-btn"
+                                        @click="Lowfaresearch()"
+                                        aria-label="Search Flights"
+                                    ></button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2470,8 +2527,6 @@ const openReturnPicker = () => {
 
 
                     <!-- Price Details -->
-
-
                     <div :id="`flight-package-${index}`" class="accordion-collapse collapse m-0"
                                     aria-labelledby="flush-headingpackage" data-bs-parent="#accordionFlushExample"
                                     style="">
@@ -2479,101 +2534,12 @@ const openReturnPicker = () => {
                                         <div class="card">
                                             <div class="card-body">
                                                 <div class="row">
-
-                                                    <div class="col-md-4" v-if="flight.brand.length > 0" v-for="fbrand,itere in flight.brand">
-                                                        <div :class="`card ${ itere%2==0 ? 'border-eco' : 'border-primium' }`" style="min-height: 460px; ">
-                                                            <div class="card-header border-bottom-1">
-                                                                <h5 class="card-title text-center" style="font-size: 15px;">{{ fbrand.name }}</h5>
-                                                                <h6 class="text-center"> {{ fbrand.price.total }}</h6>
-                                                            </div>
-                                                            <div class="card-body">
-                                                                <ul style="list-style-type:none;" class="">
-                                                                    <li class="menu-item d-inline-flex" v-for="service in fbrand.services">
-                                                                        <i class="fa fa-refresh icon-color mt-1"></i>
-                                                                        <span class="ms-1">
-
-                                                                            {{ service.name }}
-                                                                        </span>
-                                                                    </li>
-                                                                    <!-- <li class="menu-item d-inline-flex">
-                                                                        <i class="fa fa-refresh icon-color mt-1"></i>
-                                                                        <span class="ms-1">
-                                                                            Flexible to make 2 changes
-                                                                        </span>
-                                                                    </li>
-                                                                    <li class="menu-item d-inline-flex"> <i
-                                                                            class="fa-regular fa-circle-xmark icon-color mt-1"></i>
-                                                                        <span class="ms-1">
-                                                                            Cancellation within 24hrs
-                                                                        </span>
-
-                                                                    </li>
-
-                                                                    <li class="menu-item d-inline-flex">
-                                                                        <i
-                                                                            class="fa-solid fa-suitcase-rolling icon-color mt-1"></i>
-                                                                        <span class="ms-1">Baggage: 2 pieces, 23
-                                                                            kg each</span>
-
-                                                                    </li>
-                                                                    <li class="menu-item d-inline-flex"> <i
-                                                                            class="fa-solid fa-suitcase icon-color mt-1"></i>
-                                                                        <span class="ms-1">Baggage: 2 pieces, 7 kg</span>
-                                                                    </li>
-                                                                    <li class="menu-item d-inline-flex">
-                                                                        <i
-                                                                            class="fa-regular fa-seat-airline icon-color mt-1"></i>
-                                                                        <span class="ms-1">Standard Seat selection
-                                                                            included</span>
-                                                                    </li>
-                                                                    <li class="menu-item d-inline-flex"> <i
-                                                                            class="fa-regular fa-seat-airline icon-color mt-1"></i>
-                                                                        <span class="ms-1">Preferred
-                                                                            Seat without fees</span>
-                                                                    </li>
-                                                                    <li class="menu-item d-inline-flex"> <i
-                                                                            class="fa fa-utensils icon-color mt-1"></i>
-                                                                        <span class="ms-1">Free meal</span>
-
-                                                                    </li>
-                                                                    <br>
-                                                                    <li class="menu-item d-inline-flex"> <i
-                                                                            class="fa-brands fa-youtube icon-color mt-1"></i>
-                                                                        <span class="ms-1">
-                                                                            Multimedia
-                                                                            Support
-                                                                        </span>
-                                                                    </li>
-                                                                    <br>
-                                                                    <li class="menu-item d-inline-flex"> <i
-                                                                            class="fa-solid fa-wifi icon-color mt-1"></i>
-                                                                        <span class="ms-1">Free Wi-Fi</span>
-
-                                                                    </li> -->
-                                                                </ul>
-                                                                <!-- <button >Book</button> -->
-                                                                <router-link class="btn btn-outline-book w-100" :to="{ name: 'bookingCreate' }">Book</router-link>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-4" v-else >
+                                                    <div class="col-md-4">
                                                         <div class="card border-eco" style="min-height: 480px; ">
                                                             <div class="card-header border-bottom-1">
-                                                                <h5 class="card-title text-center" style="font-size: 15px;">Ecomony Class</h5>
-                                                                <h6 class="text-center">
-
-                                                                    <span v-for="itemPrice, index in flight.outbound.priceBreakdown">
-                                                                        <span v-if="index == 0" >
-                                                                            BDT {{
-                                                                                ['Adult', 'Child', 'Infant'].reduce((total, type) => {
-                                                                                    const breakdown = flight.outbound.priceBreakdown.find(item => item.type === type) || {};
-                                                                                    const count = form[type === 'Adult' ? 'ADT' : type === 'Child' ? 'CNN' : 'INF'];
-                                                                                    return total + (count * (breakdown.taxes || 0)) + (count * (breakdown.baseFare || 0));
-                                                                                }, 0)
-                                                                            }}
-                                                                        </span>
-                                                                </span>
-                                                                </h6>
+                                                                <h5 class="card-title text-center">Economy</h5>
+                                                                <h6 class="text-center">BDT
+                                                                    65000</h6>
                                                             </div>
                                                             <div class="card-body">
                                                                 <ul style="list-style-type:none;" class="">
@@ -2640,7 +2606,7 @@ const openReturnPicker = () => {
                                                         </div>
                                                     </div>
 
-                                                    <!-- <div class="col-md-4">
+                                                    <div class="col-md-4">
                                                         <div class="card border-primium" style="min-height: 480px; ">
                                                             <div class="card-header text-black border-bottom-1">
                                                                 <h5 class="card-title text-center">Premium Economy</h5>
@@ -2777,13 +2743,14 @@ const openReturnPicker = () => {
                                                                 <button class="btn btn-outline-book w-100">Book</button>
                                                             </div>
                                                         </div>
-                                                    </div> -->
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                                <!-- ./end Price Details -->
+                    <!-- ./end Price Details -->
+
                 </div>
 
             </div>
