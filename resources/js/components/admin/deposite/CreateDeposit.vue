@@ -13,7 +13,14 @@ onMounted(() => {
         form.payment_acc = $(this).val();
     });
 });
+async function caseSave() {
+    try {
+        console.log(form);
 
+    } catch (error) {
+        ErrorCatch.CatchError(error);
+    }
+}
 
 </script>
 <template>
@@ -99,126 +106,128 @@ onMounted(() => {
                     </ul>
                     <div class="tab-content pt-3">
                         <div class="tab-pane fade active show" id="cash_tab" role="tabpanel">
-                            <div class="row">
-                                <div class="col-md-9">
-                                    <div class="card">
-                                        <div class="card-header">
-                                            <h5 class="m-0 p-0" style="border-left: 5px solid rgb(114, 57, 234);">
-                                                &nbsp; Payment Information</h5>
-                                        </div>
-
-                                        <div class="card-body">
-                                            <input type="hidden" v-model="form.payment_type" value="cash">
-                                            <div class="row">
-                                                <div class="col-md-10">
-                                                    <label for="input1" class="form-label">Payment Account</label>
-                                                    <select id="payment_acc" name="payment_acc"
-                                                        class="form-control form-control-sm">
-                                                        <option selected="" value="">Choose...</option>
-                                                        <option value="Bank">Bank</option>
-                                                        <option value="MFS">MFS</option>
-                                                    </select>
-                                                </div>
-
-                                                <div class="col-md-4 mt-2">
-                                                    <label for="input1" class="form-label">Request Amount</label>
-                                                    <input type="text" class="form-control form-control-sm"
-                                                        v-model="form.requested_amount" id="requested_amount"
-                                                        name="requested_amount" placeholder="Enter Routing Number">
-                                                </div>
-                                                <div class="col-md-3 mt-2">
-                                                    <label for="input1" class="form-label">
-                                                        Charge</label>
-                                                    <input type="text" class="form-control form-control-sm"
-                                                        v-model="form.service_charge" id="service_charge"
-                                                        name="service_charge" placeholder="Enter Service Charge">
-                                                </div>
-                                                <div class="col-md-3 mt-2">
-                                                    <label for="input1" class="form-label">
-                                                        Total Amount</label>
-                                                    <input type="text" class="form-control form-control-sm"
-                                                        v-model="form.total_amount" id="total_amount"
-                                                        name="total_amount" placeholder="Enter Service Charge">
-                                                </div>
+                            <form id="cash_form">
+                                <div class="row">
+                                    <div class="col-md-9">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h5 class="m-0 p-0" style="border-left: 5px solid rgb(114, 57, 234);">
+                                                    &nbsp; Payment Information</h5>
                                             </div>
-                                        </div>
 
+                                            <div class="card-body">
+                                                <input type="hidden" v-model="form.payment_type" value="cash">
+                                                <div class="row">
+                                                    <div class="col-md-10">
+                                                        <label for="input1" class="form-label">Payment Account</label>
+                                                        <select id="payment_acc" name="payment_acc"
+                                                            class="form-control form-control-sm">
+                                                            <option selected="" value="">Choose...</option>
+                                                            <option value="Bank">Bank</option>
+                                                            <option value="MFS">MFS</option>
+                                                        </select>
+                                                    </div>
 
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="row">
-                                <div class="col-md-9">
-                                    <div class="card">
-                                        <div class="card-header">
-                                            <h5 class="m-0 p-0" style="border-left: 5px solid rgb(114, 57, 234);">
-                                                &nbsp; Cash Information</h5>
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="row">
-                                                <div class="col-md-6">
-                                                    <label for="input1" class="form-label">
-                                                        Referece Number</label>
-                                                    <input type="text" class="form-control form-control-sm"
-                                                        v-model="form.reference_number"
-                                                        id="reference_number" name="reference_number"
-                                                        placeholder="Enter Service Charge">
-                                                </div>
-                                                <div class="col-md-6 ">
-                                                    <label for="input1" class="form-label">
-                                                        Referece Number</label>
-                                                    <input type="date" v-model="form.reference_date" class="form-control form-control-sm"
-                                                        id="reference_date" name="reference_date"
-                                                        placeholder="Enter Service Charge">
-                                                </div>
-                                                <div class="col-md-6 mt-2">
-                                                    <label for="input1" class="form-label">
-                                                        Referece file</label>
-                                                    <input type="file" class="form-control form-control-sm"
-                                                        id="reference_file" name="reference_file"
-                                                        placeholder="Enter Service Charge">
-                                                </div>
-
-                                                <div class="col-md-6 mt-2">
-                                                    <label for="input1" class="form-label">
-                                                        Remarks</label>
-
-                                                    <textarea v-model="form.remarks" class="form-control form-control-sm" id="remarks"
-                                                        name="remarks" rows="3"></textarea>
-
-                                                </div>
-                                                <div class="col-md-6">
-
-                                                    <div class="d-flex align-items-center "><img
-                                                            src="../../../../../public/theme/appimages/rqf.png"
-                                                            height="60" width="60"
-                                                            class="border border-1 rounded rounded-2"
-                                                            alt="Profile Picture">
-                                                        <div class="flex-grow-1 ms-3">
-                                                            <p class="mb-0"><i
-                                                                    class="btn-outline-success rounded-circle fa fa-circle-check"></i>
-                                                                Uploaded successfully.</p>
-                                                        </div>
+                                                    <div class="col-md-4 mt-2">
+                                                        <label for="input1" class="form-label">Request Amount</label>
+                                                        <input type="text" class="form-control form-control-sm"
+                                                            v-model="form.requested_amount" id="requested_amount"
+                                                            name="requested_amount" placeholder="Enter Routing Number">
+                                                    </div>
+                                                    <div class="col-md-3 mt-2">
+                                                        <label for="input1" class="form-label">
+                                                            Charge</label>
+                                                        <input type="text" class="form-control form-control-sm"
+                                                            v-model="form.service_charge" id="service_charge"
+                                                            name="service_charge" placeholder="Enter Service Charge">
+                                                    </div>
+                                                    <div class="col-md-3 mt-2">
+                                                        <label for="input1" class="form-label">
+                                                            Total Amount</label>
+                                                        <input type="text" class="form-control form-control-sm"
+                                                            v-model="form.total_amount" id="total_amount"
+                                                            name="total_amount" placeholder="Enter Service Charge">
                                                     </div>
                                                 </div>
                                             </div>
 
+
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div class="row">
-                                <div class="col-md-9">
-                                    <div class="d-flex ">
-                                        <button
-                                            class="btn btn-sm btn-info px-4 ms-2 justify-content-start">Cancel</button>
-                                        <button
-                                            class="btn btn-sm btn-info px-4 ms-2 justify-content-end">Submit</button>
+                                <div class="row">
+                                    <div class="col-md-9">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h5 class="m-0 p-0" style="border-left: 5px solid rgb(114, 57, 234);">
+                                                    &nbsp; Cash Information</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <label for="input1" class="form-label">
+                                                            Referece Number</label>
+                                                        <input type="text" class="form-control form-control-sm"
+                                                            v-model="form.reference_number" id="reference_number"
+                                                            name="reference_number" placeholder="Enter Service Charge">
+                                                    </div>
+                                                    <div class="col-md-6 ">
+                                                        <label for="input1" class="form-label">
+                                                            Referece Number</label>
+                                                        <input type="date" v-model="form.reference_date"
+                                                            class="form-control form-control-sm" id="reference_date"
+                                                            name="reference_date" placeholder="Enter Service Charge">
+                                                    </div>
+                                                    <div class="col-md-6 mt-2">
+                                                        <label for="input1" class="form-label">
+                                                            Referece file</label>
+                                                        <input type="file" class="form-control form-control-sm"
+                                                            id="reference_file" name="reference_file"
+                                                            placeholder="Enter Service Charge">
+                                                    </div>
+
+                                                    <div class="col-md-6 mt-2">
+                                                        <label for="input1" class="form-label">
+                                                            Remarks</label>
+
+                                                        <textarea v-model="form.remarks"
+                                                            class="form-control form-control-sm" id="remarks"
+                                                            name="remarks" rows="3"></textarea>
+
+                                                    </div>
+                                                    <div class="col-md-6">
+
+                                                        <div class="d-flex align-items-center "><img
+                                                                src="../../../../../public/theme/appimages/rqf.png"
+                                                                height="60" width="60"
+                                                                class="border border-1 rounded rounded-2"
+                                                                alt="Profile Picture">
+                                                            <div class="flex-grow-1 ms-3">
+                                                                <p class="mb-0"><i
+                                                                        class="btn-outline-success rounded-circle fa fa-circle-check"></i>
+                                                                    Uploaded successfully.</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+
+                                <div class="row">
+                                    <div class="col-md-9">
+                                        <div class="d-flex ">
+                                            <button
+                                                class="btn btn-sm btn-info px-4 ms-2 justify-content-start">Cancel</button>
+                                            <button @click="caseSave()"
+                                                class="btn btn-sm btn-info px-4 ms-2 justify-content-end" type="button">Submit</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
                         </div>
                         <div class="tab-pane fade" id="mfs_tab" role="tabpanel">
                             <div class="row">
