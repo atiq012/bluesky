@@ -83,7 +83,6 @@ const handleFileChange = (event) => {
     <div class="row position-relative">
         <div class="col-md-12">
             <form id="travelerForm">
-
                 <div class="card">
                     <div class="card-body">
                         <div class="row">
