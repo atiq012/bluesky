@@ -20,6 +20,7 @@ return new class extends Migration
             $table->decimal('charge')->nullable();
             $table->decimal('total')->nullable();
             $table->string('reference_no')->nullable();
+            $table->string('issued_bank')->nullable();
             $table->date('reference_date')->nullable();
             $table->string('reference_file')->nullable();
             $table->string('remarks')->nullable();

@@ -151,6 +151,7 @@ Route::middleware(['auth:api'])->group(function () {
 
     // deposit section
     Route::get('getDeposit', [DepositController::class, 'index'])->name('deposit.getDeposit');
+    Route::post('/deposit/save', [DepositController::class, 'store'])->name('deposit.store');
 
     //Internal API
     Route::post('/Lowfaresearch', [APIController::class, 'Lowfaresearch']);
