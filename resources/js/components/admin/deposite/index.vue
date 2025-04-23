@@ -1,3 +1,263 @@
+<script setup>
+import DataTable from "datatables.net-vue3";
+import DataBS5 from "datatables.net-bs5";
+import axiosInstance from "../../../axiosInstance";
+import { ref, onMounted } from "vue";
+import { data } from "jquery";
+import { icons } from "lucide-vue-next";
+import { useRouter } from 'vue-router';
+const router = useRouter();
+import { useAuthStore } from '../../../stores/authStore';
+const authStore = useAuthStore();
+DataTable.use(DataBS5);
+const rData = ref([]);
+getListValues();
+
+const options = {
+    responsive: true,
+    pageLength: 30,
+    lengthMenu: [3, 10, 20, 30],
+    bDestroy: true,
+    ordering: false,
+    dom: "<'row'<'col-sm-4'B><'d-md-flex justify-content-between align-items-center dt-layout-end col-md-auto ms-auto'f>>" + "<'row'<'col-sm-12'tr>>" +
+        "<'row justify-content-between Reduct_table_gap'<'d-md-flex justify-content-between align-items-center dt-layout-start col-md-auto me-auto'i><'d-md-flex justify-content-between align-items-center dt-layout-end col-md-auto ms-auto'p>>",
+    buttons: ['copy', 'csv', 'pdf', 'excel', 'print'],
+    language: {
+        search: "",
+        searchPlaceholder: "Search by anything",
+    },
+    columnDefs: [{
+        defaultContent: "0",
+        targets: "_all",
+    }],
+    columns: [
+        { data: "DT_RowIndex", title: "SL" },
+        {
+            title: "Payment Term",
+            render: function (data, type, row) {
+                var html = "";
+                html += row.name;
+
+                return html;
+            },
+        },
+        {
+            title: "Payment Account",
+            render: function (data, type, row) {
+                var html = "";
+                html += row.paid_account_no;
+
+                return html;
+            },
+        },
+        {
+            title: "Reference No & Date",
+            render: function (data, type, row) {
+                var html = "";
+
+                html += row.reference_no;
+                html += "<br>";
+                html += row.reference_date;
+
+                return html;
+            },
+        },
+
+        {
+            title: "Requested By",
+            render: function (data, type, row) {
+                var html = "";
+                html += row.agent_id;
+                return html;
+            },
+        },
+
+        {
+            title: "Total Amount",
+            render: function (data, type, row) {
+                var html = "";
+                html += row.total;
+                return html;
+            },
+        },
+        {
+            title: "Remarks",
+            render: function (data, type, row) {
+                var html = "";
+                html += row.remarks;
+                return html;
+            },
+        },
+        {
+            title: "Created By",
+            render: function (data, type, row) {
+                var html = "";
+                html += row.created_by;
+                html += "<br>";
+
+                html += '<span class="text-primary">';
+                html += row.created_at + "</span>";
+                return html;
+            },
+        },
+        {
+            title: "Updated By",
+            render: function (data, type, row) {
+                var html = "";
+                html += row.updated_by || "-";
+                html += "<br>";
+                if (row.updated_by) {
+                    html += '<span class="text-primary">';
+                    html += row.updated_at + "</span>";
+                }
+                return html;
+            },
+        },
+        {
+            title: "Status",
+            render: function (data, type, row) {
+                var html = "";
+                var status = row.status;
+
+                html += '<div class="badge rounded-pill text-danger bg-light-danger p-2 text-uppercase px-3"><i class="bx bxs-circle me-1"></i>'+status+ '</div>';
+
+
+                return html;
+            },
+        },
+        {
+            title: "Action",
+            render: function (data, type, row) {
+                var html = "";
+                var idd = row.idd;
+                var status = row.status;
+
+                html += '<button  style="size: 30px; width: 30px; height: 30px" class="btn btn-outline-only-edit rounded-circle edit-item" placement="top" data-item-id=' + idd + '> <i class="fa-solid fa-pencil" style="margin: 0px 0px 10px -5px; font-size: 14px;"></i> </button>';
+                if (status == 1) {
+
+                    html += '<button type="button" style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-ban rounded-circle status-change" data-item-id=' + idd + '> <i class="fa-solid fa-ban" style="margin: 2px 0px 10px -5px; font-size: 14px;"></i> </button>';
+                } else {
+                    html += '<button type="button" style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-success rounded-circle status-change" data-item-id=' + idd + ' > <i class="fa-solid fa-check" style="margin: 2px 0px 10px -5px; font-size: 14px;"></i> </button>';
+                }
+
+                html += '<button style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-danger rounded-circle delete-item" data-item-id=' + idd + '> <i class="fa-solid fa-trash" style="margin: 2px 0px 10px  -4px; font-size: 14px;"></i> </button>';
+
+                return html;
+            },
+        }
+    ],
+    "drawCallback": function (settings) {
+        // edit function
+        $(".edit-item").on('click', function (e) {
+
+            var itemIdd = $(this).attr('data-item-id');
+
+            router.push({ name: 'deptEdit', params: { id: itemIdd } });
+        });
+
+        // delete function
+        $(".delete-item").on('click', function (e) {
+            var idd = $(this).attr('data-item-id');
+
+            // delete pop up message
+
+            iziToast.question({
+                timeout: 100000,
+                pauseOnHover: false,
+                close: false,
+                overlay: true,
+                displayMode: 'once',
+                id: 'question',
+                zindex: 999,
+                message: 'Want to delete this department?',
+                position: 'center',
+                buttons: [
+                    ['<button><b>No</b></button>', function (instance, toast) {
+
+                        instance.hide({ transitionOut: 'fadeOut' }, toast, 'no');
+
+                    }, true],
+                    ['<button><b>Yes</b></button>', function (instance, toast) {
+
+                        instance.hide({ transitionOut: 'fadeOut' }, toast, 'yes');
+
+                    }, true]
+                ],
+                onClosed: async function (instance, toast, closedBy) {
+
+                    if (closedBy == 'yes') {
+                        const response = axiosInstance.post("deleteDept", { 'id': idd });
+                        getListValues();
+                        Notification.showToast('s', 'Successfully Department Deleted.');
+                    } else {
+
+                    }
+
+                }
+            });
+            // delete pop up message end
+
+
+        });
+
+        // change status
+        $(".status-change").on('click', function (e) {
+            // var idd = e.target.dataset.itemId;
+            var idd = $(this).attr('data-item-id');
+
+            iziToast.question({
+                timeout: 100000,
+                pauseOnHover: false,
+                close: false,
+                overlay: true,
+                displayMode: 'once',
+                id: 'question',
+                zindex: 999,
+                message: 'Want to change status this department?',
+                position: 'center',
+                buttons: [
+                    ['<button><b>No</b></button>', function (instance, toast) {
+
+                        instance.hide({ transitionOut: 'fadeOut' }, toast, 'no');
+
+                    }, true],
+                    ['<button><b>Yes</b></button>', function (instance, toast) {
+
+                        instance.hide({ transitionOut: 'fadeOut' }, toast, 'yes');
+
+                    }, true]
+                ],
+                onClosed: async function (instance, toast, closedBy) {
+
+                    if (closedBy == 'yes') {
+                        const response = axiosInstance.post("changeDepartmentStatus", { 'id': idd });
+                        getListValues();
+                        Notification.showToast('s', 'Successfully Department status Changed.');
+                    } else {
+
+                    }
+
+                }
+            });
+
+        });
+    }
+};
+
+
+async function getListValues() {
+    try {
+        authStore.GlobalLoading = true;
+        const response = await axiosInstance.get("getDeposit");
+        rData.value = response.data.data;
+        authStore.GlobalLoading = false;
+    } catch (error) {
+        // console.log(error);
+        authStore.GlobalLoading = false;
+    }
+}
+
+</script>
 <template>
     <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
 
@@ -16,7 +276,7 @@
         <div class="ms-auto">
             <div class="btn-group">
                 <router-link :to="{ name: 'CreateDeposit' }" class="btn btn-primary btn-sm">
-                    <i class="fa fa-circle-plus"></i>  Deposit Request
+                    <i class="fa fa-circle-plus"></i> Deposit Request
                 </router-link>
 
             </div>
@@ -103,290 +363,26 @@
         </div>
     </div>
 
-    <div class="table-responsive mt-2 border rounded rounded-2 p-3">
-        <div id="example2_wrapper" class="dataTables_wrapper dt-bootstrap5">
-            <div class="row">
-                <div class="col-sm-12 col-md-6">
+    <div class="row position-relative">
+        <div class="col-12">
+            <div id="deptList" class="card rounded rounded-2 shadow-none p-3">
 
-                    <button class="btn btn-sm btn-danger" style="margin-right: 3px;" tabindex="0"
-                        aria-controls="example2" type="button"><i class="fa-solid fa-file-pdf"
-                            style="font-size: 14px !important;"></i> <span>PDF</span></button>
-
-                    <button class="btn btn-sm btn-success" style="margin-right: 3px;" tabindex="0"
-                        aria-controls="example2" type="button"> <i class="fa-regular fa-file-excel"
-                            style="font-size: 14px !important;"></i><span>Excel</span></button>
-                </div>
-                <div class="col-md-4"></div>
-                <div class="col-sm-2 col-md-2">
-                    <div id="example2_filter" class="dataTables_filter"><input type="search"
-                            class="form-control form-control-sm" placeholder="" aria-controls="example2">
+                <div v-if="authStore.GlobalLoading" class="center-body position-absolute top-50 start-50">
+                    <div class="loader-circle-57">
+                        <img class="position-absolute" src="../../../../../public/theme/appimages/blueskywings.png"
+                            height="22" width="22" alt="">
                     </div>
                 </div>
+
+                <DataTable :options="options" :data="rData" class="table table-sm table-striped table-bordered">
+                </DataTable>
             </div>
-
-            <div class="row mt-2">
-                <div class="col-sm-12">
-                    <table class="table table-sm table-striped table-bordered">
-                        <thead>
-                            <tr role="row">
-                                <th class="sorting_asc" tabindex="0" aria-controls="example2" rowspan="1" colspan="1"
-                                    aria-sort="ascending" aria-label="SL: activate to sort column descending"
-                                    style="width: 10px;">
-                                    SL.</th>
-                                <th class="sorting" tabindex="0" aria-controls="example2" rowspan="1" colspan="1"
-                                    aria-label="Agency: activate to sort column ascending" style="width: 116.087px;">
-                                    Agency</th>
-
-                                <th class="sorting" tabindex="0" aria-controls="example2" rowspan="1" colspan="1"
-                                    aria-label="Payment Term: activate to sort column ascending"
-                                    style="width: 107.037px;">Payment Term</th>
-                                <th class="sorting" tabindex="0" aria-controls="example2" rowspan="1" colspan="1"
-                                    aria-label="Bank & Balance: activate to sort column ascending"
-                                    style="width: 107.037px;">Bank & Balance</th>
-                                <th class="sorting" tabindex="0" aria-controls="example2" rowspan="1" colspan="1"
-                                    aria-label="Ref. No: activate to sort column ascending" style="width: 107.037px;">
-                                    Ref. No</th>
-
-                                <th class="sorting" tabindex="0" aria-controls="example2" rowspan="1" colspan="1"
-                                    aria-label="Total Amount: activate to sort column ascending"
-                                    style="width: 107.037px;">Total Amount</th>
-
-
-                                <th class="sorting" tabindex="0" aria-controls="example2" rowspan="1" colspan="1"
-                                    aria-label="Remarks: activate to sort column ascending" style="width: 307.037px;">
-                                    Remarks</th>
-                                <th class="sorting" tabindex="0" aria-controls="example2" rowspan="1" colspan="1"
-                                    aria-label="Requested By: activate to sort column ascending"
-                                    style="width: 107.037px;">Requested By</th>
-
-                                <th class="sorting" tabindex="0" aria-controls="example2" rowspan="1" colspan="1"
-                                    aria-label="Status: activate to sort column ascending" style="width: 107.037px;">
-                                    Status</th>
-                                <th class="sorting" tabindex="0" aria-controls="example2" rowspan="1" colspan="1"
-                                    aria-label="Action: activate to sort column ascending" style="width: 107.037px;">
-                                    Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-
-                            <tr role="row">
-                                <td class="text-left">01</td>
-                                <td class="text-left">ABC Travel Ltd
-                                    <br>
-                                    <small class="text-blue">
-                                        BLU00011
-                                    </small>| <small class="text-violate">
-                                        IATA
-                                    </small>
-                                </td>
-                                <td class="text-left">Bank</td>
-                                <td class="text-left">Bank Asia
-                                    <br>
-                                    <small class="text-blue">
-                                        Gulshan-1
-                                    </small>
-                                </td>
-                                <td class="text-left">101921101
-                                    <br>
-                                    <small class="text-blue">
-                                        25-Sept-2024
-                                    </small>
-                                </td>
-
-                                <td class="text-left">
-                                    <i class="fa-solid fa-bangladeshi-taka-sign"></i> 1000000
-                                    <br>
-                                    <small class="text-blue">
-                                        (-)<i class="fa-solid fa-bangladeshi-taka-sign"></i> 70000
-                                    </small>
-                                </td>
-
-                                <td class="text-left" id="pre-line">
-                                    Air Ticket Reserve
-                                </td>
-                                <td class="text-left">
-                                    Md. Atiqur Rahman
-                                    <br>
-                                    <small class="text-blue">
-                                        25-Sept-2024
-                                    </small>
-                                </td>
-                                <td>
-                                    <div
-                                        class="badge rounded-pill text-success bg-light-success p-2 text-uppercase px-3">
-                                        <i class="bx bxs-circle me-1"></i>Approved
-                                    </div>
-                                </td>
-                                <td>
-                                    <button type="button" v-tippy="'Attachment'"
-                                        style="size:30px;width:30px;height:30px;margin-left:5px;"
-                                        class="btn btn-outline-info rounded-circle"><i class="fa-solid fa-file"
-                                            style="margin:2px 0px 10px -4px;font-size:14px;"></i></button>
-
-                                    <button type="button" v-tippy="'Log'"
-                                        style="size:30px;width:30px;height:30px;margin-left:5px;"
-                                        class="btn btn-outline-action-log rounded-circle"><i
-                                            class="fa-solid fa-arrow-trend-up"
-                                            style="margin:2px 0px 10px -6px;font-size:14px;"></i></button>
-                                </td>
-                            </tr>
-
-                            <tr role="even">
-                                <td class="text-left">02</td>
-                                <td class="text-left">Zaima Travel Ltd
-                                    <br>
-                                    <small class="text-blue">
-                                        BLU00012
-                                    </small>| <small class="text-violate">
-                                        Hajj
-                                    </small>
-                                </td>
-                                <td class="text-left">Cash</td>
-                                <td class="text-left">Cash Counter-BS
-                                    <br>
-                                    <small class="text-blue">
-                                        Gulshan-1
-                                    </small>
-                                </td>
-                                <td class="text-left">9001921101
-                                    <br>
-                                    <small class="text-blue">
-                                        23-Sept-2024
-                                    </small>
-                                </td>
-
-                                <td class="text-left">
-                                    <i class="fa-solid fa-bangladeshi-taka-sign"></i> 109000
-
-                                </td>
-
-                                <td class="text-left" id="pre-line">
-                                    Air Ticket Booking
-                                </td>
-                                <td class="text-left">
-                                    Md. Sajjadul Anam
-                                    <br>
-                                    <small class="text-blue">
-                                        23-Sept-2024
-                                    </small>
-                                </td>
-                                <td>
-                                    <div
-                                        class="badge rounded-pill text-warning bg-light-warning p-2 text-uppercase px-3">
-                                        <i class="bx bxs-circle me-1"></i>Requested
-                                    </div>
-                                </td>
-                                <td>
-                                    <button type="button" v-tippy="'Attachment'"
-                                        style="size:30px;width:30px;height:30px;"
-                                        class="btn btn-outline-info rounded-circle"><i class="fa-solid fa-file"
-                                            style="margin:2px 0px 10px -4px;font-size:14px;"></i></button>
-                                    <router-link :to="{ name: 'depoDetails' }" v-tippy="'Aproval'"
-                                        style="size: 30px; width: 30px; height: 30px; margin-left:5px;"
-                                        class="btn btn-outline-success rounded-circle" placement="top">
-                                        <i class="fa fa-check" style="margin: 2px 0px 10px -4px; font-size: 14px;"></i>
-                                    </router-link>
-
-                                    <button type="button" v-tippy="'Log'"
-                                        style="size:30px;width:30px;height:30px;margin-left:5px;"
-                                        class="btn btn-outline-danger rounded-circle"><i class="fa fa-ban"
-                                            style="margin:2px 0px 10px -5px;font-size:14px;"></i></button>
-                                </td>
-                            </tr>
-
-                            <tr>
-                                <td class="text-left">02</td>
-                                <td class="text-left">DDD Travel Ltd
-                                    <br>
-                                    <small class="text-blue">
-                                        BLU00014
-                                    </small>| <small class="text-violate">
-                                        IATA
-                                    </small>
-                                </td>
-                                <td class="text-left">Bank</td>
-                                <td class="text-left">City Bank
-                                    <br>
-                                    <small class="text-blue">
-                                        Gulshan-2
-                                    </small>
-                                </td>
-                                <td class="text-left">64019221101
-                                    <br>
-                                    <small class="text-blue">
-                                        23-Sept-2024
-                                    </small>
-                                </td>
-
-                                <td class="text-left">
-                                    <i class="fa-solid fa-bangladeshi-taka-sign"></i> 1119000
-
-                                </td>
-
-                                <td class="text-left" id="pre-line">
-                                    Air Ticket Booking
-                                </td>
-                                <td class="text-left">
-                                    Md. Masiur Alam
-                                    <br>
-                                    <small class="text-blue">
-                                        23-Sept-2024
-                                    </small>
-                                </td>
-                                <td>
-                                    <div class="badge rounded-pill text-danger bg-light-danger p-2 text-uppercase px-3">
-                                        <i class="bx bxs-circle me-1"></i>Rejected
-                                    </div>
-                                </td>
-                                <td>
-                                    <button type="button" v-tippy="'Attachment'"
-                                        style="size:30px;width:30px;height:30px;"
-                                        class="btn btn-outline-info rounded-circle"><i class="fa-solid fa-file"
-                                            style="margin:2px 0px 10px -4px;font-size:14px;"></i></button>
-
-                                    <button type="button" title="Log" class="btn btn-outline-action-log rounded-circle"
-                                        v-tippy="'Log'"
-                                        style="size: 30px; width: 30px; height: 30px; margin-left: 5px;"><i
-                                            class="fa-solid fa-arrow-trend-up"
-                                            style="margin: 2px 0px 10px -6px; font-size: 14px;"></i></button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-sm-12 col-md-5">
-                    <div class="dataTables_info" id="example2_info" role="status" aria-live="polite">Showing 1
-                        to 5 of 10 entries</div>
-                </div>
-                <div class="col-sm-12 col-md-7">
-                    <div class="dataTables_paginate paging_simple_numbers" id="example2_paginate">
-                        <ul class="pagination">
-                            <li class="paginate_button page-item previous disabled" id="example2_previous"><a href="#"
-                                    aria-controls="example2" data-dt-idx="0" tabindex="0" class="page-link">Prev</a>
-                            </li>
-                            <li class="paginate_button page-item active"><a href="#" aria-controls="example2"
-                                    data-dt-idx="1" tabindex="0" class="page-link">1</a></li>
-                            <li class="paginate_button page-item "><a href="#" aria-controls="example2" data-dt-idx="2"
-                                    tabindex="0" class="page-link">2</a></li>
-
-                            <li class="paginate_button page-item next" id="example2_next"><a href="#"
-                                    aria-controls="example2" data-dt-idx="7" tabindex="0" class="page-link">Next</a>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
         </div>
+
     </div>
 
 </template>
-<script>
 
-</script>
 <style>
 .text-blue {
     color: blue;

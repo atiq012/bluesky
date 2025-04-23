@@ -291,27 +291,6 @@ async function getListValues() {
         </div>
     </div>
 
-    <!-- <div class="row">
-        <div class="col-12">
-            <div class="card rounded rounded-2 shadow-none p-3">
-                <div class="row">
-
-                    <div class="col-md-6">
-                        <select class="form-select form-select-sm" id="s_area" data-placeholder="Choose one thing">
-                            <option value="">Select Area</option>
-                            <option value="at">At</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <select class="form-select form-select-sm" id="s_status" data-placeholder="Choose one thing">
-                            <option>Select Status</option>
-                        </select>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-    </div> -->
 
     <div class="row position-relative">
         <div class="col-12">

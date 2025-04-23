@@ -9,10 +9,10 @@ import { ref, reactive, onMounted, render } from "vue";
 const form = reactive({ payment_acc: "", requested_amount: "", service_charge: "", total_amount: "", reference_number: "", reference_date: "", reference_file: "", remarks: "", payment_type: "", issued_bank: "" });
 
 onMounted(() => {
-    $("#payment_acc").on('change', function () {
+    $(".payment_acc").on('change', function () {
         form.payment_acc = $(this).val();
     });
-    $("#issued_bank").on('change', function () {
+    $(".issued_bank").on('change', function () {
         form.issued_bank = $(this).val();
     });
 });
@@ -45,6 +45,33 @@ async function caseMFS() {
 async function caseCheque() {
     try {
         form.payment_type = "Cheque";
+        const response = await axiosInstance.post("/deposit/save", form);
+        if (response.data.message) {
+            Notification.showToast('s', response.data.message);
+            router.push({ name: 'depositList' });
+        }
+    } catch (error) {
+        ErrorCatch.CatchError(error);
+    }
+}
+
+async function caseBankTransfer() {
+    try {
+        console.log(form);
+        form.payment_type = "Bank_Transfer";
+        const response = await axiosInstance.post("/deposit/save", form);
+        if (response.data.message) {
+            Notification.showToast('s', response.data.message);
+            router.push({ name: 'depositList' });
+        }
+    } catch (error) {
+        ErrorCatch.CatchError(error);
+    }
+}
+
+async function creditReqSave() {
+    try {
+        form.payment_type = "Credit_Request";
         const response = await axiosInstance.post("/deposit/save", form);
         if (response.data.message) {
             Notification.showToast('s', response.data.message);
@@ -152,8 +179,8 @@ async function caseCheque() {
                                                 <div class="row">
                                                     <div class="col-md-10">
                                                         <label for="input1" class="form-label">Payment Account</label>
-                                                        <select id="payment_acc" name="payment_acc"
-                                                            class="form-control form-control-sm">
+                                                        <select name="payment_acc"
+                                                            class="payment_acc form-control form-control-sm">
                                                             <option selected="" value="">Choose...</option>
                                                             <option value="Bank">Bank</option>
                                                             <option value="MFS">MFS</option>
@@ -278,8 +305,8 @@ async function caseCheque() {
                                                 <div class="row">
                                                     <div class="col-md-10">
                                                         <label for="input1" class="form-label">Payment Account</label>
-                                                        <select id="payment_acc" name="payment_acc"
-                                                            class="form-control form-control-sm">
+                                                        <select name="payment_acc"
+                                                            class="payment_acc form-control form-control-sm">
                                                             <option selected="" value="">Choose...</option>
                                                             <option value="Bkash">Bkash</option>
                                                             <option value="Nagad">Nagad</option>
@@ -328,8 +355,8 @@ async function caseCheque() {
                                                     <div class="col-md-6">
                                                         <label for="input1" class="form-label">
                                                             Referece Number</label>
-                                                        <select name="issued_bank" class="form-control form-control-sm"
-                                                            id="issued_bank">
+                                                        <select name="issued_bank"
+                                                            class="issued_bank form-control form-control-sm">
                                                             <option value="">Select Issued Bank</option>
                                                             <option value="1">AB Bank</option>
                                                             <option value="2">DBBL</option>
@@ -381,6 +408,7 @@ async function caseCheque() {
                                         </div>
                                     </div>
                                 </div>
+
                                 <div class="row">
                                     <div class="col-md-9">
                                         <div class="d-flex ">
@@ -394,7 +422,7 @@ async function caseCheque() {
                             </form>
                         </div>
                         <div class="tab-pane fade" id="cheque_tab" role="tabpanel">
-                            <form id="">
+                            <form id="cheque_form">
                                 <div class="row">
                                     <div class="col-md-9">
                                         <div class="card">
@@ -408,8 +436,8 @@ async function caseCheque() {
                                                 <div class="row">
                                                     <div class="col-md-10">
                                                         <label for="input1" class="form-label">Payment Account</label>
-                                                        <select id="payment_acc" name="payment_acc"
-                                                            class="form-control form-control-sm">
+                                                        <select name="payment_acc"
+                                                            class="form-control form-control-sm payment_acc">
                                                             <option selected="" value="">Choose...</option>
                                                             <option value="Bkash">Bkash</option>
                                                             <option value="Nagad">Nagad</option>
@@ -457,9 +485,9 @@ async function caseCheque() {
                                                 <div class="row">
                                                     <div class="col-md-6">
                                                         <label for="input1" class="form-label">
-                                                            Referece Number</label>
-                                                        <select name="issued_bank" class="form-control form-control-sm"
-                                                            id="issued_bank">
+                                                            Issued Bank</label>
+                                                        <select name="issued_bank"
+                                                            class="issued_bank form-control form-control-sm">
                                                             <option value="">Select Issued Bank</option>
                                                             <option value="1">AB Bank</option>
                                                             <option value="2">DBBL</option>
@@ -470,6 +498,13 @@ async function caseCheque() {
                                                     <div class="col-md-6 ">
                                                         <label for="input1" class="form-label">
                                                             Referece Number</label>
+                                                        <input type="input" v-model="form.reference_number"
+                                                            class="form-control form-control-sm" id="reference_number"
+                                                            name="reference_number" placeholder="Enter Service Charge">
+                                                    </div>
+                                                    <div class="col-md-6 mt-2">
+                                                        <label for="input1" class="form-label">
+                                                            Referece Date</label>
                                                         <input type="date" v-model="form.reference_date"
                                                             class="form-control form-control-sm" id="reference_date"
                                                             name="reference_date" placeholder="Enter Service Charge">
@@ -491,7 +526,7 @@ async function caseCheque() {
                                                             name="remarks" rows="3"></textarea>
 
                                                     </div>
-                                                    <div class="col-md-6">
+                                                    <div class="col-md-6 mt-4">
 
                                                         <div class="d-flex align-items-center "><img
                                                                 src="../../../../../public/theme/appimages/rqf.png"
@@ -525,250 +560,254 @@ async function caseCheque() {
                             </form>
                         </div>
                         <div class="tab-pane fade" id="bank_transfer_tab" role="tabpanel">
-                            <div class="row">
-                                <div class="col-md-9">
-                                    <div class="card">
-                                        <div class="card-header">
-                                            <h5 class="m-0 p-0" style="border-left: 5px solid rgb(114, 57, 234);">
-                                                &nbsp; Payment Information</h5>
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="row">
-                                                <div class="col-md-10">
-                                                    <label for="input1" class="form-label">Payment Account</label>
-                                                    <select id="payment_acc" name="payment_acc"
-                                                        class="form-control form-control-sm">
-                                                        <option selected="" value="">Choose...</option>
-                                                        <option value="Bank">Bank</option>
-                                                        <option value="MFS">MFS</option>
-                                                    </select>
-                                                </div>
-
-                                                <div class="col-md-4 mt-2">
-                                                    <label for="input1" class="form-label">Request Amount</label>
-                                                    <input type="text" class="form-control form-control-sm"
-                                                        id="requested_amount" name="requested_amount"
-                                                        placeholder="Enter Routing Number">
-                                                </div>
-                                                <div class="col-md-3 mt-2">
-                                                    <label for="input1" class="form-label">
-                                                        Charge</label>
-                                                    <input type="text" class="form-control form-control-sm"
-                                                        id="service_charge" name="service_charge"
-                                                        placeholder="Enter Service Charge">
-                                                </div>
-                                                <div class="col-md-3 mt-2">
-                                                    <label for="input1" class="form-label">
-                                                        Total Amount</label>
-                                                    <input type="text" class="form-control form-control-sm"
-                                                        id="total_amount" name="total_amount"
-                                                        placeholder="Enter Service Charge">
-                                                </div>
+                            <form id="bank_transfer_form">
+                                <div class="row">
+                                    <div class="col-md-9">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h5 class="m-0 p-0" style="border-left: 5px solid rgb(114, 57, 234);">
+                                                    &nbsp; Payment Information</h5>
                                             </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                                            <div class="card-body">
+                                                <div class="row">
+                                                    <div class="col-md-10">
+                                                        <label for="input1" class="form-label">Payment Account</label>
+                                                        <select name="payment_acc"
+                                                            class="payment_acc form-control form-control-sm">
+                                                            <option selected="" value="">Choose...</option>
+                                                            <option value="Bank">Bank</option>
+                                                            <option value="MFS">MFS</option>
+                                                        </select>
+                                                    </div>
 
-                            <div class="row">
-                                <div class="col-md-9">
-                                    <div class="card">
-                                        <div class="card-header">
-                                            <h5 class="m-0 p-0" style="border-left: 5px solid rgb(114, 57, 234);">
-                                                &nbsp; Bank Transfer Information</h5>
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="row">
-                                                <div class="col-md-6">
-                                                    <label for="input1" class="form-label">
-                                                        Issued Bank & MFS</label>
-                                                    <select name="issued_bank" id="issued_bank"
-                                                        class="form-control form-control-sm">
-                                                        <option value="">Select Issued Bank</option>
-                                                        <option value="1">AB Bank</option>
-                                                    </select>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label for="input1" class="form-label">
-                                                        Referece Number</label>
-                                                    <input type="input" class="form-control form-control-sm"
-                                                        id="reference_num" name="reference_num"
-                                                        placeholder="Enter Reference Number">
-                                                </div>
-                                                <div class="col-md-6 mt-2">
-                                                    <label for="input1" class="form-label">
-                                                        Referece file</label>
-                                                    <input type="file" class="form-control form-control-sm"
-                                                        id="reference_file" name="reference_file" placeholder="Enter ">
-                                                </div>
-
-                                                <div class="col-md-6 mt-2">
-                                                    <label for="input1" class="form-label">
-                                                        Referece file</label>
-                                                    <input type="file" class="form-control form-control-sm"
-                                                        id="reference_file" name="reference_file"
-                                                        placeholder="Enter Service Charge">
-                                                </div>
-
-                                                <div class="col-md-6 mt-2">
-                                                    <label for="input1" class="form-label">
-                                                        Remarks</label>
-
-                                                    <textarea class="form-control form-control-sm" id="remarks"
-                                                        name="remarks" rows="3"></textarea>
-
-                                                </div>
-                                                <div class="col-md-6 mt-3">
-
-                                                    <div class="d-flex align-items-center "><img
-                                                            src="../../../../../public/theme/appimages/rqf.png"
-                                                            height="60" width="60"
-                                                            class="border border-1 rounded rounded-2"
-                                                            alt="Profile Picture">
-                                                        <div class="flex-grow-1 ms-3">
-                                                            <p class="mb-0"><i
-                                                                    class="btn-outline-success rounded-circle fa fa-circle-check"></i>
-                                                                Uploaded successfully.</p>
-                                                        </div>
+                                                    <div class="col-md-4 mt-2">
+                                                        <label for="input1" class="form-label">Request Amount</label>
+                                                        <input type="text" class="form-control form-control-sm"
+                                                            id="requested_amount" v-model="form.requested_amount"
+                                                            name="requested_amount" placeholder="Enter Routing Number">
+                                                    </div>
+                                                    <div class="col-md-3 mt-2">
+                                                        <label for="input1" class="form-label">
+                                                            Charge</label>
+                                                        <input type="text" class="form-control form-control-sm"
+                                                            id="service_charge" v-model="form.service_charge"
+                                                            name="service_charge" placeholder="Enter Service Charge">
+                                                    </div>
+                                                    <div class="col-md-3 mt-2">
+                                                        <label for="input1" class="form-label">
+                                                            Total Amount</label>
+                                                        <input type="text" v-model="form.total_amount"
+                                                            class="form-control form-control-sm" id="total_amount"
+                                                            name="total_amount" placeholder="Enter Service Charge">
                                                     </div>
                                                 </div>
                                             </div>
-
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div class="row">
-                                <div class="col-md-9">
-                                    <div class="d-flex ">
-                                        <button
-                                            class="btn btn-sm btn-info px-4 ms-2 justify-content-start">Cancel</button>
-                                        <button
-                                            class="btn btn-sm btn-info px-4 ms-2 justify-content-end">Submit</button>
+                                <div class="row">
+                                    <div class="col-md-9">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h5 class="m-0 p-0" style="border-left: 5px solid rgb(114, 57, 234);">
+                                                    &nbsp; Bank Transfer Information</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <label for="input1" class="form-label">
+                                                            Issued Bank & MFS</label>
+                                                        <select name="issued_bank"
+                                                            class="form-control form-control-sm issued_bank">
+                                                            <option value="">Select Issued Bank</option>
+                                                            <option value="1">AB Bank</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label for="input1" class="form-label">
+                                                            Referece Number</label>
+                                                        <input type="input" class="form-control form-control-sm"
+                                                            id="reference_num" v-model="form.reference_num"
+                                                            name="reference_num" placeholder="Enter Reference Number">
+                                                    </div>
+                                                    <div class="col-md-6 mt-2">
+                                                        <label for="input1" class="form-label">
+                                                            Referece file</label>
+                                                        <input type="file" class="form-control form-control-sm"
+                                                            id="reference_file" name="reference_file"
+                                                            placeholder="Enter ">
+                                                    </div>
+
+                                                    <div class="col-md-6 mt-2">
+                                                        <label for="input1" class="form-label">
+                                                            Referece Date</label>
+                                                        <input type="date" class="form-control form-control-sm"
+                                                            id="reference_date" v-model="form.reference_date"
+                                                            name="reference_date" placeholder="Enter Service Charge">
+                                                    </div>
+
+                                                    <div class="col-md-6 mt-2">
+                                                        <label for="input1" class="form-label">
+                                                            Remarks</label>
+
+                                                        <textarea class="form-control form-control-sm" id="remarks"
+                                                            name="remarks" v-model="form.remarks" rows="3"></textarea>
+
+                                                    </div>
+                                                    <div class="col-md-6 mt-3">
+
+                                                        <div class="d-flex align-items-center "><img
+                                                                src="../../../../../public/theme/appimages/rqf.png"
+                                                                height="60" width="60"
+                                                                class="border border-1 rounded rounded-2"
+                                                                alt="Profile Picture">
+                                                            <div class="flex-grow-1 ms-3">
+                                                                <p class="mb-0"><i
+                                                                        class="btn-outline-success rounded-circle fa fa-circle-check"></i>
+                                                                    Uploaded successfully.</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+
+                                <div class="row">
+                                    <div class="col-md-9">
+                                        <div class="d-flex ">
+                                            <button
+                                                class="btn btn-sm btn-info px-4 ms-2 justify-content-start">Cancel</button>
+                                            <button type="button" @click="caseBankTransfer()"
+                                                class="btn btn-sm btn-info px-4 ms-2 justify-content-end">Submit</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
                         </div>
                         <div class="tab-pane fade" id="credit_req_tab" role="tabpanel">
-                            <div class="row">
-                                <div class="col-md-9">
-                                    <div class="card">
-                                        <div class="card-header">
-                                            <h5 class="m-0 p-0" style="border-left: 5px solid rgb(114, 57, 234);">
-                                                &nbsp; Payment Information</h5>
-                                        </div>
-                                        <form id="">
+                            <form id="credit_req_form">
+                                <div class="row">
+                                    <div class="col-md-9">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h5 class="m-0 p-0" style="border-left: 5px solid rgb(114, 57, 234);">
+                                                    &nbsp; Payment Information</h5>
+                                            </div>
                                             <div class="card-body">
                                                 <div class="row">
 
                                                     <div class="col-md-4">
                                                         <label for="input1" class="form-label">Request Amount</label>
                                                         <input type="text" class="form-control form-control-sm"
-                                                            id="requested_amount" name="requested_amount"
+                                                            id="requested_amount" v-model="form.requested_amount" name="requested_amount"
                                                             placeholder="Enter Routing Number">
                                                     </div>
                                                     <div class="col-md-3">
                                                         <label for="input1" class="form-label">
                                                             Charge</label>
                                                         <input type="text" class="form-control form-control-sm"
-                                                            id="service_charge" name="service_charge"
+                                                            id="service_charge" v-model="form.service_charge" name="service_charge"
                                                             placeholder="Enter Service Charge">
                                                     </div>
                                                     <div class="col-md-3">
                                                         <label for="input1" class="form-label">
                                                             Total Amount</label>
                                                         <input type="text" class="form-control form-control-sm"
-                                                            id="total_amount" name="total_amount"
+                                                            id="total_amount" v-model="form.total_amount" name="total_amount"
                                                             placeholder="Enter Service Charge">
                                                     </div>
                                                 </div>
                                             </div>
-
-                                        </form>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div class="row">
-                                <div class="col-md-9">
-                                    <div class="card">
-                                        <div class="card-header">
-                                            <h5 class="m-0 p-0" style="border-left: 5px solid rgb(114, 57, 234);">
-                                                &nbsp; Credit Request Information</h5>
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="row">
-                                                <div class="col-md-6">
-                                                    <label for="input1" class="form-label">
-                                                        Issued Bank</label>
-                                                    <select name="issued_bank" id="" class="form-control form-control-sm">
-                                                        <option value="">Select Issued Bank</option>
-                                                        <option value="1">AB Bank</option>
-                                                    </select>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label for="input1" class="form-label">
-                                                        Referece Number</label>
-                                                    <input type="input" class="form-control form-control-sm"
-                                                        id="reference_num" name="reference_num"
-                                                        placeholder="Enter Reference Number">
-                                                </div>
-                                                <div class="col-md-6 mt-2">
-                                                    <label for="input1" class="form-label">
-                                                        Referece file</label>
-                                                    <input type="file" class="form-control form-control-sm"
-                                                        id="reference_file" name="reference_file" placeholder="Enter ">
-                                                </div>
+                                <div class="row">
+                                    <div class="col-md-9">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h5 class="m-0 p-0" style="border-left: 5px solid rgb(114, 57, 234);">
+                                                    &nbsp; Credit Request Information</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <label for="input1" class="form-label">
+                                                            Issued Bank</label>
+                                                        <select name="issued_bank" id=""
+                                                            class="form-control form-control-sm issued_bank">
+                                                            <option value="">Select Issued Bank</option>
+                                                            <option value="1">AB Bank</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label for="input1" class="form-label">
+                                                            Referece Number</label>
+                                                        <input type="input" class="form-control form-control-sm"
+                                                            id="reference_num" v-model="form.reference_num" name="reference_num"
+                                                            placeholder="Enter Reference Number">
+                                                    </div>
+                                                    <div class="col-md-6 mt-2">
+                                                        <label for="input1" class="form-label">
+                                                            Referece file</label>
+                                                        <input type="file" class="form-control form-control-sm"
+                                                            id="reference_file"  name="reference_file"
+                                                            placeholder="Enter ">
+                                                    </div>
 
-                                                <div class="col-md-6 mt-2">
-                                                    <label for="input1" class="form-label">
-                                                        Referece file</label>
-                                                    <input type="file" class="form-control form-control-sm"
-                                                        id="reference_file" name="reference_file"
-                                                        placeholder="Enter Service Charge">
-                                                </div>
+                                                    <div class="col-md-6 mt-2">
+                                                        <label for="input1" class="form-label">
+                                                            Referece Date</label>
+                                                        <input type="date" class="form-control form-control-sm"
+                                                            id="reference_date" v-model="form.reference_date" name="reference_date"
+                                                            placeholder="Enter Service Charge">
+                                                    </div>
 
-                                                <div class="col-md-6 mt-2">
-                                                    <label for="input1" class="form-label">
-                                                        Remarks</label>
+                                                    <div class="col-md-6 mt-2">
+                                                        <label for="input1" class="form-label">
+                                                            Remarks</label>
 
-                                                    <textarea class="form-control form-control-sm" id="remarks"
-                                                        name="remarks" rows="3"></textarea>
+                                                        <textarea v-model="form.remarks" class="form-control form-control-sm" id="remarks"
+                                                            name="remarks" rows="3"></textarea>
 
-                                                </div>
-                                                <div class="col-md-6 mt-3">
+                                                    </div>
+                                                    <div class="col-md-6 mt-3">
 
-                                                    <div class="d-flex align-items-center "><img
-                                                            src="../../../../../public/theme/appimages/rqf.png"
-                                                            height="60" width="60"
-                                                            class="border border-1 rounded rounded-2"
-                                                            alt="Profile Picture">
-                                                        <div class="flex-grow-1 ms-3">
-                                                            <p class="mb-0"><i
-                                                                    class="btn-outline-success rounded-circle fa fa-circle-check"></i>
-                                                                Uploaded successfully.</p>
+                                                        <div class="d-flex align-items-center "><img
+                                                                src="../../../../../public/theme/appimages/rqf.png"
+                                                                height="60" width="60"
+                                                                class="border border-1 rounded rounded-2"
+                                                                alt="Profile Picture">
+                                                            <div class="flex-grow-1 ms-3">
+                                                                <p class="mb-0"><i
+                                                                        class="btn-outline-success rounded-circle fa fa-circle-check"></i>
+                                                                    Uploaded successfully.</p>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </div>
 
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div class="row">
-                                <div class="col-md-9">
-                                    <div class="d-flex align-content-start">
-                                        <button class="btn btn-sm btn-danger px-4 ms-2">Cancel</button>
-                                    </div>
-                                    <div class="d-flex align-content-end">
+                                <div class="row">
+                                    <div class="col-md-9">
+                                        <div class="d-flex align-content-start">
+                                            <button class="btn btn-sm btn-danger px-4 ms-2">Cancel</button>
+                                        </div>
+                                        <div class="d-flex align-content-end">
 
-                                        <button class="btn btn-sm btn-info px-4 ms-2">Submit</button>
+                                            <button type="button" @click="creditReqSave()" class="btn btn-sm btn-info px-4 ms-2">Submit</button>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            </form>
                         </div>
                     </div>
                 </div>

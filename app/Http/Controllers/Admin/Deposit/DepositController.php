@@ -2,17 +2,26 @@
 
 namespace App\Http\Controllers\Admin\Deposit;
 
-use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-
-class DepositController extends Controller
+use App\Models\Deposit\Deposit;
+use App\Http\Controllers\Controller;
+use App\Http\Controllers\BaseController;
+use Yajra\DataTables\DataTables;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use App\Models\User;
+class DepositController extends BaseController
 {
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        //
+        $data = DB::table('deposits as dpt')
+            ->selectRaw('dpt.id as idd,dpt.type as name, dpt.paid_account_no, dpt.reference_no,dpt.reference_date,dpt.agent_id, dpt.total,dpt.status,dpt.issued_bank,dpt.remarks,dpt.updated_at,f_username(dpt.updated_by) updated_by,f_username(dpt.created_by) created_by,dpt.created_at,dpt.updated_at')->get();
+
+
+        return DataTables::of($data)->addIndexColumn()->make(true);
     }
 
     /**
@@ -32,7 +41,7 @@ class DepositController extends Controller
 
             $depo = new Deposit;
             $depo->type = $request->payment_type;
-            $depo->agent_id = $request->agent_id;
+            $depo->agent_id = $request->agent_id ?? 1;
             $depo->paid_account_no = $request->payment_acc;
             $depo->amount = $request->requested_amount;
             $depo->charge = $request->service_charge;
@@ -41,7 +50,7 @@ class DepositController extends Controller
             $depo->reference_date = $request->reference_date;
             $depo->reference_file = $request->reference_file;
             $depo->remarks =$request->remarks;
-            $depo->status = 'pending';
+            $depo->status = 'Requested';
             $depo->created_by = auth()->user()->id;
             $depo->save();
         }
@@ -49,7 +58,7 @@ class DepositController extends Controller
 
             $depo = new Deposit;
             $depo->type = $request->payment_type;
-            $depo->agent_id = $request->agent_id;
+            $depo->agent_id = $request->agent_id ?? 1;
             $depo->paid_account_no = $request->payment_acc;
             $depo->amount = $request->requested_amount;
             $depo->charge = $request->service_charge;
@@ -59,16 +68,16 @@ class DepositController extends Controller
             $depo->reference_date = $request->reference_date;
             $depo->reference_file = $request->reference_file;
             $depo->remarks =$request->remarks;
-            $depo->status = 'pending';
+            $depo->status = 'Requested';
             $depo->created_by = auth()->user()->id;
             $depo->save();
         }
         else if($request->payment_type == 'Cheque'){
 
-            dd($request->all());
+
             $depo = new Deposit;
             $depo->type = $request->payment_type;
-            $depo->agent_id = $request->agent_id;
+            $depo->agent_id = $request->agent_id ?? 1;
             $depo->paid_account_no = $request->payment_acc;
             $depo->amount = $request->requested_amount;
             $depo->charge = $request->service_charge;
@@ -78,10 +87,51 @@ class DepositController extends Controller
             $depo->reference_date = $request->reference_date;
             $depo->reference_file = $request->reference_file;
             $depo->remarks =$request->remarks;
-            $depo->status = 'pending';
+            $depo->status = 'Requested';
             $depo->created_by = auth()->user()->id;
             $depo->save();
         }
+        else if($request->payment_type == 'Bank_Transfer'){
+
+            $depo = new Deposit;
+            $depo->type = 'Bank Transfer';
+            $depo->agent_id = $request->agent_id ?? 1;
+            $depo->paid_account_no = $request->payment_acc;
+            $depo->amount = $request->requested_amount;
+            $depo->charge = $request->service_charge;
+            $depo->total = $request->total_amount;
+            $depo->issued_bank = $request->issued_bank;
+            // $depo->reference_no =  $request->reference_number;
+            $depo->reference_date = $request->reference_date;
+            $depo->reference_file = $request->reference_file;
+            $depo->remarks =$request->remarks;
+            $depo->status = 'Requested';
+            $depo->created_by = auth()->user()->id;
+            $depo->save();
+        }
+
+        else if($request->payment_type == 'Credit_Request'){
+
+            $depo = new Deposit;
+            $depo->type = 'Credit Request';
+            $depo->agent_id = $request->agent_id ?? 1;
+            $depo->paid_account_no = $request->payment_acc;
+            $depo->amount = $request->requested_amount;
+            $depo->charge = $request->service_charge;
+            $depo->total = $request->total_amount;
+            // $depo->reference_no =  $request->reference_number;
+            $depo->reference_date = $request->reference_date;
+            $depo->reference_file = $request->reference_file;
+            $depo->remarks =$request->remarks;
+            $depo->status = 'Requested';
+            $depo->created_by = auth()->user()->id;
+            $depo->save();
+        }
+        $success = '';
+
+        return $this->SuccessResponse($success, 'Successfully Deposit Saved.');
+
+
     }
 
     /**
