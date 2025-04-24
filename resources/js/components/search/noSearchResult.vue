@@ -33,7 +33,7 @@ import { useAuthStore } from '../../stores/authStore';
                                 src="../../../../public/theme/appimages/Serach_Reult_Not_Found.jpg" alt="">
                         </div>
                         <div class="text-center mb-0 pb-0">
-                            <h4 class="text-danger">We didn't find any flight based on your search !!!</h4>
+                            <h4 class="text-danger-">We didn't find any flight based on your search !!!</h4>
                             <p class="text-muted">Please try again changing the search details.</p>
                         </div>
                         <div class="text-center mb-0 pb-0">
