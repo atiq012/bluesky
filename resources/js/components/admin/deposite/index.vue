@@ -8,6 +8,7 @@ import { icons } from "lucide-vue-next";
 import { useRouter } from 'vue-router';
 const router = useRouter();
 import { useAuthStore } from '../../../stores/authStore';
+import moment from "moment";
 const authStore = useAuthStore();
 DataTable.use(DataBS5);
 const rData = ref([]);
@@ -46,7 +47,6 @@ const options = {
             render: function (data, type, row) {
                 var html = "";
                 html += row.paid_account_no;
-
                 return html;
             },
         },
@@ -54,10 +54,10 @@ const options = {
             title: "Reference No & Date",
             render: function (data, type, row) {
                 var html = "";
-
                 html += row.reference_no;
                 html += "<br>";
-                html += row.reference_date;
+                html += '<small class="text-primary">';
+                html += moment(row.reference_date).format("DD-MMM-YYYY") + "</small>";
 
                 return html;
             },
@@ -67,7 +67,12 @@ const options = {
             title: "Requested By",
             render: function (data, type, row) {
                 var html = "";
-                html += row.agent_id;
+                html += row.agent;
+                html += "<br>";
+                html += '<small class="text-primary">';
+                html += moment(row.created_at).format("DD-MMM-YYYY");
+                html += "| " + moment(row.created_at).format("h:mm");
+                html += "</small>"
                 return html;
             },
         },
@@ -119,7 +124,7 @@ const options = {
                 var html = "";
                 var status = row.status;
 
-                html += '<div class="badge rounded-pill text-danger bg-light-danger p-2 text-uppercase px-3"><i class="bx bxs-circle me-1"></i>'+status+ '</div>';
+                html += '<div class="badge rounded-pill text-danger bg-light-danger p-2 text-uppercase px-3"><i class="bx bxs-circle me-1"></i>' + status + '</div>';
 
 
                 return html;
@@ -132,11 +137,9 @@ const options = {
                 var idd = row.idd;
                 var status = row.status;
 
-                html += '<button  style="size: 30px; width: 30px; height: 30px" class="btn btn-outline-only-edit rounded-circle edit-item" placement="top" data-item-id=' + idd + '> <i class="fa-solid fa-pencil" style="margin: 0px 0px 10px -5px; font-size: 14px;"></i> </button>';
-                if (status == 1) {
 
-                    html += '<button type="button" style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-ban rounded-circle status-change" data-item-id=' + idd + '> <i class="fa-solid fa-ban" style="margin: 2px 0px 10px -5px; font-size: 14px;"></i> </button>';
-                } else {
+                if (status == 'Requested') {
+
                     html += '<button type="button" style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-success rounded-circle status-change" data-item-id=' + idd + ' > <i class="fa-solid fa-check" style="margin: 2px 0px 10px -5px; font-size: 14px;"></i> </button>';
                 }
 
@@ -160,7 +163,6 @@ const options = {
             var idd = $(this).attr('data-item-id');
 
             // delete pop up message
-
             iziToast.question({
                 timeout: 100000,
                 pauseOnHover: false,
@@ -190,7 +192,7 @@ const options = {
                         getListValues();
                         Notification.showToast('s', 'Successfully Department Deleted.');
                     } else {
-
+                        console.log('no');
                     }
 
                 }

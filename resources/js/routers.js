@@ -15,6 +15,7 @@ const ForcePassChange = () => import('./components/auth/forcePasswordChange.vue'
 const flightSearch = () => import('./components/search/flightSearch.vue')
 const searchResult = () => import('./components/search/searchResult.vue')
 const backupsearchResult = () => import('./components/search/searchResult_copy.vue')
+const noFlightFound = () => import('./components/search/noSearchResult.vue')
 
 // booking
 const bookingList = () => import('./components/admin/booking/index.vue')
@@ -109,6 +110,7 @@ const routes = [
     { path: '/flight-search', component: flightSearch, name: 'flightSearch', meta: { auth: true } },
     { path: '/flight-search-way', component: searchResult, name: 'searchResult', meta: { auth: true } },
     { path: '/flight-search-result', component: backupsearchResult, name: 'backupsearchResult', meta: { auth: true } },
+    { path: '/no-flight-result', component: noFlightFound, name: 'noFlightFound', meta: { auth: true } },
 
     //booking
     { path: '/flight-booking-list', component: bookingList, name: 'bookingList', meta: { auth: true } },

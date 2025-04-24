@@ -18,7 +18,8 @@ class DepositController extends BaseController
     public function index()
     {
         $data = DB::table('deposits as dpt')
-            ->selectRaw('dpt.id as idd,dpt.type as name, dpt.paid_account_no, dpt.reference_no,dpt.reference_date,dpt.agent_id, dpt.total,dpt.status,dpt.issued_bank,dpt.remarks,dpt.updated_at,f_username(dpt.updated_by) updated_by,f_username(dpt.created_by) created_by,dpt.created_at,dpt.updated_at')->get();
+            ->join('agents as agt', 'dpt.agent_id', 'agt.id')
+            ->selectRaw('dpt.id as idd,dpt.type as name, dpt.paid_account_no, dpt.reference_no,dpt.reference_date,dpt.agent_id, dpt.total,dpt.status,dpt.issued_bank,dpt.remarks,dpt.updated_at,f_username(dpt.updated_by) updated_by,f_username(dpt.created_by) created_by,dpt.created_at,dpt.updated_at,agt.name as agent')->get();
 
 
         return DataTables::of($data)->addIndexColumn()->make(true);
@@ -73,7 +74,6 @@ class DepositController extends BaseController
             $depo->save();
         }
         else if($request->payment_type == 'Cheque'){
-
 
             $depo = new Deposit;
             $depo->type = $request->payment_type;
