@@ -44,7 +44,7 @@ import { useAuthStore } from '../../stores/authStore';
 
                     <div class="d-flex flex-column bd-highlight mb-3">
                         <div class="text-center mb-0 pb-0">
-                            <img style="width: 48%; height: 48%;"
+                            <img style="width: 49%; height: 49%;"
                                 src="../../../../public/theme/appimages/Serach_Reult_Not_Found.jpg" alt="">
                         </div>
                         <div class="text-center mb-0 pb-0">
