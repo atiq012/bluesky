@@ -21,6 +21,13 @@ class XmlToJson
     {
         $this->xml = new SimpleXMLElement($xmlContent);
         $this->xml->registerXPathNamespace('air', 'http://www.travelport.com/schema/air_v52_0');
+
+        if ($this->xml->xpath('//faultstring')) {
+            return [
+                'no_flight' => 'No Flight Found',
+            ];
+        }
+
         $this->currency = (string)$this->xml->xpath('//air:LowFareSearchRsp/@CurrencyType')[0] ?? 'USD';
 
         // Cache airline names and logo paths

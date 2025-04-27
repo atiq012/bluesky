@@ -8,7 +8,8 @@ import SimpleBar from "simplebar-vue";
 import "simplebar-vue/dist/simplebar.min.css";
 import { useAuthStore } from '../../stores/authStore';
 import '../../../css/searchpanel.css'
-
+import { useRouter } from "vue-router";
+const router = useRouter();
 
 const authStore = useAuthStore();
 
@@ -373,11 +374,17 @@ async function Lowfaresearch() {
 
         const startTime = performance.now();
         const response = await axiosInstance.post("Lowfaresearch", form);
+
         const endTime = performance.now();
         ExecutionTime.value = ((endTime - startTime) / 1000).toFixed(2);
 
         flights.value = response.data.flights;
         totalFlights.value = response.data.flights.length;
+        if (totalFlights.value > 0) {
+            authStore.GlobalLoading = false;
+        } else {
+            return router.push({ name: 'noFlightFound' });
+        }
 
     } catch (error) {
         console.log(error);
