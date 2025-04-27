@@ -48,4 +48,6 @@ import { useAuthStore } from '../../stores/authStore';
 
 </template>
 
-<style scoped></style>
+<style scoped>
+
+</style>
