@@ -231,7 +231,6 @@ async function getTravelerData(props) {
                                         </div>
                                     </div>
                                 </div>
-
                             </div>
 
                             <div class="col-md-4">
@@ -279,15 +278,13 @@ async function getTravelerData(props) {
                                                     class="border border-1 rounded rounded-2" alt="Profile Picture">
 
                                             </div>
-
-
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
                             <div class="d-flex">
-                                <button type="submit" class="btn btn-primary ">Back</button>
+                                <button type="button" class="btn btn-primary" @click="$router.go(-1)">Back</button>
                                 <button type="button" class="btn btn-primary ms-auto bd-highligh"
                                     @click="save(props)">Update</button>
                             </div>

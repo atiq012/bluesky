@@ -1,12 +1,11 @@
 <?php
-
 namespace App\Http\Controllers\Admin\Traveler;
 
-use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\Traveller\Traveller;
-use Illuminate\Support\Facades\File;
 use DB;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 use Yajra\DataTables\DataTables;
 
 class TravelerController extends Controller
@@ -17,9 +16,21 @@ class TravelerController extends Controller
     public function index()
     {
         $data = DB::table('travellers')
-        ->selectRaw('id as idd,full_name,pax_type,first_name,last_name,dob,email,gender,phone,passport_number,passport_expiry_date,nationality,dob,f_username(travellers.created_by) as created_by,created_at,f_username(travellers.updated_by) as updated_by,updated_at')
-        ->get();
+            ->selectRaw('id as idd,full_name,pax_type,first_name,last_name,dob,email,gender,phone,passport_number,passport_expiry_date,nationality,dob,f_username(travellers.created_by) as created_by,created_at,f_username(travellers.updated_by) as updated_by,updated_at')
+            ->get();
         return DataTables::of($data)->addIndexColumn()->make(true);
+    }
+
+    public function search(Request $request)
+    {
+        $traveler = DB::table('travellers')->where('first_name', 'like', '%' . $request->parm . '%')
+            ->orWhere('last_name', 'like', '%' . $request->parm . '%')
+            ->orWhere('passport_number', 'like', '%' . $request->parm . '%')
+            ->orWhere('email', 'like', '%' . $request->parm . '%')
+            ->orWhere('phone', 'like', '%' . $request->parm . '%')
+            ->get();
+
+        return response()->json($traveler);
     }
 
     /**
@@ -58,29 +69,28 @@ class TravelerController extends Controller
         $user = auth()->user();
 
         // Create a new traveler
-        $traveler = new Traveller;
-        $traveler->pax_type = $request->pax_type;
-        $traveler->title = $request->title_val;
-        $traveler->first_name = $request->first_name;
-        $traveler->last_name = $request->last_name;
-        $traveler->full_name = $request->title_val. ' ' . $request->first_name . ' ' . $request->last_name;
-        $traveler->dob = $request->dob;
-        $traveler->email = $request->email;
-        $traveler->gender = $request->gender;
-        $traveler->phone = $request->phone;
-        $traveler->passport_number = $request->passport_no;
+        $traveler                       = new Traveller;
+        $traveler->pax_type             = $request->pax_type;
+        $traveler->title                = $request->title_val;
+        $traveler->first_name           = $request->first_name;
+        $traveler->last_name            = $request->last_name;
+        $traveler->full_name            = $request->title_val . ' ' . $request->first_name . ' ' . $request->last_name;
+        $traveler->dob                  = $request->dob;
+        $traveler->email                = $request->email;
+        $traveler->gender               = $request->gender;
+        $traveler->phone                = $request->phone;
+        $traveler->passport_number      = $request->passport_no;
         $traveler->passport_expiry_date = $request->p_expiry_date;
-        $traveler->nationality = $request->nationality;
-        $traveler->created_by = $user->id;
-
+        $traveler->nationality          = $request->nationality;
+        $traveler->created_by           = $user->id;
 
         if ($request->hasFile('passport_picture')) {
 
             $request_image = $request->file('passport_picture');
-            $image_name = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
+            $image_name    = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
 
             $image_path = public_path('/uploads/travler/passport/');
-            if (!File::exists($image_path)) {
+            if (! File::exists($image_path)) {
                 File::makeDirectory($image_path, 0777, true);
             }
 
@@ -127,35 +137,34 @@ class TravelerController extends Controller
         $user = auth()->user();
 
         // Create a new traveler
-        $traveler = Traveller::find($request->pax_id);
-        $traveler->pax_type = $request->pax_type;
-        $traveler->title = $request->title_val;
-        $traveler->first_name = $request->first_name;
-        $traveler->last_name = $request->last_name;
-        $traveler->full_name = $request->title_val. ' ' . $request->first_name . ' ' . $request->last_name;
-        $traveler->dob = $request->dob;
-        $traveler->email = $request->email;
-        $traveler->gender = $request->gender;
-        $traveler->phone = $request->phone;
-        $traveler->passport_number = $request->passport_no;
+        $traveler                       = Traveller::find($request->pax_id);
+        $traveler->pax_type             = $request->pax_type;
+        $traveler->title                = $request->title_val;
+        $traveler->first_name           = $request->first_name;
+        $traveler->last_name            = $request->last_name;
+        $traveler->full_name            = $request->title_val . ' ' . $request->first_name . ' ' . $request->last_name;
+        $traveler->dob                  = $request->dob;
+        $traveler->email                = $request->email;
+        $traveler->gender               = $request->gender;
+        $traveler->phone                = $request->phone;
+        $traveler->passport_number      = $request->passport_no;
         $traveler->passport_expiry_date = $request->p_expiry_date;
-        $traveler->nationality = $request->nationality;
-        $traveler->updated_by = $user->id;
-
+        $traveler->nationality          = $request->nationality;
+        $traveler->updated_by           = $user->id;
 
         if ($request->hasFile('passport_picture')) {
 
             $request_image = $request->file('passport_picture');
-            $image_name = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
+            $image_name    = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
 
             $image_path = public_path('/uploads/travler/passport/');
-            if (!File::exists($image_path)) {
+            if (! File::exists($image_path)) {
                 File::makeDirectory($image_path, 0777, true);
             }
 
-            if($traveler->passport_path){
+            if ($traveler->passport_path) {
                 if ($traveler->passport_path) {
-                    $filePath = public_path().$traveler->passport_path;
+                    $filePath = public_path() . $traveler->passport_path;
                     File::delete($filePath);
                 }
             }
@@ -180,10 +189,10 @@ class TravelerController extends Controller
         if ($request->id) {
 
             $traveler = Traveller::where('id', $request->id)->first();
-            if($traveler->passport_path){
+            if ($traveler->passport_path) {
                 if ($traveler->passport_path) {
 
-                    $filePath = public_path().$traveler->passport_path;
+                    $filePath = public_path() . $traveler->passport_path;
                     File::delete($filePath);
                 }
             }

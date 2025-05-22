@@ -57,6 +57,15 @@ const handleFileChange = (event) => {
         previewImage.value = e.target.result;
     };
 }
+
+async function findExistanceTraveller(parm) {
+    const response = await axiosInstance.post('get-travelers-data-by-search', { 'parm': parm });
+
+    console.log(response.data);
+
+
+
+}
 </script>
 
 <template>
@@ -98,6 +107,7 @@ const handleFileChange = (event) => {
                                                 <div class="d-flex flex-row bd-highlight">
                                                     <div class="p-2 bd-highlight w-100">
                                                         <input type="text" class="form-control" id="name" name="name"
+                                                            @input="findExistanceTraveller($event.target.value)"
                                                             placeholder="Enter Traveller Passport Number" />
                                                     </div>
                                                     <div class="p-2 bd-highlight">
