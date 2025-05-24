@@ -2,13 +2,18 @@
 import { useRouter } from 'vue-router';
 const router = useRouter();
 import { useAuthStore } from '../../../stores/authStore';
+import SimpleBar from "simplebar-vue";
+
 const authStore = useAuthStore();
 import axiosInstance from "../../../axiosInstance";
 import { ref, reactive, onMounted, render } from "vue";
+import moment from "moment";
 
 const form = reactive({ pax_type: "", title_val: "", first_name: "", last_name: "", dob: "", gender: "", email: "", phone: "", passport_no: "", p_expiry_date: "", nationality: "", passport_picture: "", useEmail: authStore.email });
 
 const previewImage = ref('');
+const showTravelerList = ref(false);
+const filteredTraveler = ref([]);
 
 onMounted(() => {
 
@@ -21,10 +26,57 @@ onMounted(() => {
     $("#nationality").on('change', function () {
         form.nationality = $(this).val();
     });
+
+    $("#traveler_id").select2({
+        placeholder: '=Select=',
+        theme: 'bootstrap-5',
+        width: '100%',
+        allowClear: true,
+        height: '50',
+    });
 });
 
 function paxTypeChange(type) {
     form.pax_type = type;
+}
+
+async function getTravellertrData(id) {
+    try {
+        const response = await axiosInstance.post('viewTraveler', { 'id': id });
+
+        form.title_val = response.data.title;
+        $('#title').val(response.data.title);
+        form.first_name = response.data.first_name;
+        form.last_name = response.data.last_name;
+        form.dob = moment(response.data.dob).format('YYYY-MM-DD');
+        form.gender = response.data.gender;
+        $('#gender').val(response.data.gender);
+        form.email = response.data.email;
+        form.phone = response.data.phone;
+        form.passport_no = response.data.passport_number;
+        form.p_expiry_date = moment(response.data.expiry_date).format('YYYY-MM-DD');
+        form.nationality = response.data.nationality;
+        $('#nationality').val(response.data.nationality);
+
+        form.passport_picture = response.data.passport_path;
+        previewImage.value = response.data.passport_path;
+
+        if (response.data.pax_type == 1) {
+            var pax_type = 'Adult';
+            $('#adult').prop('checked', true);
+            form.pax_type = 1;
+        } else if (response.data.pax_type == 2) {
+            var pax_type = 'Child';
+            $('#child').prop('checked', true);
+            form.pax_type = 2;
+        } else if (response.data.pax_type == 3) {
+            var pax_type = 'Infant';
+            $('#infant').prop('checked', true);
+            form.pax_type = 3;
+        }
+    } catch (error) {
+        console.log(error);
+    }
 }
 
 async function save() {
@@ -61,10 +113,30 @@ const handleFileChange = (event) => {
 async function findExistanceTraveller(parm) {
     const response = await axiosInstance.post('get-travelers-data-by-search', { 'parm': parm });
 
-    console.log(response.data);
+
+    var options = [];
+
+    if (response.data.length > 0) {
+        showTravelerList.value = true;
+    }
+
+    $.each(response.data, function (key, value) {
+        var obj = { id: value.id, text: value.full_name, bn: value.bn_name, clr: MF.getRandomColor() }
+        options.push(obj);
+    });
+    filteredTraveler.value = options;
 
 
+}
+function selectTraveler(travl) {
+    showTravelerList.value = false;
+    $('#traveler_name').val(travl.text);
 
+    getTravellertrData(travl.id);
+
+    setTimeout(() => {
+        $('#traveler_id').focus();
+    }, 100);
 }
 </script>
 
@@ -106,13 +178,36 @@ async function findExistanceTraveller(parm) {
                                             <div class="col-md-12">
                                                 <div class="d-flex flex-row bd-highlight">
                                                     <div class="p-2 bd-highlight w-100">
-                                                        <input type="text" class="form-control" id="name" name="name"
+                                                        <input type="text" class="form-control" id="traveler_name"
+                                                            name="name"
                                                             @input="findExistanceTraveller($event.target.value)"
                                                             placeholder="Enter Traveller Passport Number" />
-                                                    </div>
-                                                    <div class="p-2 bd-highlight">
-                                                        <button class="w3-button w3-blue w3-round w3-medium">Check
-                                                            Availability</button>
+
+
+
+                                                        <div v-if="showTravelerList" id="traveler_id"
+                                                            class="position-absolute w-100 mt-2"
+                                                            style="z-index: 1000; background-color: white; animation: fadeIn 0.3s ease-in-out;">
+                                                            <SimpleBar style="max-height: 300px"
+                                                                class="search-results-simplebar">
+                                                                <div v-for="traveller in filteredTraveler"
+                                                                    :key="traveller.id"
+                                                                    class="cursor-pointer border-bottom border-light"
+                                                                    @click="selectTraveler(traveller)">
+                                                                    <div class="align-items-center">
+
+                                                                        <div class="flex-grow-1 border-start ps-2 py-1">
+
+                                                                            <div class="fw-bold font-12">{{
+                                                                                traveller.text }}</div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div v-if="filteredTraveler.length === 0"
+                                                                    class="p-3 text-center text-muted">
+                                                                    No matching </div>
+                                                            </SimpleBar>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -138,20 +233,20 @@ async function findExistanceTraveller(parm) {
                                                     <div class="form-check pt-1">
                                                         <input class="form-check-input" type="radio"
                                                             name="flexRadioDefault" @click="paxTypeChange(1)"
-                                                            id="flexRadioDefault1">
+                                                            id="adult">
                                                         <label class="form-check-label" for="flexRadioDefault1">
                                                             <b>Adult</b> </label>
                                                     </div>
                                                     <div class="form-check pt-1">
                                                         <input class="form-check-input" @click="paxTypeChange(2)"
-                                                            type="radio" name="flexRadioDefault" id="flexRadioSuccess">
+                                                            type="radio" name="flexRadioDefault" id="child">
                                                         <label class="form-check-label" for="flexRadioSuccess">
                                                             <b>Children</b>
                                                         </label>
                                                     </div>
                                                     <div class="form-check pt-1">
                                                         <input class="form-check-input" @click="paxTypeChange(3)"
-                                                            type="radio" name="flexRadioDefault" id="flexRadioDanger">
+                                                            type="radio" name="flexRadioDefault"  id="infant">
                                                         <label class="form-check-label" for="flexRadioDanger">
                                                             <b>Infant</b>
                                                         </label>

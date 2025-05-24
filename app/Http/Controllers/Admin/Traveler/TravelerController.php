@@ -25,6 +25,7 @@ class TravelerController extends Controller
     {
         $traveler = DB::table('travellers')->where('first_name', 'like', '%' . $request->parm . '%')
             ->orWhere('last_name', 'like', '%' . $request->parm . '%')
+            ->orWhere('full_name', 'like', '%' . $request->parm . '%')
             ->orWhere('passport_number', 'like', '%' . $request->parm . '%')
             ->orWhere('email', 'like', '%' . $request->parm . '%')
             ->orWhere('phone', 'like', '%' . $request->parm . '%')
