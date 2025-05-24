@@ -180,8 +180,9 @@ function selectTraveler(travl) {
                                                     <div class="p-2 bd-highlight w-100">
                                                         <input type="text" class="form-control" id="traveler_name"
                                                             name="name"
+                                                            autocomplete="off"
                                                             @input="findExistanceTraveller($event.target.value)"
-                                                            placeholder="Enter Traveller Passport Number" />
+                                                            placeholder="Enter Traveller Passport Number"/>
 
 
 
@@ -367,7 +368,7 @@ function selectTraveler(travl) {
                             </div>
 
                             <div class="d-flex">
-                                <button type="submit" class="btn btn-primary ">Back</button>
+                                <button type="button" class="btn btn-primary " @click="$router.go(-1)">Back</button>
                                 <button type="button" class="btn btn-primary ms-auto bd-highligh"
                                     @click="save()">Save</button>
                             </div>

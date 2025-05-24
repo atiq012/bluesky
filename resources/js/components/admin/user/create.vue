@@ -352,7 +352,7 @@ const handleFileChange = (event) => {
             <div class="card-footer">
                 <button type="button" @click="save()"
                     class="m-2 btn btn-sm btn-info px-4 ms-2 float-end text-white">Save</button>
-                <button class="m-2 btn btn-sm btn-danger px-4 ms-2  float-end">Back</button>
+                <button class="m-2 btn btn-sm btn-danger px-4 ms-2  float-end" @click="$router.go(-1)">Back </button>
             </div>
         </form>
     </div>
