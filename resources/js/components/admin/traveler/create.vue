@@ -196,9 +196,7 @@ function selectTraveler(travl) {
                                                                     class="cursor-pointer border-bottom border-light"
                                                                     @click="selectTraveler(traveller)">
                                                                     <div class="align-items-center">
-
                                                                         <div class="flex-grow-1 border-start ps-2 py-1">
-
                                                                             <div class="fw-bold font-12">{{
                                                                                 traveller.text }}</div>
                                                                         </div>
@@ -206,7 +204,7 @@ function selectTraveler(travl) {
                                                                 </div>
                                                                 <div v-if="filteredTraveler.length === 0"
                                                                     class="p-3 text-center text-muted">
-                                                                    No matching </div>
+                                                                    No match found </div>
                                                             </SimpleBar>
                                                         </div>
                                                     </div>
