@@ -2,14 +2,16 @@
 
 namespace App\Http\Controllers\Admin\Deposit;
 
+use App\Models\User;
+use App\Models\Agent\Agent;
 use Illuminate\Http\Request;
 use App\Models\Deposit\Deposit;
-use App\Http\Controllers\Controller;
-use App\Http\Controllers\BaseController;
 use Yajra\DataTables\DataTables;
 use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
-use App\Models\User;
+use App\Http\Controllers\BaseController;
+
 class DepositController extends BaseController
 {
     /**
@@ -38,11 +40,15 @@ class DepositController extends BaseController
      */
     public function store(Request $request)
     {
+        // Get the authenticated user
+        $user = auth()->user();
+        $agent = Agent::where('user_id', $user->id)->first();
+
         if($request->payment_type =='Cash'){
 
             $depo = new Deposit;
             $depo->type = $request->payment_type;
-            $depo->agent_id = $request->agent_id ?? 1;
+            $depo->agent_id = $agent->id;
             $depo->paid_account_no = $request->payment_acc;
             $depo->amount = $request->requested_amount;
             $depo->charge = $request->service_charge;
@@ -59,7 +65,7 @@ class DepositController extends BaseController
 
             $depo = new Deposit;
             $depo->type = $request->payment_type;
-            $depo->agent_id = $request->agent_id ?? 1;
+            $depo->agent_id = $agent->id;
             $depo->paid_account_no = $request->payment_acc;
             $depo->amount = $request->requested_amount;
             $depo->charge = $request->service_charge;
@@ -77,7 +83,7 @@ class DepositController extends BaseController
 
             $depo = new Deposit;
             $depo->type = $request->payment_type;
-            $depo->agent_id = $request->agent_id ?? 1;
+            $depo->agent_id = $agent->id;
             $depo->paid_account_no = $request->payment_acc;
             $depo->amount = $request->requested_amount;
             $depo->charge = $request->service_charge;
@@ -95,7 +101,7 @@ class DepositController extends BaseController
 
             $depo = new Deposit;
             $depo->type = 'Bank Transfer';
-            $depo->agent_id = $request->agent_id ?? 1;
+            $depo->agent_id = $agent->id;
             $depo->paid_account_no = $request->payment_acc;
             $depo->amount = $request->requested_amount;
             $depo->charge = $request->service_charge;
@@ -114,7 +120,7 @@ class DepositController extends BaseController
 
             $depo = new Deposit;
             $depo->type = 'Credit Request';
-            $depo->agent_id = $request->agent_id ?? 1;
+            $depo->agent_id = $agent->id;
             $depo->paid_account_no = $request->payment_acc;
             $depo->amount = $request->requested_amount;
             $depo->charge = $request->service_charge;

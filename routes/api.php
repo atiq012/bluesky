@@ -148,6 +148,7 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('/viewTraveler', [TravelerController::class, 'viewData'])->name('traveler.viewData');
     Route::post('/deleteTraveler', [TravelerController::class, 'destroy'])->name('traveler.destroy');
     Route::post('/traveler/data/update', [TravelerController::class, 'update'])->name('traveler.update');
+    Route::post('get-travelers-data-by-search', [TravelerController::class, 'search'])->name('traveler.search');
 
     // deposit section
     Route::get('getDeposit', [DepositController::class, 'index'])->name('deposit.getDeposit');

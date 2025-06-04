@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers\Admin\Traveler;
 
-use Illuminate\Http\Request;
-use App\Http\Controllers\Controller;
-use App\Models\Traveller\Traveller;
-use Illuminate\Support\Facades\File;
 use DB;
+use App\Models\Agent\Agent;
+use Illuminate\Http\Request;
 use Yajra\DataTables\DataTables;
+use App\Models\Traveller\Traveller;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\File;
 
 class TravelerController extends Controller
 {
@@ -56,9 +57,10 @@ class TravelerController extends Controller
 
         // Get the authenticated user
         $user = auth()->user();
-
+        $agent = Agent::where('user_id', $user->id)->first();
         // Create a new traveler
         $traveler = new Traveller;
+        $traveler->agent_id = $agent->id; // Assuming the agent_id is the same as the authenticated user's id
         $traveler->pax_type = $request->pax_type;
         $traveler->title = $request->title_val;
         $traveler->first_name = $request->first_name;
@@ -116,6 +118,20 @@ class TravelerController extends Controller
     public function edit(string $id)
     {
         //
+    }
+
+    public function search(Request $request)
+    {
+        // dd($request->all());
+        $traveler = DB::table('travellers')->where('first_name', 'like', '%' . $request->parm . '%')
+            ->orWhere('last_name', 'like', '%' . $request->parm . '%')
+            ->orWhere('full_name', 'like', '%' . $request->parm . '%')
+            ->orWhere('passport_number', 'like', '%' . $request->parm . '%')
+            ->orWhere('email', 'like', '%' . $request->parm . '%')
+            ->orWhere('phone', 'like', '%' . $request->parm . '%')
+            ->get();
+
+        return response()->json($traveler);
     }
 
     /**

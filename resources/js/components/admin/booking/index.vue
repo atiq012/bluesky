@@ -60,23 +60,22 @@ const options = {
     }],
     columns: [
         { data: "DT_RowIndex", title: "SL", width: '10%'},
-        {
-            title: "Agency Name & Code",
-            render: function (data, type, row) {
-                var html = "";
-                html += row.name;
-                html += "<br>";
+        // {
+        //     title: "Agency Name & Code",
+        //     render: function (data, type, row) {
+        //         var html = "";
+        //         html += row.name;
+        //         html += "<br>";
 
-                html += '<span class="text-primary">';
-                html += row.agent_code + "</span>";
-                // html += "<br>";
+        //         html += '<span class="text-primary">';
+        //         html += row.agent_code + "</span>";
+        //         // html += "<br>";
 
-                // html += '<span class="text-primary">';
-                // html += row.email + "</span>";
-                return html;
-            },
-            // width: '100%',
-        },
+        //         // html += '<span class="text-primary">';
+        //         // html += row.email + "</span>";
+        //         return html;
+        //     },
+        // },
         {
             title: "Reference & Booking Code",
             render: function (data, type, row) {
@@ -99,13 +98,13 @@ const options = {
 
                 return html;
             },
-            // width: '20%',
+            width: '20%',
 
         },
         {
             title: "Sector",
             data: 'zone',
-            // width: '20%',
+            width: '10%',
 
         },
         {
@@ -131,7 +130,7 @@ const options = {
         {
             title: "GDS & Airlines PNR",
             data: 'kam',
-            // width: '20%',
+            // width: '10%',
 
         },
         {
@@ -216,16 +215,16 @@ const options = {
                 // }
 
 
-                html +='<button style="size: 30px; width: 30px; height: 30px;  margin-top: 5px;" class="btn btn-outline-purple rounded-circle delete-item" data-item-id="1"> <i class="fa-solid fa-envelope" style="margin: 2px 0px 10px -5px; font-size: 14px;"></i> </button>';
+                html +='<button style="size:30px;width:30px;height:30px; margin-left: 5px;" class="btn btn-outline-purple rounded-circle delete-item" data-item-id="1"> <i class="fa-solid fa-envelope" style="margin: 2px 0px 10px -5px; font-size: 14px;"></i> </button>';
 
 
-                html +='<button style="size: 30px; width: 30px; height: 30px; margin-left: 5px; margin-top: 5px;" class="btn btn-outline-danger rounded-circle delete-item" data-item-id="1"> <i class="fa-solid fa-times" style="margin: 2px 0px 10px  -3px; font-size: 14px;"></i> </button>';
+                html +='<button style="size:30px;width:30px;height:30px; margin-left: 5px;"  class="btn btn-outline-danger rounded-circle delete-item" data-item-id="1"> <i class="fa-solid fa-times" style="margin: 2px 0px 10px  -3px; font-size: 14px;"></i> </button>';
 
 
                 // html += '<button type="button"  style="size:30px;width:30px;height:30px; margin-left: 5px;" class="btn btn-outline-info rounded-circle"><i class="fa-solid fa-file" style="margin:2px 0px 10px -4px;font-size:14px;"></i></button> <router-link style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-success rounded-circle"> <i class="fa fa-check" style="margin: 2px 0px 10px -4px; font-size: 14px;"></i> </router-link> <router-link  style="size: 30px; width: 30px; height: 30px;  margin-left: 5px;" class="btn btn-outline-primary rounded-circle" placement="top" > <i class="fa fa-eye" style="margin: 2px 0px 10px -6px; font-size: 14px;"></i> </router-link> <button type="button" style="size: 30px; width: 30px; height: 30px; margin-left: 5px;"  class="btn btn-outline-user-edit rounded-circle mt-2"><i class="fa-solid fa-user-pen"  style="margin: 2px 0px 10px -4px; font-size: 14px;"></i> </button> <button type="button"  style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="mt-2 btn btn-outline-only-edit rounded-circle"> <i class="fa-solid fa-pencil" style="margin: 2px 0px 10px -4px; font-size: 14px;"></i> </button>  <button type="button" style="size: 30px; width: 30px; height: 30px; margin-left: 5px;"  class="mt-2 btn btn-outline-action-log rounded-circle">  <i class="fa-solid fa-arrow-trend-up" style="margin: 2px 0px 10px -6px; font-size: 14px;"></i> </button>';
                 return html;
             },
-            width: '150%',
+            width: '20%',
         }
     ],
     "drawCallback": function (settings) {

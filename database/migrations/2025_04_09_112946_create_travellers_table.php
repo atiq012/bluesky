@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('travellers', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('agent_id');
             $table->string('title',10)->nullable();
             $table->string('first_name', 150);
             $table->string('last_name', 150);

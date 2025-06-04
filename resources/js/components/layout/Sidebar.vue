@@ -103,14 +103,10 @@ onMounted(() => {
                         <div class="menu-title">Flight Management</div>
                     </a>
                     <ul>
-                        <li>
-                            <router-link v-wave :to="{ name: 'flightSearch' }">
-                                <i class='bx bx-radio-circle'></i> Search
-                            </router-link>
-                        </li>
+
                         <li>
                             <router-link v-wave :to="{ name: 'searchResult' }">
-                                <i class='bx bx-radio-circle'></i> Search Result
+                                <i class='bx bx-radio-circle'></i> Search
                             </router-link>
                         </li>
 
@@ -121,22 +117,14 @@ onMounted(() => {
                             </router-link>
                         </li>
                         <li>
-                            <router-link v-wave :to="{ name: 'flightSearch' }">
+                            <router-link v-wave :to="{ name: 'searchResult' }">
                                 <i class='bx bx-radio-circle'></i> Flight PNR
                             </router-link>
                         </li>
                     </ul>
                 </li>
 
-                <li>
-                    <router-link v-wave :to="{ name: 'AgentList' }">
-                        <div class="parent-icon">
-                            <img src="../../../../public/theme/Sidebar_icons/B2B_Agency.svg" alt="">
-                            <!-- <i class="bx bx-unite"></i> -->
-                        </div>
-                        <div class="menu-title">B2B Agents</div>
-                    </router-link>
-                </li>
+
                 <li>
                     <router-link v-wave :to="{ name: 'depositList' }">
                         <div class="parent-icon">
@@ -148,15 +136,7 @@ onMounted(() => {
                     </router-link>
                 </li>
 
-                <li>
-                    <router-link v-wave :to="{ name: 'UserList' }">
-                        <div class="parent-icon">
-                            <img src="../../../../public/theme/Sidebar_icons/User.svg" alt="">
-                            <!-- <i class="bx bx-user"></i> -->
-                        </div>
-                        <div class="menu-title">Users</div>
-                    </router-link>
-                </li>
+
 
                 <li>
                     <router-link v-wave :to="{ name: 'TravelerList' }">
@@ -178,59 +158,13 @@ onMounted(() => {
                         <div class="menu-title">Settings</div>
                     </a>
                     <ul>
-                        <li>
-                            <!-- v-if="can('role_create')" -->
-                            <router-link   v-wave :to="{ name: 'roleList' }">
-                                <i class='bx bx-radio-circle'></i> Roles Permission
-                            </router-link>
-                        </li>
-
-                        <li>
-                            <router-link v-wave :to="{ name: 'zoneList' }">
-                                <i class='bx bx-radio-circle'></i> Area
-                            </router-link>
-                        </li>
-                        <li>
-                            <router-link v-wave :to="{ name: 'designationList' }">
-                                <i class='bx bx-radio-circle'></i> Designation
-                            </router-link>
-                        </li>
-                        <li>
-                            <router-link v-wave :to="{ name: 'departmentList' }">
-                                <i class='bx bx-radio-circle'></i> Department
-                            </router-link>
-                        </li>
-
-                        <li>
-                            <router-link v-wave :to="{ name: 'offLoc' }">
-                                <i class='bx bx-radio-circle'></i> Office Location
-                            </router-link>
-                        </li>
-
-                        <li> <a v-wave class="has-arrow" href="javascript:;"><i class='bx bx-radio-circle'></i>Flight
-                                Management</a>
-                            <ul>
-                                <router-link v-wave :to="{ name: 'aircraftList' }">
-                                    <i class='bx bx-radio-circle'></i> Aircrafts
-                                </router-link>
-                                <router-link v-wave :to="{ name: 'airlinesList' }">
-                                    <i class='bx bx-radio-circle'></i> Airlines
-                                </router-link>
-                            </ul>
-                        </li>
-
-                        <li> <a v-wave class="has-arrow" href="javascript:;"><i
-                                    class='bx bx-radio-circle'></i>Deposit</a>
-                            <ul>
-                                <router-link v-wave :to="{ name: 'paymentacct' }">
-                                    <i class='bx bx-radio-circle'></i> Payment Account
-                                </router-link>
-
-                                <router-link v-wave :to="{ name: 'issuedBankMFS' }">
-                                    <i class='bx bx-radio-circle'></i> Issused Bank & MFS
-                                </router-link>
-                            </ul>
-                        </li>
+                        <router-link v-wave :to="{ name: 'UserList' }">
+                        <div class="parent-icon">
+                            <img src="../../../../public/theme/Sidebar_icons/User.svg" alt="">
+                            <!-- <i class="bx bx-user"></i> -->
+                        </div>
+                        <div class="menu-title">Users</div>
+                    </router-link>
                     </ul>
                 </li>
 
