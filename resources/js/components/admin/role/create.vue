@@ -9,7 +9,6 @@ const authStore = useAuthStore();
 const form = ref({ roleName: "", checkedNames: [], useEmail: authStore.email, error: "" });
 async function dataSave() {
 
-
     try {
 
         const response = await axiosInstance.post("/role/save", JSON.stringify(form.value));

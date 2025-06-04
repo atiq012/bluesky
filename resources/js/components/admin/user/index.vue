@@ -77,7 +77,7 @@ const options = {
                 // row
                 html += '<div class="row">';
                 html += '<div class="col-md-4">';
-                html += '<img src="'+ row.img +'" height="60"  class="w-100">';
+                html += '<img src="'+ row.img +'" height="60" Width="70  class="w-100">';
                 html += '</div>';
                 html += '<div class="col-md-8" style="white-space:nowrap;">'
 

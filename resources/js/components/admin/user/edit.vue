@@ -41,7 +41,7 @@ getUserData(props);
 async function getUserData(props) {
     try {
         const response = await axiosInstance.post('editUser', { 'id': props });
-        // previewImage.value =  response.data[0].img_path;
+        previewImage.value =  response.data[0].img_path;
 
         const designation_id = response.data[0].designation_id;
         $('#desg_id').val(designation_id);
@@ -329,6 +329,7 @@ const handleFileChange = (event) => {
                         <p class="text-center">Profile Image</p>
 
                         <div class="mb-3 pt-0 text-center mx-auto">
+
                             <img v-if="!previewImage" src=""
                                 height="150" width="150" class="border border-1 rounded rounded-2"
                                 alt="Profile Picture">
