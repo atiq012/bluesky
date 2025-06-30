@@ -41,7 +41,20 @@ getUserData(props);
 async function getUserData(props) {
     try {
         const response = await axiosInstance.post('editUser', { 'id': props });
-        // previewImage.value =  response.data[0].img_path;
+        previewImage.value =  response.data[0].img_path;
+
+        const name = response.data[0].name;
+
+        form.name = name;
+        const emp_id = response.data[0].emp_id;
+        form.staff_id = emp_id;
+
+        const email = response.data[0].email;
+        form.email = email;
+
+        const phone = response.data[0].phone;
+        form.phone = phone;
+
 
         const designation_id = response.data[0].designation_id;
         $('#desg_id').val(designation_id);
@@ -61,17 +74,6 @@ async function getUserData(props) {
 
         const user_role = response.data[0].user_role;
         $('#user_role').val(user_role);
-
-        const name = response.data[0].name;
-        $("#name").val(name);
-        const emp_id = response.data[0].emp_id;
-        $("#staff_id").val(emp_id);
-
-        const email = response.data[0].email;
-        $("#email").val(email);
-
-        const phone = response.data[0].phone;
-        $('#phone').val(phone);
 
     } catch (error) {
         console.log(error);
@@ -249,7 +251,7 @@ onMounted(() => {
 });
 
 async function save() {
-    // console.log(form);
+
     try {
 
         // const response = await axiosInstance.post("/external-user/save", form);

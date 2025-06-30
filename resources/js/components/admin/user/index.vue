@@ -77,7 +77,7 @@ const options = {
                 // row
                 html += '<div class="row">';
                 html += '<div class="col-md-4">';
-                html += '<img src="'+ row.img +'" height="60"  class="w-100">';
+                html += '<img src="' + row.img + '" height="60"  class="w-100">';
                 html += '</div>';
                 html += '<div class="col-md-8" style="white-space:nowrap;">'
 
@@ -155,7 +155,7 @@ const options = {
 
                 if (row.status == 1) {
                     html += '<div class="badge rounded-pill text-success bg-light-success p-2 text-uppercase px-3"><i class="bx bxs-circle me-1"></i>Active </div>';
-                }else if (row.status == 2) {
+                } else if (row.status == 2) {
                     html += '<div class="badge rounded-pill text-warning bg-light-warning p-2 text-uppercase px-3"><i class="bx bxs-circle me-1"></i>On Hold </div>';
                 }
                 else if (row.status == 3) {
@@ -180,13 +180,13 @@ const options = {
 
                 html += '<button type="button" style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-purple rounded-circle status-change" data-item-id=' + idd + ' data-status=' + status + '> <i class="fa fa-refresh" style="margin: 2px 0px 10px -5px; font-size: 14px;"></i> </button>';
 
-                html+='<button type="button" v-tippy="Lock" style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-timer rounded-circle history-data" data-item-id=' + idd + '> <i class="fa-solid fa-clock-rotate-left" style="margin: 2px 0px 10px -5px; font-size: 14px;"></i> </button>';
+                html += '<button type="button" v-tippy="Lock" style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-timer rounded-circle history-data" data-item-id=' + idd + '> <i class="fa-solid fa-clock-rotate-left" style="margin: 2px 0px 10px -5px; font-size: 14px;"></i> </button>';
 
                 html += '<button style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-danger rounded-circle delete-item" data-item-id=' + idd + '> <i class="fa-solid fa-trash" style="margin: 2px 0px 10px  -4px; font-size: 14px;"></i> </button>';
 
                 return html;
             },
-            width:'90%'
+            width: '90%'
         }
     ],
     "drawCallback": function (settings) {
@@ -258,7 +258,7 @@ const options = {
         });
 
         // history
-        $(".history-data").on('click',function(e){
+        $(".history-data").on('click', function (e) {
             var itemId = $(this).attr('data-item-id');
             console.log(itemId);
 
@@ -274,7 +274,7 @@ async function getListValues() {
     try {
 
         authStore.GlobalLoading = true;
-        const response = await axiosInstance.get("getInternalUsers");
+        const response = await axiosInstance.get("getExternalUsers");
         rData.value = response.data.data;
         authStore.GlobalLoading = false;
     } catch (error) {
@@ -405,75 +405,11 @@ async function update() {
         <div id="example2_wrapper" class="dataTables_wrapper dt-bootstrap5">
 
             <div class="card-body">
-                <ul class="nav nav-tabs nav-primary mb-0" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <a v-wave class="nav-link active" data-bs-toggle="tab" href="#primaryhome" role="tab"
-                            aria-selected="true">
-                            <div class="d-flex align-items-center">
-                                <div class="tab-title"> Internal User </div>
-                            </div>
-                        </a>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <a v-wave class="nav-link" data-bs-toggle="tab" href="#primaryprofile" role="tab"
-                            aria-selected="false" tabindex="-1">
-                            <div class="d-flex align-items-center">
 
-                                <div class="tab-title">External User</div>
-                            </div>
-                        </a>
-                    </li>
-                </ul>
-                <div class="tab-content pt-3">
-                    <div class="tab-pane fade show active" id="primaryhome" role="tabpanel">
-
-                        <div class="row position-relative">
-                            <div class="col-12">
-                                <div id="userList" class="card rounded rounded-2 shadow-none p-3">
-
-                                    <div v-if="authStore.GlobalLoading"
-                                        class="center-body position-absolute top-50 start-50">
-                                        <div class="loader-circle-57">
-                                            <img class="position-absolute"
-                                                src="../../../../../public/theme/appimages/blueskywings.png" height="22"
-                                                width="22" alt="">
-                                        </div>
-                                    </div>
-
-                                    <DataTable :options="options" :data="rData"
-                                        class="table table-sm table-striped table-bordered">
-                                    </DataTable>
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
-                    <div class="tab-pane fade" id="primaryprofile" role="tabpanel">
-                        <div class="row">
-                            <div class="col-sm-12 col-md-6">
-
-                                <button class="btn btn-sm btn-danger" style="margin-right: 3px;" tabindex="0"
-                                    aria-controls="example2" type="button"><i class="fa-solid fa-file-pdf"
-                                        style="font-size: 14px !important;"></i> <span>PDF</span></button>
-
-                                <button class="btn btn-sm btn-success" style="margin-right: 3px;" tabindex="0"
-                                    aria-controls="example2" type="button"> <i class="fa-regular fa-file-excel"
-                                        style="font-size: 14px !important;"></i><span>Excel</span></button>
-
-
-                            </div>
-                            <div class="col-md-4"></div>
-                            <div class="col-sm-2 col-md-2">
-                                <div id="example2_filter" class="dataTables_filter"><input type="search"
-                                        class="form-control form-control-sm" placeholder="" aria-controls="example2">
-                                </div>
-                            </div>
-                        </div>
-
-
-                        <!-- table -->
-
-                        <div class="row mt-2">
+                <!-- table -->
+                <DataTable :options="options" :data="rData" class="table table-sm table-striped table-bordered">
+                </DataTable>
+                <!-- <div class="row mt-2">
                             <div class="col-sm-12">
                                 <table class="table table-sm table-striped table-bordered">
                                     <thead>
@@ -697,9 +633,7 @@ async function update() {
                                     </tbody>
                                 </table>
                             </div>
-                        </div>
-                    </div>
-                </div>
+                        </div> -->
             </div>
             <!-- modal start -->
             <div class="modal fade" id="status_change_modal" tabindex="-1" aria-modal="true" role="dialog">

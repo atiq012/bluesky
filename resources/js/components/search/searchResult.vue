@@ -2589,11 +2589,11 @@ const openReturnPicker = () => {
                                                                         <span class="ms-1">Preferred
                                                                             Seat without fees</span>
                                                                     </li>
-                                                                    <li class="menu-item d-inline-flex"> <i
+                                                                    <!-- <li class="menu-item d-inline-flex"> <i
                                                                             class="fa fa-utensils icon-color mt-1"></i>
                                                                         <span class="ms-1">Free meal</span>
 
-                                                                    </li>
+                                                                    </li> -->
                                                                     <br>
                                                                     <li class="menu-item d-inline-flex"> <i
                                                                             class="fa-brands fa-youtube icon-color mt-1"></i>
@@ -2659,11 +2659,11 @@ const openReturnPicker = () => {
                                                                             class="fa-regular fa-seat-airline icon-color mt-1"></i>
                                                                         <span class="ms-1">Preferred Seat without fees</span>
                                                                     </li>
-                                                                    <li class="menu-item d-inline-flex"> <i
+                                                                    <!-- <li class="menu-item d-inline-flex"> <i
                                                                             class="fa fa-utensils icon-color mt-1"></i>
                                                                         <span class="ms-1">Free meal</span>
 
-                                                                    </li>
+                                                                    </li> -->
                                                                     <br>
                                                                     <li class="menu-item d-inline-flex"> <i
                                                                             class="fa-brands fa-youtube icon-color mt-1"></i>
@@ -2684,6 +2684,7 @@ const openReturnPicker = () => {
                                                             </div>
                                                         </div>
                                                     </div>
+
                                                     <div class="col-md-4">
                                                         <div class="card border-first" style="min-height: 480px; ">
                                                             <div class="card-header text-black border-bottom-1">
@@ -2728,11 +2729,11 @@ const openReturnPicker = () => {
                                                                             class="fa-regular fa-seat-airline icon-color mt-1"></i>
                                                                         <span class="ms-1">Preferred Seat without fees</span>
                                                                     </li>
-                                                                    <li class="menu-item d-inline-flex"> <i
+                                                                    <!-- <li class="menu-item d-inline-flex"> <i
                                                                             class="fa fa-utensils icon-color mt-1"></i>
                                                                         <span class="ms-1">Free meal</span>
 
-                                                                    </li>
+                                                                    </li> -->
                                                                     <br>
                                                                     <li class="menu-item d-inline-flex"> <i
                                                                             class="fa-brands fa-youtube icon-color mt-1"></i>

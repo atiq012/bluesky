@@ -115,7 +115,6 @@ class DepositController extends BaseController
             $depo->created_by = auth()->user()->id;
             $depo->save();
         }
-
         else if($request->payment_type == 'Credit_Request'){
 
             $depo = new Deposit;
@@ -133,10 +132,10 @@ class DepositController extends BaseController
             $depo->created_by = auth()->user()->id;
             $depo->save();
         }
+        // Prepare the success response
         $success = '';
 
         return $this->SuccessResponse($success, 'Successfully Deposit Saved.');
-
 
     }
 

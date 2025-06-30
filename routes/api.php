@@ -134,7 +134,7 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('/deleteAirlines', [AirlineLogoController::class, 'destroy'])->name('settings.airlines.destroy');
 
     //users managemnt
-    Route::get('getInternalUsers', [UserController::class, 'index'])->name('user.getInternalUsers');
+    Route::get('getExternalUsers', [UserController::class, 'index'])->name('user.getExternalUsers');
     Route::get('getAllUsers', [UserController::class, 'getAllUsers'])->name('user.getAllUsers');
     Route::post('/external-user/save', [UserController::class, 'store'])->name('user.store');
     Route::post('/editUser', [UserController::class, 'edit'])->name('user.editUser');

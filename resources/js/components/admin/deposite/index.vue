@@ -138,10 +138,10 @@ const options = {
                 var status = row.status;
 
 
-                if (status == 'Requested') {
+                // if (status == 'Requested') {
 
-                    html += '<button type="button" style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-success rounded-circle status-change" data-item-id=' + idd + ' > <i class="fa-solid fa-check" style="margin: 2px 0px 10px -5px; font-size: 14px;"></i> </button>';
-                }
+                //     html += '<button type="button" style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-success rounded-circle status-change" data-item-id=' + idd + ' > <i class="fa-solid fa-check" style="margin: 2px 0px 10px -5px; font-size: 14px;"></i> </button>';
+                // }
 
                 html += '<button style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-danger rounded-circle delete-item" data-item-id=' + idd + '> <i class="fa-solid fa-trash" style="margin: 2px 0px 10px  -4px; font-size: 14px;"></i> </button>';
 
@@ -150,14 +150,6 @@ const options = {
         }
     ],
     "drawCallback": function (settings) {
-        // edit function
-        $(".edit-item").on('click', function (e) {
-
-            var itemIdd = $(this).attr('data-item-id');
-
-            router.push({ name: 'deptEdit', params: { id: itemIdd } });
-        });
-
         // delete function
         $(".delete-item").on('click', function (e) {
             var idd = $(this).attr('data-item-id');
@@ -171,7 +163,7 @@ const options = {
                 displayMode: 'once',
                 id: 'question',
                 zindex: 999,
-                message: 'Want to delete this department?',
+                message: 'Want to delete this?',
                 position: 'center',
                 buttons: [
                     ['<button><b>No</b></button>', function (instance, toast) {
@@ -190,7 +182,7 @@ const options = {
                     if (closedBy == 'yes') {
                         const response = axiosInstance.post("deleteDept", { 'id': idd });
                         getListValues();
-                        Notification.showToast('s', 'Successfully Department Deleted.');
+                        Notification.showToast('s', 'Successfully  Deleted.');
                     } else {
                         console.log('no');
                     }
@@ -203,46 +195,46 @@ const options = {
         });
 
         // change status
-        $(".status-change").on('click', function (e) {
-            // var idd = e.target.dataset.itemId;
-            var idd = $(this).attr('data-item-id');
+        // $(".status-change").on('click', function (e) {
+        //     // var idd = e.target.dataset.itemId;
+        //     var idd = $(this).attr('data-item-id');
 
-            iziToast.question({
-                timeout: 100000,
-                pauseOnHover: false,
-                close: false,
-                overlay: true,
-                displayMode: 'once',
-                id: 'question',
-                zindex: 999,
-                message: 'Want to change status this department?',
-                position: 'center',
-                buttons: [
-                    ['<button><b>No</b></button>', function (instance, toast) {
+        //     iziToast.question({
+        //         timeout: 100000,
+        //         pauseOnHover: false,
+        //         close: false,
+        //         overlay: true,
+        //         displayMode: 'once',
+        //         id: 'question',
+        //         zindex: 999,
+        //         message: 'Want to change status this?',
+        //         position: 'center',
+        //         buttons: [
+        //             ['<button><b>No</b></button>', function (instance, toast) {
 
-                        instance.hide({ transitionOut: 'fadeOut' }, toast, 'no');
+        //                 instance.hide({ transitionOut: 'fadeOut' }, toast, 'no');
 
-                    }, true],
-                    ['<button><b>Yes</b></button>', function (instance, toast) {
+        //             }, true],
+        //             ['<button><b>Yes</b></button>', function (instance, toast) {
 
-                        instance.hide({ transitionOut: 'fadeOut' }, toast, 'yes');
+        //                 instance.hide({ transitionOut: 'fadeOut' }, toast, 'yes');
 
-                    }, true]
-                ],
-                onClosed: async function (instance, toast, closedBy) {
+        //             }, true]
+        //         ],
+        //         onClosed: async function (instance, toast, closedBy) {
 
-                    if (closedBy == 'yes') {
-                        const response = axiosInstance.post("changeDepartmentStatus", { 'id': idd });
-                        getListValues();
-                        Notification.showToast('s', 'Successfully Department status Changed.');
-                    } else {
+        //             if (closedBy == 'yes') {
+        //                 const response = axiosInstance.post("changeDepartmentStatus", { 'id': idd });
+        //                 getListValues();
+        //                 Notification.showToast('s', 'Successfully Department status Changed.');
+        //             } else {
 
-                    }
+        //             }
 
-                }
-            });
+        //         }
+        //     });
 
-        });
+        // });
     }
 };
 
@@ -254,7 +246,6 @@ async function getListValues() {
         rData.value = response.data.data;
         authStore.GlobalLoading = false;
     } catch (error) {
-        // console.log(error);
         authStore.GlobalLoading = false;
     }
 }

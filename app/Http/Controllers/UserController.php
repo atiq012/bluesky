@@ -18,7 +18,7 @@ class UserController extends BaseController
     public function index()
     {
 
-        $data = DB::table('users as u')->where('type', 1)
+        $data = DB::table('users as u')->where('type', 2)
             ->join('roles as r', 'r.id', 'u.user_role')
             ->selectRaw('u.name,u.email,u.img_path as img,u.phone,u.status,r.name as r_name,u.img_path,u.id as idd,u.created_at,u.updated_at,f_department(u.dept_id) as dept,f_designation(u.designation_id) as desg,u.emp_id,f_off_loc(u.office_loc_id) as off_loc,f_username(u.updated_by) as updated_by,f_username(u.created_by) as created_by')->get();
         // rep_user(u.report_to) as rep_to,
@@ -89,7 +89,7 @@ class UserController extends BaseController
             $profilePicturePath = null;
         }
 
-        $user->type = 1;
+        $user->type = 2;
         $user->is_active = 1;
         $user->status = 1;
         $user->created_by = $auth->id;
