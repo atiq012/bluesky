@@ -164,9 +164,7 @@ async function getAllUsers() {
 
 onMounted(() => {
     $('.dept_name').on("change", function () {
-
         form.dept_name = $(this).val();
-
     });
 
     $('.desg').on("change", function () {
@@ -190,7 +188,7 @@ async function save() {
         // const response = await axiosInstance.post("/external-user/save", form);
         const authStore = useAuthStore();
         const accessToken = authStore.decryptWithAES(authStore.token);
-        const response = await axios.post('/api/external-user/save', form, {
+        const response = await axios.post('/api/internal-user/save', form, {
             headers: {
                 'Content-Type': 'multipart/form-data',
                 Authorization: "Bearer " + accessToken,

@@ -19,6 +19,8 @@ use App\Http\Controllers\Admin\OfficeLocation\LocationController;
 use App\Http\Controllers\Admin\IssuedBankMFS\IssuedBankMFSController;
 use App\Http\Controllers\Admin\PaymentAccount\PaymentAccountSController;
 use App\Http\Controllers\Admin\AircraftType\AircraftTypeDesignatorController;
+use App\Http\Controllers\Admin\HelpDesk\CategoryController;
+use App\Http\Controllers\Admin\HelpDesk\RequestController;
 
 Route::post('login', [AuthController::class, 'login'])->name('login');
 Route::post('register', [AuthController::class, 'register'])->name('register');
@@ -136,7 +138,7 @@ Route::middleware(['auth:api'])->group(function () {
     //users managemnt
     Route::get('getInternalUsers', [UserController::class, 'index'])->name('user.getInternalUsers');
     Route::get('getAllUsers', [UserController::class, 'getAllUsers'])->name('user.getAllUsers');
-    Route::post('/external-user/save', [UserController::class, 'store'])->name('user.store');
+    Route::post('/internal-user/save', [UserController::class, 'store'])->name('user.store');
     Route::post('/editUser', [UserController::class, 'edit'])->name('user.editUser');
     Route::post('/user-details/update', [UserController::class, 'update'])->name('user.update');
     Route::post('/deleteUser', [UserController::class, 'destroy'])->name('user.deleteUser');
@@ -158,6 +160,16 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('/Lowfaresearch', [APIController::class, 'Lowfaresearch']);
     Route::post('/farerules', [APIController::class, 'getFareRules']);
     Route::post('/PricingRequestBody', [APIController::class, 'PricingRequestBody'])->name('PricingRequestBody');
+
+    Route::get('categories', [CategoryController::class, 'categoriesList']);
+    Route::get('subcategories', [CategoryController::class, 'subcategoriesList']);
+    Route::get('getCategories', [CategoryController::class, 'index']);
+    Route::post('/category/save', [CategoryController::class, 'store'])->name('category.store');
+    Route::post('deleteCategory', [CategoryController::class, 'destroy']);
+
+
+    Route::post('/request/save', [RequestController::class, 'store'])->name('request.store');
+
 
 
 });

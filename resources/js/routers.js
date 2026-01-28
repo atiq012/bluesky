@@ -91,6 +91,12 @@ const CreateTraveller = () => import('./components/admin/traveler/create.vue')
 const TravelerEdit = () => import('./components/admin/traveler/edit.vue')
 const TravelerView = () => import('./components/admin/traveler/view.vue')
 
+// help desk
+const helpDesk = () => import('./components/admin/helpdesk/index.vue')
+const requestCreate = () => import('./components/admin/helpdesk/create.vue')
+const categoryList = () => import('./components/admin/category/index.vue')
+const categoryCreate = () => import('./components/admin/category/create.vue')
+
 const routes = [
     { path: '/', component: Login, name: 'Login', meta: { guest: true } },
     { path: '/sendResetLinkEmail', component: sendResetLinkEmail, name: 'sendResetLinkEmail', meta: { guest: true } },
@@ -186,6 +192,14 @@ const routes = [
     { path: '/create-traveler', component: CreateTraveller, name: 'CreateTraveller', meta: { auth: true } },
     { path: '/edit-traveler/:ids', component: TravelerEdit, name: 'TravelerEdit', meta: { auth: true }, props:true },
     { path: '/view-traveler/:ids', component: TravelerView, name: 'TravelerView', meta: { auth: true }, props:true },
+
+    // help desk
+    { path: '/help-desk-index', component: helpDesk, name: 'helpDesk', meta: { auth: true } },
+    { path: '/new-request-create', component: requestCreate, name: 'requestCreate', meta: { auth: true } },
+
+    { path: '/category-subcategory-list', component: categoryList, name: 'categoryList', meta: { auth: true } },
+    { path: '/category-subcategory-create', component: categoryCreate, name: 'categoryCreate', meta: { auth: true } },
+
 ]
 
 const router = createRouter({

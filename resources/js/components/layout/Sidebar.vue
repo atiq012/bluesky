@@ -128,11 +128,11 @@ onMounted(() => {
                     </ul>
                 </li>
 
-                <li>
+                <!-- <li>
                     <router-link v-wave :to="{ name: 'AgentList' }">
                         <div class="parent-icon">
                             <img src="../../../../public/theme/Sidebar_icons/B2B_Agency.svg" alt="">
-                            <!-- <i class="bx bx-unite"></i> -->
+
                         </div>
                         <div class="menu-title">B2B Agents</div>
                     </router-link>
@@ -141,12 +141,11 @@ onMounted(() => {
                     <router-link v-wave :to="{ name: 'depositList' }">
                         <div class="parent-icon">
                             <img src="../../../../public/theme/Sidebar_icons/Deposit.svg" alt="">
-                            <!-- <i class="bx bx-cabinet"></i> -->
                         </div>
                         <div class="menu-title">Deposits
                         </div>
                     </router-link>
-                </li>
+                </li> -->
 
                 <li>
                     <router-link v-wave :to="{ name: 'UserList' }">
@@ -230,6 +229,29 @@ onMounted(() => {
                                     <i class='bx bx-radio-circle'></i> Issused Bank & MFS
                                 </router-link>
                             </ul>
+                        </li>
+                    </ul>
+                </li>
+
+                <li>
+                    <a v-wave class="has-arrow" href="javascript:;">
+                        <div class="parent-icon">
+                            <img src="../../../../public/theme/Sidebar_icons/Setting.svg" alt="">
+                        </div>
+                        <div class="menu-title">Helpdesk</div>
+                    </a>
+                    <ul>
+                        <li>
+
+                            <router-link   v-wave :to="{ name: 'helpDesk' }">
+                                <i class='bx bx-radio-circle'></i> Support Request
+                            </router-link>
+                        </li>
+                        <li>
+
+                            <router-link   v-wave :to="{ name: 'categoryList' }">
+                                <i class='bx bx-radio-circle'></i> Category & Subcategory
+                            </router-link>
                         </li>
                     </ul>
                 </li>
