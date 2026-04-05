@@ -806,13 +806,13 @@ function showRouteDetails(info) {
 
                                     <div class="col-md-1 mt-2 mt-md-0">
                                         <!-- <router-link> -->
-                                        <img @click="Lowfaresearch()"
+                                        <!-- <img @click="Lowfaresearch()"
                                             src="../../../../public/theme/appimages/Mobile_Button With_Icon.jpg" alt=""
                                             class="d-sm-block d-md-none" style="width: 100%;" id="img">
                                         <img @click="Lowfaresearch()"
                                             src="../../../../public/theme/appimages/s_With_Icon.jpg" alt=""
                                             style="width: 53px;" @mouseover="onHover();" @mouseout="offHover();"
-                                            id="img" class="d-none d-md-block">
+                                            id="img" class="d-none d-md-block"> -->
                                         <!-- </router-link> -->
                                     </div>
                                 </div>

@@ -42,6 +42,7 @@
         "pinia": "^2.2.2",
         "pinia-plugin-persistedstate": "^3.2.1",
         "qrcode": "^1.5.4",
+        "quill": "^2.0.3",
         "select2": "^4.1.0-rc.0",
         "simplebar-vue": "^2.4.0",
         "v-md-date-range-picker": "^2.6.0",

@@ -91,7 +91,8 @@ async function getDepartment() {
 
         });
 
-        let select = $("#deptment_id")
+        let select = $("#deptment_id");
+
         select.select2({
             placeholder: '=Select=',
             theme: 'bootstrap-5',

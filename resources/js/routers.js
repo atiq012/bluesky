@@ -94,6 +94,7 @@ const TravelerView = () => import('./components/admin/traveler/view.vue')
 // help desk
 const helpDesk = () => import('./components/admin/helpdesk/index.vue')
 const requestCreate = () => import('./components/admin/helpdesk/create.vue')
+const requestEdit = () => import('./components/admin/helpdesk/edit.vue')
 const categoryList = () => import('./components/admin/category/index.vue')
 const categoryCreate = () => import('./components/admin/category/create.vue')
 
@@ -196,6 +197,7 @@ const routes = [
     // help desk
     { path: '/help-desk-index', component: helpDesk, name: 'helpDesk', meta: { auth: true } },
     { path: '/new-request-create', component: requestCreate, name: 'requestCreate', meta: { auth: true } },
+    { path: '/edit-request/:ids', component: requestEdit, name: 'requestEdit', meta: { auth: true }, props:true },
 
     { path: '/category-subcategory-list', component: categoryList, name: 'categoryList', meta: { auth: true } },
     { path: '/category-subcategory-create', component: categoryCreate, name: 'categoryCreate', meta: { auth: true } },

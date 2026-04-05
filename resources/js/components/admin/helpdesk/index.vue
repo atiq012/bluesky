@@ -3,7 +3,13 @@ import DataTable from "datatables.net-vue3";
 import DataBS5 from "datatables.net-bs5";
 import Buttons from 'datatables.net-buttons';
 import axiosInstance from "../../../axiosInstance";
-import { ref, onMounted } from "vue";
+import { ref, onMounted, reactive, onBeforeUnmount } from "vue";
+// editor
+import Quill from 'quill';
+import "quill/dist/quill.core.css";
+import 'quill/dist/quill.snow.css'
+// end editor
+
 import { useRouter } from 'vue-router';
 const router = useRouter();
 import { useAuthStore } from '../../../stores/authStore';
@@ -50,30 +56,22 @@ const options = {
         targets: "_all",
     }],
     columns: [
-        { data: "DT_RowIndex", title: "SL" },
+        // { data: "DT_RowIndex", title: "SL" },
         {
             title: "ID",
             render: function (data, type, row) {
                 var html = "";
-                html += row.name;
+                html += row.request_number;
 
                 return html;
             },
         },
-        {
-            title: "User Info",
-            render: function (data, type, row) {
-                var html = "";
-                html += row.name;
 
-                return html;
-            },
-        },
         {
             title: "Subject",
             render: function (data, type, row) {
                 var html = "";
-                html += '0';
+                html += row.subject;
 
                 return html;
             },
@@ -83,11 +81,11 @@ const options = {
             title: "Category & Priority",
             render: function (data, type, row) {
                 var html = "";
-                html += row.created_by;
+                html += row.category_name;
                 html += "<br>";
 
                 html += '<span class="text-primary">';
-                html += row.created_at + "</span>";
+                html += row.priority + "</span>";
                 return html;
             },
         },
@@ -95,12 +93,12 @@ const options = {
             title: "Requester",
             render: function (data, type, row) {
                 var html = "";
-                html += row.updated_by || "-";
+                html += row.requester_name || "-";
                 html += "<br>";
-                if (row.updated_by) {
-                    html += '<span class="text-primary">';
-                    html += row.updated_at + "</span>";
-                }
+
+                html += '<span class="text-primary">';
+                html += row.created_at + "</span>";
+
                 return html;
             },
         },
@@ -108,12 +106,7 @@ const options = {
             title: "Assigned To",
             render: function (data, type, row) {
                 var html = "";
-
-                if (row.status == 1) {
-                    html += '<div class="badge rounded-pill text-success bg-light-success p-2 text-uppercase px-3"><i class="bx bxs-circle me-1"></i>Active </div>';
-                } else {
-                    html += '<div class="badge rounded-pill text-danger bg-light-danger p-2 text-uppercase px-3"><i class="bx bxs-circle me-1"></i>Deactivated </div>';
-                }
+                html += row.assigned_to_name || "-";
 
                 return html;
             },
@@ -123,11 +116,28 @@ const options = {
             render: function (data, type, row) {
                 var html = "";
 
-                if (row.status == 1) {
-                    html += '<div class="badge rounded-pill text-success bg-light-success p-2 text-uppercase px-3"><i class="bx bxs-circle me-1"></i>Active </div>';
-                } else {
-                    html += '<div class="badge rounded-pill text-danger bg-light-danger p-2 text-uppercase px-3"><i class="bx bxs-circle me-1"></i>Deactivated </div>';
+                if (row.status == "closed") {
+                    html += '<div class="badge rounded-pill text-success bg-light-success p-2 text-uppercase px-3"><i class="bx bxs-circle me-1"></i> ' + row.status + ' </div>';
                 }
+                else if (row.status == "open") {
+                    html += '<div class="badge rounded-pill text-primary bg-light-primary p-2 text-uppercase px-3"><i class="bx bxs-circle me-1"></i> ' + row.status + ' </div>';
+                }
+                else if (row.status == "In Progress") {
+                    html += '<div class="badge rounded-pill text-info bg-light-info p-2 text-uppercase px-3"><i class="bx bxs-circle me-1"></i> ' + row.status + ' </div>';
+                }
+                else if (row.status == "on hold") {
+                    html += '<div class="badge rounded-pill text-danger bg-light-danger p-2 text-uppercase px-3"><i class="bx bxs-circle me-1"></i> ' + row.status + ' </div>';
+                }
+                else if (row.status == "Cancelled") {
+                    html += '<div class="badge rounded-pill text-secondary bg-light-secondary p-2 text-uppercase px-3"><i class="bx bxs-circle me-1"></i> ' + row.status + ' </div>';
+                }
+                else if (row.status == "Resolved") {
+                    html += '<div class="badge rounded-pill text-success bg-light-success p-2 text-uppercase px-3"><i class="bx bxs-circle me-1"></i> ' + row.status + ' </div>';
+                }
+                else {
+                    html += '<div class="badge rounded-pill text-warning bg-light-warning p-2 text-uppercase px-3"><i class="bx bxs-circle me-1"></i> ' + row.status + ' </div>';
+                }
+
 
                 return html;
             },
@@ -138,16 +148,31 @@ const options = {
                 var html = "";
                 var idd = row.idd;
                 var status = row.status;
+                html += '<div class="d-flex">';
 
-                html += '<button  style="size: 30px; width: 30px; height: 30px" class="btn btn-outline-only-edit rounded-circle edit-item" placement="top" data-item-id=' + idd + '> <i class="fa-solid fa-pencil" style="margin: 0px 0px 10px -5px; font-size: 14px;"></i> </button>';
-                if (status == 1) {
+                html += '<button data-bs-toggle="offcanvas" data-bs-target="#staticBackdrop" style="size: 30px; width: 30px; height: 30px" class="btn btn-outline-only-edit rounded-circle details-item" placement="top" data-item-id=' + idd + '> <i class="fa-solid fa-file" style="margin: 0px 0px 8px -2px; font-size: 14px;"></i> </button>';
 
-                    html += '<button type="button" style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-ban rounded-circle status-change" data-item-id=' + idd + '> <i class="fa-solid fa-ban" style="margin: 2px 0px 10px -5px; font-size: 14px;"></i> </button>';
-                } else {
-                    html += '<button type="button" style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-success rounded-circle status-change" data-item-id=' + idd + ' > <i class="fa-solid fa-check" style="margin: 2px 0px 10px -5px; font-size: 14px;"></i> </button>';
-                }
+                // html += '<button  style="size: 30px; width: 30px; height: 30px" class="btn btn-outline-only-edit rounded-circle edit-item" placement="top" data-item-id=' + idd + '> <i class="fa-solid fa-pencil" style="margin: 0px 0px 10px -5px; font-size: 14px;"></i> </button>';
+
+                html += '<button  style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-only-edit rounded-circle assign-item-id" data-bs-toggle="modal" data-bs-target="#exampleScrollableModal" placement="top" data-item-id=' + idd + '> <i class="fa-solid fa-user-tie" style="margin: 0px 0px 10px -3px; font-size: 14px;"></i> </button>';
+
+
+                html += '<button  style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-only-edit rounded-circle status-item-id" data-bs-toggle="modal" data-bs-target="#statusChangeModal" placement="top" data-item-id=' + idd + '> <i class="fa-solid fa-recycle" style="margin: 1px 0px 7px -4px; font-size: 14px;"></i> </button>';
+
+
+
+                html += '</div>';
+
+                // 2nd row
+
+
+                html += '<div class="d-flex mt-1">';
+
+                html += '<button  style="size: 30px; width: 30px; height: 30px" class="btn btn-outline-action-log rounded-circle" data-item-id=' + idd + '> <i class="fa-solid fa-clock-rotate-left" style="margin: 2px 0px 10px -5px; font-size: 14px;"></i> </button>';
 
                 html += '<button style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-danger rounded-circle delete-item" data-item-id=' + idd + '> <i class="fa-solid fa-trash" style="margin: 2px 0px 10px  -4px; font-size: 14px;"></i> </button>';
+
+                html += '</div>';
 
                 return html;
             },
@@ -159,7 +184,28 @@ const options = {
 
             var itemIdd = $(this).attr('data-item-id');
 
-            router.push({ name: 'designationEdit', params: { id: itemIdd } });
+            router.push({ name: 'requestEdit', params: { ids: itemIdd } });
+        });
+        $(".details-item").on('click', function (e) {
+
+            var itemIdd = $(this).attr('data-item-id');
+
+            ticketDetails(itemIdd);
+
+        });
+
+        $(".assign-item-id").on('click', function (e) {
+
+            var itemIdd = $(this).attr('data-item-id');
+
+            assignform.idd = itemIdd;
+        });
+
+        $(".status-item-id").on('click', function (e) {
+
+            var itemIdd = $(this).attr('data-item-id');
+
+            changeStatusform.idd = itemIdd;
         });
 
         // delete function
@@ -256,7 +302,7 @@ const options = {
 async function getListValues() {
     try {
         authStore.GlobalLoading = true;
-        const response = await axiosInstance.get("getDesignation");
+        const response = await axiosInstance.get("getAllRequests");
         rData.value = response.data.data;
         authStore.GlobalLoading = false;
     } catch (error) {
@@ -265,8 +311,186 @@ async function getListValues() {
     }
 }
 
+const assignform = reactive({
+    assign_to: '', idd: ''
+});
+
+const changeStatusform = reactive({
+    status: '', idd: ''
+});
+
+getInternalUsers();
+
+async function getInternalUsers() {
+    try {
+        const response = await axiosInstance.get("getInternalUsers");
+
+        let users = response.data.data;
+        let select = document.getElementById('assign_to');
+
+        users.forEach(function (user) {
+
+            let option = document.createElement('option');
+            option.value = user.idd;
+            option.text = user.name;
+            select.appendChild(option);
+        });
+
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+function assign() {
+    try {
+        const select2Value = $('#assign_to').val();
+
+        assignform.assign_to = select2Value;
+
+        authStore.GlobalLoading = true;
+        authStore.GlobalLoading = false;
+        const response = axiosInstance.post("/assignRequest", assignform).then(response => {
+            const data = response.data;
+            // modal close
+            $('#exampleScrollableModal').modal('hide');
+            getListValues();
+
+            Notification.showToast(data.data, data.message);
+
+        }).catch(error => {
+            console.log(error);
+        });
+
+        // console.log(response);
+    } catch (error) {
+
+        authStore.GlobalLoading = false;
+    }
+
+}
+
+function changeStatus() {
+    try {
+        const select2Status = $('#status').val();
+
+        authStore.GlobalLoading = true;
+        authStore.GlobalLoading = false;
+        const response = axiosInstance.post("/statusChange", changeStatusform).then(response => {
+            const data = response.data;
+            // modal close
+            $('#statusChangeModal').modal('hide');
+            getListValues();
+
+            Notification.showToast(data.data, data.message);
+
+        }).catch(error => {
+            console.log(error);
+        });
+
+        // console.log(response);
+    } catch (error) {
+        console.log(error);
+        authStore.GlobalLoading = false;
+    }
+}
+
+async function ticketDetails(idd) {
+    try {
+
+        const response = await axiosInstance.get("getRequestDetails/" + idd);
+        const data = response.data;
+
+        $(".subject").innerHTML = data.subject;
+        $('.subject').html(data.subject);
+        $(".ticket-details").val(data.description);
+
+    } catch (error) {
+        console.log(error);
+    }
+
+}
 
 
+
+// Create a ref for the editor element
+const editorRef = ref(null)
+// Store Quill instance
+let quillInstance = null
+
+onMounted(() => {
+    $("#assign_to").select2({
+        placeholder: '=Select=',
+        theme: 'bootstrap-5',
+        width: '100%',
+        allowClear: true,
+    }).on('change', function () {
+        assignform.assign_to = $(this).val(); // Sync with Vue reactive state
+    });
+    // Initialize Quill when component is mounted
+    if (editorRef.value) {
+        quillInstance = new Quill(editorRef.value, {
+            theme: 'snow', // or 'bubble' for a different theme
+            modules: {
+                toolbar: [
+                    [{ size: ['small', false, 'large', 'huge'] }],
+                    ['bold', 'italic', 'underline'],
+                    ['blockquote', 'code-block'],
+                    [{ header: 1 }, { header: 2 }],
+                    // [{ list: 'ordered' }, { list: 'bullet' }],
+                    // [{ script: 'sub' }, { script: 'super' }],
+                    [{ indent: '-1' }, { indent: '+1' }],
+                    [{ direction: 'rtl' }],
+                    // [{ header: [1, 2, 3, 4, 5, 6, false] }],
+                    // [{ color: [] }, { background: [] }],
+                    // [{ font: [] }],
+                    // [{ align: [] }],
+                    ['clean'],
+                    ['link', 'image', 'video']
+                ]
+            },
+            placeholder: 'Write something...',
+            readOnly: false
+        })
+
+        // Set initial content if needed
+        quillInstance.root.innerHTML = '<p>   </p>'
+
+        // Listen for text changes
+        quillInstance.on('text-change', () => {
+            const html = quillInstance.root.innerHTML;
+            const text = quillInstance.getText();
+        })
+    }
+})
+
+// Clean up on component unmount
+onBeforeUnmount(() => {
+    if (quillInstance) {
+        quillInstance = null
+    }
+})
+
+// Helper functions to interact with the editor
+const getEditorContent = () => {
+    return quillInstance?.root.innerHTML || ''
+}
+
+const setEditorContent = (content) => {
+    if (quillInstance) {
+        quillInstance.root.innerHTML = content
+    }
+}
+
+const getPlainText = () => {
+    return quillInstance?.getText() || ''
+}
+
+// Expose methods if needed
+defineExpose({
+    getEditorContent,
+    setEditorContent,
+    getPlainText
+})
 </script>
 <template>
     <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
@@ -289,7 +513,6 @@ async function getListValues() {
                 <router-link :to="{ name: 'requestCreate' }" class="btn btn-primary btn-sm">
                     <i class="fa fa-circle-plus"></i>Request
                 </router-link>
-
             </div>
         </div>
     </div>
@@ -342,31 +565,181 @@ async function getListValues() {
     </div>
 
     <div class="row position-relative">
-        <div class="col-12">
-            <div id="desgList" class="card rounded rounded-2 shadow-none p-3">
+        <div class="modal fade" id="exampleScrollableModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-body">
+                        <form id="addAssignform">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <label for="input1" class="form-label">Assign</label>
+                                            <select v-model="assignform.assign_to" id="assign_to"
+                                                class="form-select form-select-sm assign_to"
+                                                aria-label="Default select example">
+                                                <option selected value="">Select </option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
 
-
-                <div class="modal fade" id="exampleScrollableModal" tabindex="-1" aria-hidden="true">
-                    <div class="modal-dialog modal-lg modal-dialog-centered">
-                        <div class="modal-content">
-                            <div class="modal-body">
-                                <table id="log" width="100%" class="table table-sm table-dark" style="color: red;--bs-table-color:lime">
-                                    <thead>
-                                        <tr>
-                                            <th>Action</th>
-                                            <th style="width: 25%">Created at</th>
-                                            <th>Details</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-
-                                    </tbody>
-                                </table>
+                                <div class="card-footer">
+                                    <button type="button" @click="assign"
+                                        class="m-2 btn btn-sm btn-info px-4 ms-2 float-end text-white">
+                                        Assign
+                                    </button>
+                                    <button type="button" data-bs-dismiss="modal"
+                                        class="m-2 btn btn-sm btn-danger px-4 ms-2 float-end">
+                                        Close
+                                    </button>
+                                </div>
                             </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal fade" id="statusChangeModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-body">
+                        <form id="addchangeStatusform">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <label for="input1" class="form-label">Status</label>
+                                            <select v-model="changeStatusform.status" id="status"
+                                                class="form-select form-select-sm status"
+                                                aria-label="Default select example">
+                                                <option selected value="">Select </option>
+                                                <option value="open">Open</option>
+                                                <option value="closed">Closed</option>
+                                                <option value="on hold">On Hold</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
 
+                                <div class="card-footer">
+                                    <button type="button" @click="changeStatus"
+                                        class="m-2 btn btn-sm btn-info px-4 ms-2 float-end text-white">
+                                        Change
+                                    </button>
+                                    <button type="button" data-bs-dismiss="modal"
+                                        class="m-2 btn btn-sm btn-danger px-4 ms-2 float-end">
+                                        Close
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- canvas -->
+        <div class="offcanvas offcanvas-end" data-bs-scroll="true" tabindex="-1" id="staticBackdrop">
+            <div class="offcanvas-header border-bottom h-60">
+                <div class="mt-2">
+                    <p class="">
+                        <span style=" color: rgb(121, 68, 235); font-size: 12px;">#001</span>
+                        <span class="fw-bold subject"> Ticket Issue Problem When Booking new ticket</span>
+                    </p>
+                </div>
+
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
+            <div></div>
+            <div class="offcanvas-body">
+                <div class="row">
+                    <div class="col-md-12 pb-1">
+                        <label for="">Details</label>
+                    </div>
+                    <div class="col-md-12">
+                        <textarea name="" cols="4" rows="4" class="form-control ticket-details" id="" readonly=""></textarea>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-12 mt-2 p-3">
+                        <div class="d-flex">
+                            <img src="../../../../../public/uploads/profile_image/30062025-1751263659.jpg" width="20"
+                                height="20" class="rounded-circle" alt="" />
+                            <div class="flex-grow-1 ms-2">
+                                <p class="mb-0 chat-time">Atiqur Rahman, 2:35 PM</p>
+                            </div>
+                        </div>
+                        <div class="d-flex">
+                            <div class="bg-light-primary p-2 rounded mt-2">
+                                <p class="mb-0 chat-time">Lorem ipsum dolor sit amet consectetur adipisicing elit.
+                                    Voluptas, dolores. Lorem ipsum dolor sit amet consectetur adipisicing elit.
+                                    Voluptas, dolores.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- reverse -->
+                    <div class="col-md-12 pb-3">
+                        <div class="d-flex flex-row-reverse bd-highlight">
+                            <div class="p-2 bd-highlight">
+                                <div class="d-flex">
+                                    <img src="../../../../../public/uploads/profile_image/04122024-1733312784.png"
+                                        width="20" height="20" class="rounded-circle" alt="" />
+                                    <div class="flex-grow-1 ms-2">
+                                        <p class="mb-0 chat-time">Abu Syed, 3:35 PM</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex">
+                            <div class="bg-light-primary p-2 rounded">
+                                <p class="mb-0 chat-time">Lorem ipsum dolor sit amet consectetur adipisicing elit.
+                                    Voluptas, dolores.</p>
+                            </div>
+                        </div>
+
+                    </div>
+                    <!-- end reverse -->
+                </div>
+
+                <div class="row mt-2">
+                    <div class="col-md-12">
+                        <div class="editor-container">
+                            <!-- Quill editor container -->
+                            <div ref="editorRef"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="" id="flexCheckDefault">
+                            <label class="form-check-label" for="flexCheckDefault">Show this note to assignee</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="" id="flexCheckDefault">
+                            <label class="form-check-label" for="flexCheckDefault">Also send as Email</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="" id="flexCheckDefault">
+                            <label class="form-check-label" for="flexCheckDefault">Send as Notification</label>
                         </div>
                     </div>
                 </div>
+                <div class="row">
+
+                    <div class="col-md-12 mt-3">
+                        <button class="btn btn-sm btn-secondary float-center px-4 ms-2 mt-2" type="button" data-bs-dismiss="offcanvas" aria-label="Close">Cancel</button>
+                        <button type="button" class="m-2 btn btn-sm btn-info px-4 ms-2 float-end text-white">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- end canvas -->
+
+
+        <div class="col-md-12">
+            <div class="card rounded rounded-2 shadow-none p-3">
                 <div v-if="authStore.GlobalLoading" class="center-body position-absolute top-50 start-50">
                     <div class="loader-circle-57">
                         <img class="position-absolute" src="../../../../../public/theme/appimages/blueskywings.png"
@@ -384,7 +757,6 @@ async function getListValues() {
 </template>
 
 <style>
-
 .center-body {
     display: flex;
     justify-content: center;
@@ -821,5 +1193,28 @@ async function getListValues() {
     --bs-btn-disabled-bg: transparent;
     --bs-btn-disabled-border-color: #f1892a;
     --bs-gradient: none;
+}
+
+/* editor css */
+
+.editor-container {
+    /* Adjust height as needed */
+    min-height: 140px;
+}
+
+/* You can customize Quill styles here */
+:deep(.ql-editor) {
+    min-height: 400px;
+    font-size: 16px;
+}
+
+:deep(.ql-toolbar) {
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+}
+
+:deep(.ql-container) {
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 4px;
 }
 </style>

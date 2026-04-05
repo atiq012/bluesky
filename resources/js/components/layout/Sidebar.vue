@@ -128,7 +128,7 @@ onMounted(() => {
                     </ul>
                 </li>
 
-                <!-- <li>
+                <li>
                     <router-link v-wave :to="{ name: 'AgentList' }">
                         <div class="parent-icon">
                             <img src="../../../../public/theme/Sidebar_icons/B2B_Agency.svg" alt="">
@@ -145,7 +145,7 @@ onMounted(() => {
                         <div class="menu-title">Deposits
                         </div>
                     </router-link>
-                </li> -->
+                </li>
 
                 <li>
                     <router-link v-wave :to="{ name: 'UserList' }">
@@ -236,7 +236,7 @@ onMounted(() => {
                 <li>
                     <a v-wave class="has-arrow" href="javascript:;">
                         <div class="parent-icon">
-                            <img src="../../../../public/theme/Sidebar_icons/Setting.svg" alt="">
+                            <img src="../../../../public/theme/Sidebar_icons/help_desk.svg" alt="">
                         </div>
                         <div class="menu-title">Helpdesk</div>
                     </a>

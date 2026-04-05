@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\PaymentAccount\PaymentAccountSController;
 use App\Http\Controllers\Admin\AircraftType\AircraftTypeDesignatorController;
 use App\Http\Controllers\Admin\HelpDesk\CategoryController;
 use App\Http\Controllers\Admin\HelpDesk\RequestController;
+use App\Http\Controllers\Admin\HelpDesk\RequestDetailsController;
 
 Route::post('login', [AuthController::class, 'login'])->name('login');
 Route::post('register', [AuthController::class, 'register'])->name('register');
@@ -168,10 +169,15 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('deleteCategory', [CategoryController::class, 'destroy']);
 
 
+    Route::get('getAllRequests', [RequestController::class, 'index'])->name('request.getAllRequests');
     Route::post('/request/save', [RequestController::class, 'store'])->name('request.store');
+    Route::post('/request/update', [RequestController::class, 'update'])->name('request.update');
+    Route::post('/editRequest', [RequestController::class, 'edit'])->name('request.editRequest');
+    Route::post('/assignRequest', [RequestController::class, 'assignRequest'])->name('request.assignRequest');
+    Route::post('/statusChange', [RequestController::class, 'statusChange'])->name('request.statusChange');
 
-
-
+    Route::post('/addRequestDetails', [RequestDetailsController::class, 'store'])->name('requestDetails.store');
+    Route::get('/getRequestDetails/{id}', [RequestDetailsController::class, 'getRequestDetails'])->name('requestDetails.getRequestDetails');
 });
 Route::get('airports', [AreaController::class, 'airports']);
 
