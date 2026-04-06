@@ -150,9 +150,10 @@ const options = {
                 var status = row.status;
                 html += '<div class="d-flex">';
 
-                html += '<button data-bs-toggle="offcanvas" data-bs-target="#staticBackdrop" style="size: 30px; width: 30px; height: 30px" class="btn btn-outline-only-edit rounded-circle details-item" placement="top" data-item-id=' + idd + '> <i class="fa-solid fa-file" style="margin: 0px 0px 8px -2px; font-size: 14px;"></i> </button>';
+                html += '<button data-bs-toggle="offcanvas" data-bs-target="#staticBackdrop" style="size: 30px; width: 30px; height: 30px; " class="btn btn-outline-only-edit rounded-circle details-item" placement="top" data-item-id=' + idd + '> <i class="fa-solid fa-file" style="margin: 0px 0px 8px -2px; font-size: 14px;"></i> </button>';
 
-                // html += '<button  style="size: 30px; width: 30px; height: 30px" class="btn btn-outline-only-edit rounded-circle edit-item" placement="top" data-item-id=' + idd + '> <i class="fa-solid fa-pencil" style="margin: 0px 0px 10px -5px; font-size: 14px;"></i> </button>';
+                // need add field for check edit permission
+                html += '<button  style="size: 30px; width: 30px; height: 30px;margin-left: 5px;" class="btn btn-outline-only-edit rounded-circle edit-item" placement="top" data-item-id=' + idd + '> <i class="fa-solid fa-pencil" style="margin: 0px 0px 10px -5px; font-size: 14px;"></i> </button>';
 
                 html += '<button  style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-only-edit rounded-circle assign-item-id" data-bs-toggle="modal" data-bs-target="#exampleScrollableModal" placement="top" data-item-id=' + idd + '> <i class="fa-solid fa-user-tie" style="margin: 0px 0px 10px -3px; font-size: 14px;"></i> </button>';
 

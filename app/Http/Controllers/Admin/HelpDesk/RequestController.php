@@ -6,6 +6,7 @@ use App\Models\Helpdesk\Request as HelpdeskRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Yajra\DataTables\DataTables;
 
 class RequestController extends BaseController
@@ -22,7 +23,7 @@ class RequestController extends BaseController
 
     private function generateRequestNumber()
     {
-        // Get current date format: YYMMDD
+                                            // Get current date format: YYMMDD
         $datePrefix = now()->format('ymd'); // 260331
 
         // Find the latest request number for today
@@ -35,25 +36,31 @@ class RequestController extends BaseController
             $lastSequence = (int) substr($lastRequest->request_number, -2);
             $newSequence  = $lastSequence + 1;
         } else {
-            $lastRequest  = HelpdeskRequest::orderBy('id', 'desc')->first();
-            $lastSequence = (int) substr($lastRequest->request_number, -2);
+            $lastRequest = HelpdeskRequest::orderBy('id', 'desc')->first();
 
-            // Start from 01 if no request exists for today
-            $newSequence = $lastSequence + 1;
+            if ($lastRequest == null) {
+                // Reset to 01 if sequence exceeds 99
+                $newSequence = 1;
+            } else {
+                $lastSequence = (int) substr($lastRequest->request_number, -2);
+                // Start from 01 if no request exists for today
+                $newSequence = $lastSequence + 1;
+            }
 
         }
 
         // Format sequence number with leading zero (01, 02, etc.)
         $sequenceFormatted = str_pad($newSequence, 2, '0', STR_PAD_LEFT);
-
         // Combine date prefix and sequence
         return $datePrefix . $sequenceFormatted;
     }
 
     public function store(Request $request)
     {
-        dd($request->all());
-        $req_num                     = $this->generateRequestNumber();
+        // dd($request->all());
+
+        $req_num = $this->generateRequestNumber();
+
         $requestData                 = new HelpdeskRequest;
         $requestData->request_number = $req_num; // Use the generated request number
         $requestData->category_id    = $request->input('cate_id');
@@ -65,14 +72,25 @@ class RequestController extends BaseController
         $requestData->request_type   = $request->input('request_type');
         $requestData->asset          = $request->input('assets');
 
-        $requestData->mode  = $request->input('mode');
-        $requestData->level = $request->input('level');
-
+        $requestData->mode        = $request->input('mode');
+        $requestData->level       = $request->input('level');
+        $requestData->assignee_id = $request->input('assign_to');
         // Handle file upload if exists
-        if ($request->hasFile('attachment')) {
-            $file                   = $request->file('attachment');
-            $filePath               = $file->store('helpdesk_attachments', 'public');
-            $requestData->file_path = $filePath;
+
+        if (($request->hasFile('file_path'))) {
+
+            $request_image = $request->file('file_path');
+            $image_name    = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
+
+            $image_path = public_path('/uploads/helpDesk/');
+            if (! File::exists($image_path)) {
+                File::makeDirectory($image_path, 0777, true);
+            }
+
+            $request_image->move($image_path, $image_name);
+
+            $requestData->file_path = '/uploads/helpDesk/' . $image_name;
+
         }
         $requestData->status     = 'open';
         $requestData->created_by = Auth::user()->id;
