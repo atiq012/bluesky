@@ -114,11 +114,33 @@ class RequestController extends BaseController
             $requestData->priority       = $request->input('priority');
             $requestData->subject        = $request->input('subject');
             $requestData->description    = $request->input('description');
+
+            $requestData->request_type = $request->input('request_type');
+            $requestData->asset        = $request->input('assets');
+
+            $requestData->mode        = $request->input('mode');
+            $requestData->level       = $request->input('level');
+            $requestData->assignee_id = $request->input('assign_to');
+
             // Handle file upload if exists
-            if ($request->hasFile('attachment')) {
-                $file                   = $request->file('attachment');
-                $filePath               = $file->store('helpdesk_attachments', 'public');
-                $requestData->file_path = $filePath;
+            if (($request->hasFile('file_path'))) {
+
+                $request_image = $request->file('file_path');
+                $image_name    = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
+
+                $image_path = public_path('/uploads/helpDesk/');
+                if (! File::exists($image_path)) {
+                    File::makeDirectory($image_path, 0777, true);
+                }
+
+                if(File::exists(public_path($requestData->file_path))){
+                    File::delete(public_path($requestData->file_path));
+                }
+
+                $request_image->move($image_path, $image_name);
+
+                $requestData->file_path = '/uploads/helpDesk/' . $image_name;
+
             }
             $requestData->updated_by = Auth::user()->id;
             $requestData->save();

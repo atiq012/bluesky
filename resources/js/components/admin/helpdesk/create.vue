@@ -435,7 +435,7 @@ async function getInternalUsers() {
                     <div class="col-md-6">
                         <label for="input1" class="form-label">File Upload</label>
                         <input type="file" class="form-control" id="profile-picture"
-                                                        ref="profilePicture" @change="handleFileChange">
+                            ref="profilePicture" @change="handleFileChange">
                     </div>
                 </div>
 

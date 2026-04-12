@@ -8,10 +8,19 @@ const authStore = useAuthStore();
 //**** create function start
 const form = reactive({
     useEmail: authStore.email, cate_id: "", requester: "", priority: "",
-    subcate_id: "",subject:"",description:"",id:""
+    subcate_id: "", subject: "", description: "", id: "", assign_to: "", request_type: "", mode: "", level: "", assets: "",file_path: ""
 });
 
+const handleFileChange = (event) => {
+    form.file_path = event.target.files[0];
+    // console.log(form.file_path);
 
+    const reader = new FileReader();
+    reader.readAsDataURL(form.file_path);
+    // reader.onload = (e) => {
+    //     previewImage.value = e.target.result;
+    // };
+}
 async function save() {
 
     try {
@@ -19,23 +28,38 @@ async function save() {
         const select2ValueSubCate = $('#subcate_id').val();
         const requesterValue = $('#requester_id').val();
         const priorityValue = $('#priority').val();
+        const assignToValue = $('#assign_to').val();
+
         const id = props.ids;
         form.id = id;
-        if(requesterValue){
+        if (requesterValue) {
             form.requester = requesterValue;
         }
 
-        if(priorityValue){
+        if (priorityValue) {
             form.priority = priorityValue;
         }
         // Update the form object with the latest Select2 value
         if (select2Value) {
             form.cate_id = select2Value;
         }
-        if(select2ValueSubCate){
+        if (select2ValueSubCate) {
             form.subcate_id = select2ValueSubCate;
         }
-        const response = await axiosInstance.post("/request/update", form);
+        if (assignToValue) {
+            form.assign_to = assignToValue;
+        }
+        // const response = await axiosInstance.post("/request/update", form);
+        const authStore = useAuthStore();
+        const accessToken = authStore.decryptWithAES(authStore.token);
+        const response = await axios.post('/api/request/update', form, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+                Authorization: "Bearer " + accessToken,
+                Accept: "application/json",
+
+            },
+        });
         // Reset the form properly
         form.requester = "";
         form.cate_id = "";
@@ -65,7 +89,7 @@ onMounted(() => {
         theme: 'bootstrap-5',
         width: '100%',
         allowClear: true,
-    }).on('change', function() {
+    }).on('change', function () {
         form.requester = $(this).val(); // Sync with Vue reactive state
     });
 
@@ -74,7 +98,7 @@ onMounted(() => {
         theme: 'bootstrap-5',
         width: '100%',
         allowClear: true,
-    }).on('change', function() {
+    }).on('change', function () {
         form.priority = $(this).val(); // Sync with Vue reactive state
     });
 
@@ -83,7 +107,7 @@ onMounted(() => {
         theme: 'bootstrap-5',
         width: '100%',
         allowClear: true,
-    }).on('change', function() {
+    }).on('change', function () {
         form.cate_id = $(this).val(); // Sync with Vue reactive state
         if (form.cate_id) {
             getSubCate(form.cate_id);
@@ -98,7 +122,7 @@ onMounted(() => {
         theme: 'bootstrap-5',
         width: '100%',
         allowClear: true,
-    }).on('change', function() {
+    }).on('change', function () {
         form.subcate_id = $(this).val(); // Sync with Vue reactive state
     });
 });
@@ -218,6 +242,28 @@ async function getRequester() {
     }
 }
 
+getInternalUsers();
+
+async function getInternalUsers() {
+    try {
+        const response = await axiosInstance.get("getInternalUsers");
+
+        let users = response.data.data;
+        let select = document.getElementById('assign_to');
+
+        users.forEach(function (user) {
+
+            let option = document.createElement('option');
+            option.value = user.idd;
+            option.text = user.name;
+            select.appendChild(option);
+        });
+
+    } catch (error) {
+        console.log(error);
+    }
+}
+
 
 getEditData(props);
 
@@ -229,13 +275,26 @@ async function getEditData(props) {
         // Loading.value = false;
         await getRequester();
         const response = await axiosInstance.post('editRequest', { 'id': props.ids });
+        console.log(response.data);
 
         const subject = response.data.subject;
         form.subject = subject;
         const description = response.data.description;
         form.description = description;
-
+        form.assets = response.data.asset;
         const priority = response.data.priority;
+        const request_type = response.data.request_type;
+        form.request_type = request_type;
+        const mode = response.data.mode;
+        form.mode = mode;
+
+        const level = response.data.level;
+        form.level = level;
+        const assign_to = response.data.assignee_id;
+        form.assign_to = assign_to;
+        $('#assign_to').val(assign_to);
+        $('#assign_to').trigger('change');
+
         $('#priority').val(priority);
         $('#priority').trigger('change');
 
@@ -314,6 +373,46 @@ async function getEditData(props) {
 
                 <div class="row mt-2">
                     <div class="col-md-6">
+                        <label for="input1" class="form-label">Assets</label>
+                        <input type="text" v-model="form.assets" class="form-control form-control-sm" id="assets"
+                            name="assets" placeholder="Enter Assets">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="input1" class="form-label">Request Type</label>
+                        <select v-model="form.request_type" id="request_type"
+                            class="form-select form-select-sm request_type" aria-label="Default select example">
+                            <option selected value="Request For Solution">Request For Solution</option>
+                            <option value="Request For Information">Request For Information</option>
+                            <option value="Incident">Incident</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row mt-2">
+                    <div class="col-md-6">
+                        <label for="input1" class="form-label">Mode</label>
+                        <select v-model="form.mode" id="mode" class="form-select form-select-sm mode"
+                            aria-label="Default select example">
+                            <option selected value="email">email</option>
+                            <option value="phone">phone</option>
+                            <option value="chat">chat</option>
+                            <option value="web form">web form</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="input1" class="form-label">Level</label>
+                        <select v-model="form.level" id="level" class="form-select form-select-sm level"
+                            aria-label="Default select example">
+                            <option selected value="Tier 1">Tier 1</option>
+                            <option value="Tier 2">Tier 2</option>
+                            <option value="Tier 3">Tier 3</option>
+                            <option value="Tier 4">Tier 4</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row mt-2">
+                    <div class="col-md-6">
                         <label for="input1" class="form-label">Category</label>
                         <select v-model="form.cate_id" id="cate_id" class="form-select form-select-sm parent_name"
                             aria-label="Default select example">
@@ -329,6 +428,23 @@ async function getEditData(props) {
                         </select>
                     </div>
                 </div>
+
+                <div class="row mt-2">
+                    <div class="col-md-6">
+                        <label for="input1" class="form-label">Assign</label>
+                        <select v-model="form.assign_to" id="assign_to" class="form-select form-select-sm assign_to"
+                            aria-label="Default select example">
+                            <option selected value="">Select </option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="input1" class="form-label">File Upload</label>
+                        <input type="file" class="form-control" id="profile-picture" ref="profilePicture"
+                            @change="handleFileChange">
+                    </div>
+                </div>
+
                 <div class="row mt-2">
                     <div class="col-md-12">
                         <label for="input1" class="form-label">Subject</label>
