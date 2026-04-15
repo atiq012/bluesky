@@ -400,10 +400,20 @@ async function ticketDetails(idd) {
 
         const response = await axiosInstance.get("getRequestDetails/" + idd);
         const data = response.data;
+        $('.subject').html(data.data.subject);
+        $(".ticket-details").val(data.data.description);
+        $(".request_number").html('#' + data.data.request_number + ' ');
 
-        $(".subject").innerHTML = data.subject;
-        $('.subject').html(data.subject);
-        $(".ticket-details").val(data.description);
+        data.details.forEach(function (detail) {
+
+            if(detail.from_user_id == data.data.requester_id){
+                $(".message_from_requester").append('<div class="col-md-12 pb-3"> <div class="d-flex flex-row-reverse bd-highlight"> <div class="p-2 bd-highlight"> <div class="d-flex"> <img src="'+data.author.img_path+'" width="20" height="20" class="rounded-circle" alt="" /> <div class="flex-grow-1 ms-2"> <p class="mb-0 chat-time">' + data.author.name + ', 3:35 PM</p> </div> </div> </div> </div> <div class="d-flex justify-content-end"> <div class="bg-light-primary p-2 rounded"> <p class="mb-0 chat-time">'+detail.note+'</p> </div> </div> </div>');
+
+            }else{
+
+                $(".message_from_me").append('<div class="col-md-12 mt-2 p-3"><div class="d-flex"><img src="'+data.me.img_path+'" width="20" height="20" class="rounded-circle" alt="" /><div class="flex-grow-1 ms-2"><p class="mb-0 chat-time">' + data.me.name + ', '+data.data.created_at+'</p></div></div><div class="d-flex"><div class="bg-light-primary p-2 rounded mt-2"><p class="mb-0 chat-time">'+detail.note+'</p></div></div></div>');
+            }
+        });
 
     } catch (error) {
         console.log(error);
@@ -645,7 +655,7 @@ defineExpose({
             <div class="offcanvas-header border-bottom h-60">
                 <div class="mt-2">
                     <p class="">
-                        <span style=" color: rgb(121, 68, 235); font-size: 12px;">#001</span>
+                        <span class="request_number" style=" color: rgb(121, 68, 235); font-size: 12px;">#001</span>
                         <span class="fw-bold subject"> Ticket Issue Problem When Booking new ticket</span>
                     </p>
                 </div>
@@ -663,45 +673,11 @@ defineExpose({
                     </div>
                 </div>
                 <div class="row mt-3">
-                    <div class="col-md-12 mt-2 p-3">
-                        <div class="d-flex">
-                            <img src="../../../../../public/uploads/profile_image/30062025-1751263659.jpg" width="20"
-                                height="20" class="rounded-circle" alt="" />
-                            <div class="flex-grow-1 ms-2">
-                                <p class="mb-0 chat-time">Atiqur Rahman, 2:35 PM</p>
-                            </div>
-                        </div>
-                        <div class="d-flex">
-                            <div class="bg-light-primary p-2 rounded mt-2">
-                                <p class="mb-0 chat-time">Lorem ipsum dolor sit amet consectetur adipisicing elit.
-                                    Voluptas, dolores. Lorem ipsum dolor sit amet consectetur adipisicing elit.
-                                    Voluptas, dolores.</p>
-                            </div>
-                        </div>
-                    </div>
+                    <span class="message_from_me"></span>
+
 
                     <!-- reverse -->
-                    <div class="col-md-12 pb-3">
-                        <div class="d-flex flex-row-reverse bd-highlight">
-                            <div class="p-2 bd-highlight">
-                                <div class="d-flex">
-                                    <img src="../../../../../public/uploads/profile_image/04122024-1733312784.png"
-                                        width="20" height="20" class="rounded-circle" alt="" />
-                                    <div class="flex-grow-1 ms-2">
-                                        <p class="mb-0 chat-time">Abu Syed, 3:35 PM</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="d-flex">
-                            <div class="bg-light-primary p-2 rounded">
-                                <p class="mb-0 chat-time">Lorem ipsum dolor sit amet consectetur adipisicing elit.
-                                    Voluptas, dolores.</p>
-                            </div>
-                        </div>
-
-                    </div>
+                    <span class="message_from_requester"></span>
                     <!-- end reverse -->
                 </div>
 
