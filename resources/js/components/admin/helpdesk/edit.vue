@@ -8,7 +8,7 @@ const authStore = useAuthStore();
 //**** create function start
 const form = reactive({
     useEmail: authStore.email, cate_id: "", requester: "", priority: "",
-    subcate_id: "", subject: "", description: "", id: "", assign_to: "", request_type: "", mode: "", level: "", assets: "",file_path: ""
+    subcate_id: "", subject: "", description: "", id: "", assign_to: "", request_type: "", mode: "", level: "", assets: "", file_path: ""
 });
 
 const handleFileChange = (event) => {
@@ -87,16 +87,41 @@ onMounted(() => {
     $("#requester_id").select2({
         placeholder: '=Select=',
         theme: 'bootstrap-5',
-        width: '100%',
+        width: '90%',
         allowClear: true,
     }).on('change', function () {
         form.requester = $(this).val(); // Sync with Vue reactive state
+    });
+    $("#assign_to").select2({
+        placeholder: '=Select=',
+        theme: 'bootstrap-5',
+        width: '90%',
+        allowClear: true,
+    }).on('change', function () {
+        form.assign_to = $(this).val(); // Sync with Vue reactive state
+    });
+
+    $("#mode").select2({
+        placeholder: '=Select=',
+        theme: 'bootstrap-5',
+        width: '90%',
+        allowClear: true,
+    }).on('change', function () {
+        form.mode = $(this).val(); // Sync with Vue reactive state
+    });
+    $("#request_type").select2({
+        placeholder: '=Select=',
+        theme: 'bootstrap-5',
+        width: '90%',
+        allowClear: true,
+    }).on('change', function () {
+        form.request_type = $(this).val(); // Sync with Vue reactive state
     });
 
     $("#priority").select2({
         placeholder: '=Select=',
         theme: 'bootstrap-5',
-        width: '100%',
+        width: '90%',
         allowClear: true,
     }).on('change', function () {
         form.priority = $(this).val(); // Sync with Vue reactive state
@@ -105,7 +130,7 @@ onMounted(() => {
     $("#cate_id").select2({
         placeholder: '=Select=',
         theme: 'bootstrap-5',
-        width: '100%',
+        width: '90%',
         allowClear: true,
     }).on('change', function () {
         form.cate_id = $(this).val(); // Sync with Vue reactive state
@@ -120,10 +145,18 @@ onMounted(() => {
     $("#subcate_id").select2({
         placeholder: '=Select=',
         theme: 'bootstrap-5',
-        width: '100%',
+        width: '90%',
         allowClear: true,
     }).on('change', function () {
         form.subcate_id = $(this).val(); // Sync with Vue reactive state
+    });
+    $("#level").select2({
+        placeholder: '=Select=',
+        theme: 'bootstrap-5',
+        width: '90%',
+        allowClear: true,
+    }).on('change', function () {
+        form.level = $(this).val(); // Sync with Vue reactive state
     });
 });
 
@@ -143,7 +176,7 @@ async function getCate() {
         $("#cate_id").select2({
             placeholder: '=Select=',
             theme: 'bootstrap-5',
-            width: '100%',
+            width: '90%',
             allowClear: true,
             height: '50',
             data: options,
@@ -184,7 +217,7 @@ async function getSubCate(cate_id) {
         $("#subcate_id").select2({
             placeholder: '=Select=',
             theme: 'bootstrap-5',
-            width: '100%',
+            width: '90%',
             allowClear: true,
             height: '50',
             data: options,
@@ -221,7 +254,7 @@ async function getRequester() {
         $("#requester_id").select2({
             placeholder: '=Select=',
             theme: 'bootstrap-5',
-            width: '100%',
+            width: '90%',
             allowClear: true,
             height: '50',
             data: options,
@@ -275,7 +308,7 @@ async function getEditData(props) {
         // Loading.value = false;
         await getRequester();
         const response = await axiosInstance.post('editRequest', { 'id': props.ids });
-        console.log(response.data);
+
 
         const subject = response.data.subject;
         form.subject = subject;
@@ -285,8 +318,13 @@ async function getEditData(props) {
         const priority = response.data.priority;
         const request_type = response.data.request_type;
         form.request_type = request_type;
+        $('#request_type').val(request_type);
+        $('#request_type').trigger('change');
+
         const mode = response.data.mode;
         form.mode = mode;
+        $('#mode').val(mode);
+        $('#mode').trigger('change');
 
         const level = response.data.level;
         form.level = level;
@@ -294,7 +332,8 @@ async function getEditData(props) {
         form.assign_to = assign_to;
         $('#assign_to').val(assign_to);
         $('#assign_to').trigger('change');
-
+        $('#level').val(level);
+        $('#level').trigger('change');
         $('#priority').val(priority);
         $('#priority').trigger('change');
 
@@ -354,14 +393,15 @@ async function getEditData(props) {
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6">
-                        <label for="input1" class="form-label">Requester</label>
-                        <select v-model="form.requester" id="requester_id"
+                        <label for="input1" class="form-label"><b>Requester</b></label>
+                        <select v-model="form.requester" id="requester_id" :disabled="true"
                             class="form-select form-select-sm requester_name" aria-label="Default select example">
                             <option selected value="">Select Requester</option>
                         </select>
                     </div>
+
                     <div class="col-md-6">
-                        <label for="input1" class="form-label">Priority</label>
+                        <label for="input1" class="form-label"><b>Priority</b></label>
                         <select v-model="form.priority" id="priority" class="form-select form-select-sm priority"
                             aria-label="Default select example">
                             <option selected value="low">Low</option>
@@ -373,13 +413,14 @@ async function getEditData(props) {
 
                 <div class="row mt-2">
                     <div class="col-md-6">
-                        <label for="input1" class="form-label">Assets</label>
+                        <label for="input1" class="form-label"><b>Assets</b></label>
                         <input type="text" v-model="form.assets" class="form-control form-control-sm" id="assets"
                             name="assets" placeholder="Enter Assets">
                     </div>
+
                     <div class="col-md-6">
-                        <label for="input1" class="form-label">Request Type</label>
-                        <select v-model="form.request_type" id="request_type"
+                        <label for="input1" class="form-label"><b>Request Type</b></label>
+                        <select v-model="form.request_type" id="request_type" :disabled="true"
                             class="form-select form-select-sm request_type" aria-label="Default select example">
                             <option selected value="Request For Solution">Request For Solution</option>
                             <option value="Request For Information">Request For Information</option>
@@ -390,8 +431,8 @@ async function getEditData(props) {
 
                 <div class="row mt-2">
                     <div class="col-md-6">
-                        <label for="input1" class="form-label">Mode</label>
-                        <select v-model="form.mode" id="mode" class="form-select form-select-sm mode"
+                        <label for="input1" class="form-label"><b>Mode</b></label>
+                        <select v-model="form.mode" :disabled="true" id="mode" class="form-select form-select-sm mode"
                             aria-label="Default select example">
                             <option selected value="email">email</option>
                             <option value="phone">phone</option>
@@ -399,8 +440,9 @@ async function getEditData(props) {
                             <option value="web form">web form</option>
                         </select>
                     </div>
+
                     <div class="col-md-6">
-                        <label for="input1" class="form-label">Level</label>
+                        <label for="input1" class="form-label"><b>Level</b></label>
                         <select v-model="form.level" id="level" class="form-select form-select-sm level"
                             aria-label="Default select example">
                             <option selected value="Tier 1">Tier 1</option>
@@ -413,15 +455,14 @@ async function getEditData(props) {
 
                 <div class="row mt-2">
                     <div class="col-md-6">
-                        <label for="input1" class="form-label">Category</label>
-                        <select v-model="form.cate_id" id="cate_id" class="form-select form-select-sm parent_name"
-                            aria-label="Default select example">
+                        <label for="input1" class="form-label"><b>Category</b></label>
+                        <select v-model="form.cate_id" :disabled="true" id="cate_id"
+                            class="form-select form-select-sm parent_name" aria-label="Default select example">
                             <option selected value="">Select Category</option>
                         </select>
                     </div>
-
                     <div class="col-md-6">
-                        <label for="input1" class="form-label">Sub Category</label>
+                        <label for="input1" class="form-label"><b>Sub Category</b></label>
                         <select v-model="form.subcate_id" id="subcate_id"
                             class="form-select form-select-sm subcategory_name" aria-label="Default select example">
                             <option selected value="">Select Sub Category</option>
@@ -431,32 +472,34 @@ async function getEditData(props) {
 
                 <div class="row mt-2">
                     <div class="col-md-6">
-                        <label for="input1" class="form-label">Assign</label>
+                        <label for="input1" class="form-label"><b>Assign</b></label>
                         <select v-model="form.assign_to" id="assign_to" class="form-select form-select-sm assign_to"
                             aria-label="Default select example">
                             <option selected value="">Select </option>
                         </select>
                     </div>
-
-                    <div class="col-md-6">
-                        <label for="input1" class="form-label">File Upload</label>
-                        <input type="file" class="form-control" id="profile-picture" ref="profilePicture"
-                            @change="handleFileChange">
-                    </div>
                 </div>
 
                 <div class="row mt-2">
                     <div class="col-md-12">
-                        <label for="input1" class="form-label">Subject</label>
+                        <label for="input1" class="form-label"><b>Subject</b></label>
                         <input type="text" v-model="form.subject" class="form-control form-control-sm" id="subject"
                             name="subject" placeholder="Enter Subject">
                     </div>
                 </div>
                 <div class="row mt-2">
-                    <div class="col-md-12">
-                        <label for="input1" class="form-label">Description</label>
+                    <div class="mt-1 col-md-12">
+                        <label for="input1" class="form-label"><b>Description</b></label>
                         <textarea v-model="form.description" class="form-control form-control-sm" id="description"
                             name="description" placeholder="Enter Description"></textarea>
+                    </div>
+                </div>
+
+                <div class="row mt-2">
+                    <div class="col-md-6">
+                        <label for="input1" class="form-label"><b>File Upload</b></label>
+                        <input type="file" class="form-control" id="profile-picture" ref="profilePicture"
+                            @change="handleFileChange">
                     </div>
                 </div>
             </div>
@@ -468,3 +511,17 @@ async function getEditData(props) {
         </form>
     </div>
 </template>
+
+<style scoped>
+input[type="text"].form-control.form-control-sm {
+    width: 90%;
+}
+
+input[type="file"].form-control {
+    width: 90%;
+}
+
+textarea.form-control.form-control-sm {
+    width: 90%;
+}
+</style>

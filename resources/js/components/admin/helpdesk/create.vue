@@ -9,7 +9,7 @@ const authStore = useAuthStore();
 const form = reactive({
     useEmail: authStore.email, cate_id: "", requester: "", priority: "", request_type: "",
     assets: "", mode: "", level: "",
-    subcate_id: "", subject: "", description: "",assign_to:"",file_path: ""
+    subcate_id: "", subject: "", description: "", assign_to: "", file_path: ""
 });
 
 
@@ -101,7 +101,7 @@ onMounted(() => {
     $("#requester_id").select2({
         placeholder: '=Select=',
         theme: 'bootstrap-5',
-        width: '100%',
+        width: '90%',
         allowClear: true,
     }).on('change', function () {
         form.requester = $(this).val(); // Sync with Vue reactive state
@@ -110,7 +110,7 @@ onMounted(() => {
     $("#assign_to").select2({
         placeholder: '=Select=',
         theme: 'bootstrap-5',
-        width: '100%',
+        width: '90%',
         allowClear: true,
     }).on('change', function () {
         form.assign_to = $(this).val(); // Sync with Vue reactive state
@@ -119,7 +119,7 @@ onMounted(() => {
     $("#priority").select2({
         placeholder: '=Select=',
         theme: 'bootstrap-5',
-        width: '100%',
+        width: '90%',
         allowClear: true,
     }).on('change', function () {
         form.priority = $(this).val(); // Sync with Vue reactive state
@@ -129,7 +129,7 @@ onMounted(() => {
     $("#request_type").select2({
         placeholder: '=Select=',
         theme: 'bootstrap-5',
-        width: '100%',
+        width: '90%',
         allowClear: true,
     }).on('change', function () {
         form.request_type = $(this).val(); // Sync with Vue reactive state
@@ -138,7 +138,7 @@ onMounted(() => {
     $("#mode").select2({
         placeholder: '=Select=',
         theme: 'bootstrap-5',
-        width: '100%',
+        width: '90%',
         allowClear: true,
     }).on('change', function () {
         form.mode = $(this).val(); // Sync with Vue reactive state
@@ -149,7 +149,7 @@ onMounted(() => {
     $("#level").select2({
         placeholder: '=Select=',
         theme: 'bootstrap-5',
-        width: '100%',
+        width: '90%',
         allowClear: true,
     }).on('change', function () {
         form.level = $(this).val(); // Sync with Vue reactive state
@@ -158,7 +158,7 @@ onMounted(() => {
     $("#cate_id").select2({
         placeholder: '=Select=',
         theme: 'bootstrap-5',
-        width: '100%',
+        width: '90%',
         allowClear: true,
     }).on('change', function () {
         form.cate_id = $(this).val(); // Sync with Vue reactive state
@@ -173,7 +173,7 @@ onMounted(() => {
     $("#subcate_id").select2({
         placeholder: '=Select=',
         theme: 'bootstrap-5',
-        width: '100%',
+        width: '90%',
         allowClear: true,
     }).on('change', function () {
         form.subcate_id = $(this).val(); // Sync with Vue reactive state
@@ -195,7 +195,7 @@ async function getCate() {
         $("#cate_id").select2({
             placeholder: '=Select=',
             theme: 'bootstrap-5',
-            width: '100%',
+            width: '90%',
             allowClear: true,
             height: '50',
             data: options,
@@ -236,7 +236,7 @@ async function getSubCate(cate_id) {
         $("#subcate_id").select2({
             placeholder: '=Select=',
             theme: 'bootstrap-5',
-            width: '100%',
+            width: '90%',
             allowClear: true,
             height: '50',
             data: options,
@@ -273,7 +273,7 @@ async function getRequester() {
         $("#requester_id").select2({
             placeholder: '=Select=',
             theme: 'bootstrap-5',
-            width: '100%',
+            width: '90%',
             allowClear: true,
             height: '50',
             data: options,
@@ -426,16 +426,16 @@ async function getInternalUsers() {
                 <div class="row mt-2">
                     <div class="col-md-6">
                         <label for="input1" class="form-label">Assign</label>
-                        <select v-model="form.assign_to" id="assign_to"
-                            class="form-select form-select-sm assign_to" aria-label="Default select example">
+                        <select v-model="form.assign_to" id="assign_to" class="form-select form-select-sm assign_to"
+                            aria-label="Default select example">
                             <option selected value="">Select </option>
                         </select>
                     </div>
 
                     <div class="col-md-6">
                         <label for="input1" class="form-label">File Upload</label>
-                        <input type="file" class="form-control" id="profile-picture"
-                            ref="profilePicture" @change="handleFileChange">
+                        <input type="file" class="form-control" id="profile-picture" ref="profilePicture"
+                            @change="handleFileChange">
                     </div>
                 </div>
 
@@ -462,3 +462,17 @@ async function getInternalUsers() {
         </form>
     </div>
 </template>
+
+<style scoped>
+input[type="text"].form-control.form-control-sm {
+    width: 90%;
+}
+
+input[type="file"].form-control {
+    width: 90%;
+}
+
+textarea.form-control.form-control-sm {
+    width: 90%;
+}
+</style>

@@ -4,6 +4,8 @@ import DataBS5 from "datatables.net-bs5";
 import Buttons from 'datatables.net-buttons';
 import axiosInstance from "../../../axiosInstance";
 import { ref, onMounted, reactive, onBeforeUnmount } from "vue";
+import moment from "moment";
+
 // editor
 import Quill from 'quill';
 import "quill/dist/quill.core.css";
@@ -401,17 +403,19 @@ async function ticketDetails(idd) {
         const response = await axiosInstance.get("getRequestDetails/" + idd);
         const data = response.data;
         $('.subject').html(data.data.subject);
-        $(".ticket-details").val(data.data.description);
+        $(".ticket-details").html(data.data.description);
         $(".request_number").html('#' + data.data.request_number + ' ');
 
+        $(".message_from_me").html('');
+        $(".message_from_requester").html('');
         data.details.forEach(function (detail) {
 
-            if(detail.from_user_id == data.data.requester_id){
-                $(".message_from_requester").append('<div class="col-md-12 pb-3"> <div class="d-flex flex-row-reverse bd-highlight"> <div class="p-2 bd-highlight"> <div class="d-flex"> <img src="'+data.author.img_path+'" width="20" height="20" class="rounded-circle" alt="" /> <div class="flex-grow-1 ms-2"> <p class="mb-0 chat-time">' + data.author.name + ', 3:35 PM</p> </div> </div> </div> </div> <div class="d-flex justify-content-end"> <div class="bg-light-primary p-2 rounded"> <p class="mb-0 chat-time">'+detail.note+'</p> </div> </div> </div>');
+            if (detail.from_user_id == data.data.requester_id) {
+                $(".message_from_requester").append('<div class="col-md-12 pb-3"> <div class="d-flex flex-row-reverse bd-highlight"> <div class="p-2 bd-highlight"> <div class="d-flex"> <img src="' + data.author.img_path + '" width="20" height="20" class="rounded-circle" alt="" /> <div class="flex-grow-1 ms-2"> <p class="mb-0 chat-time">' + data.author.name + ', '+moment(detail.created_at).format('DD-MMM-YY hh:mm A')+'</p> </div> </div> </div> </div> <div class="d-flex justify-content-end"> <div class="bg-light-primary p-2 rounded"> <p class="mb-0 chat-time">' + detail.note + '</p> </div> </div> </div>');
 
-            }else{
+            } else {
 
-                $(".message_from_me").append('<div class="col-md-12 mt-2 p-3"><div class="d-flex"><img src="'+data.me.img_path+'" width="20" height="20" class="rounded-circle" alt="" /><div class="flex-grow-1 ms-2"><p class="mb-0 chat-time">' + data.me.name + ', '+data.data.created_at+'</p></div></div><div class="d-flex"><div class="bg-light-primary p-2 rounded mt-2"><p class="mb-0 chat-time">'+detail.note+'</p></div></div></div>');
+                $(".message_from_me").append('<div class="col-md-12 mt-2 p-3"><div class="d-flex"><img src="' + data.me.img_path + '" width="20" height="20" class="rounded-circle" alt="" /><div class="flex-grow-1 ms-2"><p class="mb-0 chat-time">' + data.me.name + ', ' + moment(detail.created_at).format('DD-MMM-YY hh:mm A') + '</p></div></div><div class="d-flex"><div class="bg-light-primary p-2 rounded mt-2"><p class="mb-0 chat-time">' + detail.note + '</p></div></div></div>');
             }
         });
 
@@ -656,7 +660,7 @@ defineExpose({
                 <div class="mt-2">
                     <p class="">
                         <span class="request_number" style=" color: rgb(121, 68, 235); font-size: 12px;">#001</span>
-                        <span class="fw-bold subject"> Ticket Issue Problem When Booking new ticket</span>
+                        <span class="fw-bold subject"> - </span>
                     </p>
                 </div>
 
@@ -669,13 +673,11 @@ defineExpose({
                         <label for="">Details</label>
                     </div>
                     <div class="col-md-12">
-                        <textarea name="" cols="4" rows="4" class="form-control ticket-details" id="" readonly=""></textarea>
+                        <div class="ticket-details"></div>
                     </div>
                 </div>
-                <div class="row mt-3">
+                <div class="row mt-3 scrollable-messages">
                     <span class="message_from_me"></span>
-
-
                     <!-- reverse -->
                     <span class="message_from_requester"></span>
                     <!-- end reverse -->
@@ -706,8 +708,10 @@ defineExpose({
                 <div class="row">
 
                     <div class="col-md-12 mt-3">
-                        <button class="btn btn-sm btn-secondary float-center px-4 ms-2 mt-2" type="button" data-bs-dismiss="offcanvas" aria-label="Close">Cancel</button>
-                        <button type="button" class="m-2 btn btn-sm btn-info px-4 ms-2 float-end text-white">Save</button>
+                        <button class="btn btn-sm btn-secondary float-center px-4 ms-2 mt-2" type="button"
+                            data-bs-dismiss="offcanvas" aria-label="Close">Cancel</button>
+                        <button type="button"
+                            class="m-2 btn btn-sm btn-info px-4 ms-2 float-end text-white">Save</button>
                     </div>
                 </div>
             </div>
@@ -1193,5 +1197,56 @@ defineExpose({
 :deep(.ql-container) {
     border-bottom-left-radius: 4px;
     border-bottom-right-radius: 4px;
+}
+
+.scrollable-messages {
+    max-height: 250px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Hide scrollbar by default */
+.scrollable-messages::-webkit-scrollbar {
+    width: 8px;
+    background: transparent;
+}
+
+/* Scrollbar track (hidden by default) */
+.scrollable-messages::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* Scrollbar thumb (visible only on hover/scroll) */
+.scrollable-messages::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 4px;
+}
+
+/* Show scrollbar when scrolling or hovering */
+.scrollable-messages:hover::-webkit-scrollbar-thumb,
+.scrollable-messages:active::-webkit-scrollbar-thumb,
+.scrollable-messages:focus-within::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+/* Optional: make it slightly thicker on hover for better UX */
+.scrollable-messages:hover::-webkit-scrollbar {
+    width: 8px;
+}
+
+/* Firefox - uses different approach (always shows on hover) */
+.scrollable-messages {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+}
+
+.scrollable-messages:hover {
+    scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
+}
+.ticket-details{
+    /* max-height: 150px; */
+    padding: 15px 15px 15px 15px;
+    background-color: #f0f2f5;
+    border-radius: 5px;
 }
 </style>
