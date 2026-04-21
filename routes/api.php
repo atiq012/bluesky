@@ -176,7 +176,7 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('/assignRequest', [RequestController::class, 'assignRequest'])->name('request.assignRequest');
     Route::post('/statusChange', [RequestController::class, 'statusChange'])->name('request.statusChange');
 
-    Route::post('/addRequestDetails', [RequestDetailsController::class, 'store'])->name('requestDetails.store');
+    Route::post('/addRequestNote', [RequestDetailsController::class, 'store'])->name('requestDetails.store');
     Route::get('/getRequestDetails/{id}', [RequestDetailsController::class, 'getRequestDetails'])->name('requestDetails.getRequestDetails');
 });
 Route::get('airports', [AreaController::class, 'airports']);

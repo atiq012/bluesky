@@ -24,6 +24,56 @@ const rData = ref([]);
 var regExSearch = ref();
 getListValues();
 
+const addNoteForm = reactive({
+    note: "",
+    ticketId: "",
+    showToAssignee: false,      // Added
+    sendAsEmail: false,         // Added
+    sendAsNotification: false   // Added
+});
+
+async function save() {
+    try {
+
+        // Prepare data for API
+        const payload = {
+            note: addNoteForm.note,
+            ticketId: addNoteForm.ticketId,
+            show_to_assignee: addNoteForm.showToAssignee,     // Convert to snake_case if needed
+            send_as_email: addNoteForm.sendAsEmail,           // Convert to snake_case if needed
+            send_as_notification: addNoteForm.sendAsNotification  // Convert to snake_case if needed
+        };
+
+        const response = await axiosInstance.post('/addRequestNote', payload);
+
+        // Optional: Show success message
+        // Optional: Reset form or close offcanvas
+
+        // Close the offcanvas after successful save
+        // Method 1: Using Bootstrap's JavaScript API
+        const offcanvasElement = document.getElementById('staticBackdrop'); // Replace with your offcanvas ID
+        const offcanvas = bootstrap.Offcanvas.getInstance(offcanvasElement);
+        if (offcanvas) {
+            offcanvas.hide();
+        }
+
+        // Optional: Reset form after closing
+        resetForm();
+
+        Notification.showToast('s', response.data.message);
+
+
+    } catch (error) {
+        console.log(error);
+        // Optional: Show error message
+    }
+}
+
+function resetForm() {
+    quillInstance.root.innerHTML = '<p></p>'
+
+}
+
 const options = {
     responsive: true,
     pageLength: 30,
@@ -192,6 +242,7 @@ const options = {
         $(".details-item").on('click', function (e) {
 
             var itemIdd = $(this).attr('data-item-id');
+            addNoteForm.ticketId = itemIdd;
 
             ticketDetails(itemIdd);
 
@@ -411,7 +462,7 @@ async function ticketDetails(idd) {
         data.details.forEach(function (detail) {
 
             if (detail.from_user_id == data.data.requester_id) {
-                $(".message_from_requester").append('<div class="col-md-12 pb-3"> <div class="d-flex flex-row-reverse bd-highlight"> <div class="p-2 bd-highlight"> <div class="d-flex"> <img src="' + data.author.img_path + '" width="20" height="20" class="rounded-circle" alt="" /> <div class="flex-grow-1 ms-2"> <p class="mb-0 chat-time">' + data.author.name + ', '+moment(detail.created_at).format('DD-MMM-YY hh:mm A')+'</p> </div> </div> </div> </div> <div class="d-flex justify-content-end"> <div class="bg-light-primary p-2 rounded"> <p class="mb-0 chat-time">' + detail.note + '</p> </div> </div> </div>');
+                $(".message_from_requester").append('<div class="col-md-12 pb-3"> <div class="d-flex flex-row-reverse bd-highlight"> <div class="p-2 bd-highlight"> <div class="d-flex"> <img src="' + data.author.img_path + '" width="20" height="20" class="rounded-circle" alt="" /> <div class="flex-grow-1 ms-2"> <p class="mb-0 chat-time">' + data.author.name + ', ' + moment(detail.created_at).format('DD-MMM-YY hh:mm A') + '</p> </div> </div> </div> </div> <div class="d-flex justify-content-end"> <div class="bg-light-primary p-2 rounded"> <p class="mb-0 chat-time">' + detail.note + '</p> </div> </div> </div>');
 
             } else {
 
@@ -424,6 +475,8 @@ async function ticketDetails(idd) {
     }
 
 }
+
+
 
 
 
@@ -468,12 +521,14 @@ onMounted(() => {
         })
 
         // Set initial content if needed
-        quillInstance.root.innerHTML = '<p>   </p>'
+        quillInstance.root.innerHTML = '<p></p>'
 
         // Listen for text changes
         quillInstance.on('text-change', () => {
             const html = quillInstance.root.innerHTML;
             const text = quillInstance.getText();
+            addNoteForm.note = text
+
         })
     }
 })
@@ -683,37 +738,41 @@ defineExpose({
                     <!-- end reverse -->
                 </div>
 
-                <div class="row mt-2">
-                    <div class="col-md-12">
-                        <div class="editor-container">
-                            <!-- Quill editor container -->
-                            <div ref="editorRef"></div>
+                <form id="addNoteForm">
+                    <div class="row mt-2">
+                        <div class="col-md-12">
+                            <div class="editor-container">
+                                <div ref="editorRef" id="note"></div>
+                                <!-- Quill editor container -->
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="showToAssignee"
+                                    v-model="addNoteForm.showToAssignee">
+                                <label class="form-check-label" for="showToAssignee">Show this note to assignee</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="sendAsEmail"
+                                    v-model="addNoteForm.sendAsEmail">
+                                <label class="form-check-label" for="sendAsEmail">Also send as Email</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="sendAsNotification"
+                                    v-model="addNoteForm.sendAsNotification">
+                                <label class="form-check-label" for="sendAsNotification">Send as Notification</label>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-md-12">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" value="" id="flexCheckDefault">
-                            <label class="form-check-label" for="flexCheckDefault">Show this note to assignee</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" value="" id="flexCheckDefault">
-                            <label class="form-check-label" for="flexCheckDefault">Also send as Email</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" value="" id="flexCheckDefault">
-                            <label class="form-check-label" for="flexCheckDefault">Send as Notification</label>
+                    <div class="row">
+                        <div class="col-md-12 mt-3">
+                            <button class="btn btn-sm btn-secondary float-center px-4 ms-2 mt-2" type="button"
+                                data-bs-dismiss="offcanvas" aria-label="Close">Cancel</button>
+                            <button type="button" @click="save()"
+                                class="m-2 btn btn-sm btn-info px-4 ms-2 float-end text-white">Save</button>
                         </div>
                     </div>
-                </div>
-                <div class="row">
-
-                    <div class="col-md-12 mt-3">
-                        <button class="btn btn-sm btn-secondary float-center px-4 ms-2 mt-2" type="button"
-                            data-bs-dismiss="offcanvas" aria-label="Close">Cancel</button>
-                        <button type="button"
-                            class="m-2 btn btn-sm btn-info px-4 ms-2 float-end text-white">Save</button>
-                    </div>
-                </div>
+                </form>
             </div>
         </div>
         <!-- end canvas -->
@@ -1243,7 +1302,8 @@ defineExpose({
 .scrollable-messages:hover {
     scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
 }
-.ticket-details{
+
+.ticket-details {
     /* max-height: 150px; */
     padding: 15px 15px 15px 15px;
     background-color: #f0f2f5;
