@@ -3,7 +3,7 @@ import DataTable from "datatables.net-vue3";
 import DataBS5 from "datatables.net-bs5";
 import Buttons from 'datatables.net-buttons';
 import axiosInstance from "../../../axiosInstance";
-import { ref, onMounted, reactive, onBeforeUnmount } from "vue";
+import { ref, onMounted, reactive, onBeforeUnmount, computed, watch } from "vue";
 import moment from "moment";
 
 // editor
@@ -21,8 +21,46 @@ DataTable.use(DataBS5);
 DataTable.use(Buttons);
 
 const rData = ref([]);
-var regExSearch = ref();
+const tableRef = ref(null);
+const searchText = ref("");
+const filterDate = ref("");
+const filterCategory = ref("");
+const filterPriority = ref("");
+const filterRequester = ref("");
+const filterAssigned = ref("");
+const filterStatus = ref("");
 getListValues();
+
+watch(searchText, (val) => {
+    const dt = tableRef.value?.dt;
+    if (!dt) return;
+    dt.search(val ?? "").draw();
+});
+
+function dtTrigger(buttonClass) {
+    const dt = tableRef.value?.dt;
+    if (!dt) return;
+    dt.button(buttonClass).trigger();
+}
+
+function clearFilters() {
+    filterDate.value = "";
+    filterCategory.value = "";
+    filterPriority.value = "";
+    filterRequester.value = "";
+    filterAssigned.value = "";
+    filterStatus.value = "";
+    searchText.value = "";
+    const dt = tableRef.value?.dt;
+    if (!dt) return;
+    dt.search("").columns().search("").draw();
+}
+
+const totalCount = computed(() => rData.value?.length ?? 0);
+const openCount = computed(() => (rData.value ?? []).filter((r) => String(r?.status ?? "").toLowerCase() === "open").length);
+const inProgressCount = computed(() => (rData.value ?? []).filter((r) => String(r?.status ?? "").toLowerCase() === "in progress").length);
+const closedCount = computed(() => (rData.value ?? []).filter((r) => String(r?.status ?? "").toLowerCase() === "closed").length);
+const onHoldCount = computed(() => (rData.value ?? []).filter((r) => String(r?.status ?? "").toLowerCase() === "on hold").length);
 
 const addNoteForm = reactive({
     note: "",
@@ -96,19 +134,17 @@ const options = {
             ]
         }
     },
-    dom: "<'row'<'col-sm-4'B><'d-md-flex justify-content-between align-items-center dt-layout-end col-md-auto ms-auto'f>>" + "<'row'<'col-sm-12'tr>>" +
-        "<'row justify-content-between Reduct_table_gap'<'d-md-flex justify-content-between align-items-center dt-layout-start col-md-auto me-auto'i><'d-md-flex justify-content-between align-items-center dt-layout-end col-md-auto ms-auto'p>>",
+    dom: "rt<'row align-items-center mt-3'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7 d-flex justify-content-end'p>>",
     buttons: ['copy', 'csv', 'pdf', 'excel', 'print'],
     language: {
-        search: "",
-        searchPlaceholder: "Search by anything",
+        emptyTable: "No data found",
     },
     columnDefs: [{
         defaultContent: "0",
         targets: "_all",
     }],
     columns: [
-        // { data: "DT_RowIndex", title: "SL" },
+        { data: "DT_RowIndex", title: "SL" },
         {
             title: "ID",
             render: function (data, type, row) {
@@ -119,6 +155,18 @@ const options = {
             },
         },
 
+        {
+            title: "Agency Info",
+            render: function (data, type, row) {
+                var html = "";
+                html += row.agency_name || row.requester_name || "-";
+                html += "<br>";
+                html += '<span class="text-primary">';
+                html += row.email || row.requester_email || "-";
+                html += "</span>";
+                return html;
+            },
+        },
         {
             title: "Subject",
             render: function (data, type, row) {
@@ -233,13 +281,13 @@ const options = {
     ],
     "drawCallback": function (settings) {
         // edit function
-        $(".edit-item").on('click', function (e) {
+        $(".edit-item").off("click").on('click', function (e) {
 
             var itemIdd = $(this).attr('data-item-id');
 
             router.push({ name: 'requestEdit', params: { ids: itemIdd } });
         });
-        $(".details-item").on('click', function (e) {
+        $(".details-item").off("click").on('click', function (e) {
 
             var itemIdd = $(this).attr('data-item-id');
             addNoteForm.ticketId = itemIdd;
@@ -248,14 +296,14 @@ const options = {
 
         });
 
-        $(".assign-item-id").on('click', function (e) {
+        $(".assign-item-id").off("click").on('click', function (e) {
 
             var itemIdd = $(this).attr('data-item-id');
 
             assignform.idd = itemIdd;
         });
 
-        $(".status-item-id").on('click', function (e) {
+        $(".status-item-id").off("click").on('click', function (e) {
 
             var itemIdd = $(this).attr('data-item-id');
 
@@ -263,7 +311,7 @@ const options = {
         });
 
         // delete function
-        $(".delete-item").on('click', function (e) {
+        $(".delete-item").off("click").on('click', function (e) {
             var idd = $(this).attr('data-item-id');
 
             // delete pop up message
@@ -308,7 +356,7 @@ const options = {
         });
 
         // change status
-        $(".status-change").on('click', function (e) {
+        $(".status-change").off("click").on('click', function (e) {
             // var idd = e.target.dataset.itemId;
             var idd = $(this).attr('data-item-id');
 
@@ -461,12 +509,14 @@ async function ticketDetails(idd) {
         $(".message_from_requester").html('');
         data.details.forEach(function (detail) {
 
-            if (detail.from_user_id == data.data.requester_id) {
-                $(".message_from_requester").append('<div class="col-md-12 pb-3"> <div class="d-flex flex-row-reverse bd-highlight"> <div class="p-2 bd-highlight"> <div class="d-flex"> <img src="' + data.author.img_path + '" width="20" height="20" class="rounded-circle" alt="" /> <div class="flex-grow-1 ms-2"> <p class="mb-0 chat-time">' + data.author.name + ', ' + moment(detail.created_at).format('DD-MMM-YY hh:mm A') + '</p> </div> </div> </div> </div> <div class="d-flex justify-content-end"> <div class="bg-light-primary p-2 rounded"> <p class="mb-0 chat-time">' + detail.note + '</p> </div> </div> </div>');
+            if (detail.to_user_id == data.data.requester_id) {
+                $(".message_from_requester").append('<div class="col-md-12 pb-3"> <div class="d-flex flex-row-reverse bd-highlight"> <div class="p-2 bd-highlight"> <div class="d-flex"> <img src="' + data.me.img_path + '" width="20" height="20" class="rounded-circle" alt="" /> <div class="flex-grow-1 ms-2"> <p class="mb-0 chat-time">' + data.me.name + ', ' + moment(detail.created_at).format('DD-MMM-YY hh:mm A') + '</p> </div> </div> </div> </div> <div class="d-flex justify-content-end"> <div class="bg-light-primary p-2 rounded"> <p class="mb-0 chat-time">' + detail.note + '</p> </div> </div> </div>');
 
             } else {
 
-                $(".message_from_me").append('<div class="col-md-12 mt-2 p-3"><div class="d-flex"><img src="' + data.me.img_path + '" width="20" height="20" class="rounded-circle" alt="" /><div class="flex-grow-1 ms-2"><p class="mb-0 chat-time">' + data.me.name + ', ' + moment(detail.created_at).format('DD-MMM-YY hh:mm A') + '</p></div></div><div class="d-flex"><div class="bg-light-primary p-2 rounded mt-2"><p class="mb-0 chat-time">' + detail.note + '</p></div></div></div>');
+                $(".message_from_me").append('<div class="col-md-12 mt-2 p-3"><div class="d-flex"><img src="' + data.author.img_path + '" width="20" height="20" class="rounded-circle" alt="" /><div class="flex-grow-1 ms-2"><p class="mb-0 chat-time">' + data.author.name + ', ' + moment(detail.created_at).format('DD-MMM-YY hh:mm A') + '</p></div></div><div class="d-flex"><div class="bg-light-primary p-2 rounded mt-2"><p class="mb-0 chat-time">' + detail.note + '</p></div></div></div>');
+
+
             }
         });
 
@@ -563,72 +613,123 @@ defineExpose({
 })
 </script>
 <template>
-    <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
-
-        <div class="breadcrumb-title pe-3">Help Desk</div>
-        <div class="ps-3">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0 p-0">
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'Home' }">Dashboard</router-link>
-                    </li>
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'helpDesk' }">Support Request </router-link>
-                    </li>
-                </ol>
-            </nav>
-        </div>
-        <div class="ms-auto">
-            <div class="btn-group">
-                <router-link :to="{ name: 'requestCreate' }" class="btn btn-primary btn-sm">
-                    <i class="fa fa-circle-plus"></i>Request
-                </router-link>
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <div class="flex-grow-1">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <div class="fw-semibold text-dark">Support Request</div>
+                <span class="text-muted small">|</span>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0 p-0 small">
+                        <li class="breadcrumb-item">
+                            <router-link :to="{ name: 'Home' }">Dashboard</router-link>
+                        </li>
+                        <li class="breadcrumb-item">
+                            <router-link :to="{ name: 'helpDesk' }">Helpdesk</router-link>
+                        </li>
+                        <li class="breadcrumb-item active" aria-current="page">Support Request List</li>
+                    </ol>
+                </nav>
             </div>
+        </div>
+
+        <div class="ms-auto">
+            <router-link :to="{ name: 'requestCreate' }" class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2">
+                <i class="fa fa-circle-plus"></i>
+                <span>Request</span>
+            </router-link>
         </div>
     </div>
 
-
-    <div class="row">
-        <div class="col-12 col-sm-6 col-md-3">
+    <div class="row g-3 mb-3">
+        <div class="col-12 col-sm-6 col-lg">
             <div class="info-agency">
                 <span class="info-agency-icon bg-info elevation-1"><i class="fa-solid fa-ticket"></i></span>
                 <div class="info-agency-content">
                     <span class="info-agency-text">Total</span>
-                    <span class="info-agency-number">
-                        1200
-                    </span>
+                    <span class="info-agency-number">{{ totalCount }}</span>
                 </div>
             </div>
         </div>
 
-        <div class="col-12 col-sm-6 col-md-3">
+        <div class="col-12 col-sm-6 col-lg">
             <div class="active-agency mb-3">
                 <span class="active-agency-icon bg-success elevation-1 text-white"><i class="fa fa-check"></i></span>
                 <div class="active-agency-content">
                     <span class="active-agency-text">Open</span>
-                    <span class="active-agency-number">760</span>
+                    <span class="active-agency-number">{{ openCount }}</span>
                 </div>
-
             </div>
-
         </div>
 
-        <div class="col-12 col-sm-6 col-md-3">
+        <div class="col-12 col-sm-6 col-lg">
             <div class="pending-agnt mb-3">
                 <span class="pending-agnt-icon bg-warning elevation-1"><i class="fa-solid fa-ban"></i></span>
                 <div class="pending-agnt-content">
                     <span class="pending-agnt-text">In Progress</span>
-                    <span class="pending-agnt-number">20</span>
+                    <span class="pending-agnt-number">{{ inProgressCount }}</span>
                 </div>
             </div>
         </div>
 
-        <div class="col-12 col-sm-6 col-md-3">
-            <div class="pending-agnt mb-3">
+        <div class="col-12 col-sm-6 col-lg">
+            <div class="pending-agnt mb-3 closed-card">
                 <span class="pending-agnt-icon bg-danger elevation-1"><i class="fa-solid fa-circle-pause"></i></span>
                 <div class="pending-agnt-content">
-                    <span class="pending-agnt-text">In Progress</span>
-                    <span class="pending-agnt-number">20</span>
+                    <span class="pending-agnt-text">Closed</span>
+                    <span class="pending-agnt-number">{{ closedCount }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-sm-6 col-lg">
+            <div class="info-box mb-3">
+                <span class="info-box-icon bg-warning elevation-1"><i class="fa-solid fa-pause"></i></span>
+                <div class="info-box-content">
+                    <span class="info-box-text">On Hold</span>
+                    <span class="info-box-number">{{ onHoldCount }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+            <div class="row g-2 align-items-center">
+                <div class="col-12 col-md-3 col-lg-2">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-white"><i class="fa-regular fa-calendar"></i></span>
+                        <input v-model="filterDate" type="text" class="form-control" placeholder="01-Aug-2024 - 22-Aug-2024">
+                    </div>
+                </div>
+                <div class="col-6 col-md-2 col-lg">
+                    <select v-model="filterCategory" class="form-select form-select-sm">
+                        <option value="">Category</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2 col-lg">
+                    <select v-model="filterPriority" class="form-select form-select-sm">
+                        <option value="">Priority</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2 col-lg">
+                    <select v-model="filterRequester" class="form-select form-select-sm">
+                        <option value="">Requester</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2 col-lg">
+                    <select v-model="filterAssigned" class="form-select form-select-sm">
+                        <option value="">Assigned</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2 col-lg">
+                    <select v-model="filterStatus" class="form-select form-select-sm">
+                        <option value="">Status</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-auto">
+                    <button type="button" class="btn btn-link btn-sm text-decoration-none px-0" @click="clearFilters">
+                        <i class="fa-solid fa-xmark me-1"></i>Clear Filters
+                    </button>
                 </div>
             </div>
         </div>
@@ -779,16 +880,38 @@ defineExpose({
 
 
         <div class="col-md-12">
-            <div class="card rounded rounded-2 shadow-none p-3">
-                <div v-if="authStore.GlobalLoading" class="center-body position-absolute top-50 start-50">
+            <div class="card border-0 shadow-sm p-3 position-relative">
+                <div v-if="authStore.GlobalLoading" class="table-loading">
                     <div class="loader-circle-57">
                         <img class="position-absolute" src="../../../../../public/theme/appimages/blueskywings.png"
                             height="22" width="22" alt="">
                     </div>
                 </div>
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-sm btn-danger" @click="dtTrigger('.buttons-pdf')">
+                            <i class="fa-regular fa-file-pdf me-1"></i>Pdf
+                        </button>
+                        <button type="button" class="btn btn-sm btn-success" @click="dtTrigger('.buttons-excel')">
+                            <i class="fa-regular fa-file-excel me-1"></i>Excel
+                        </button>
+                        <button type="button" class="btn btn-sm btn-primary" @click="dtTrigger('.buttons-csv')">
+                            <i class="fa-solid fa-file-csv me-1"></i>CSV
+                        </button>
+                    </div>
 
-                <DataTable :options="options" :data="rData" class="table table-sm table-striped table-bordered">
-                </DataTable>
+                    <div class="table-search input-group input-group-sm">
+                        <span class="input-group-text bg-white">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </span>
+                        <input v-model="searchText" type="search" class="form-control" placeholder="Search by anything">
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <DataTable ref="tableRef" :options="options" :data="rData"
+                        class="table table-sm align-middle table-hover table-bordered table-striped w-100">
+                    </DataTable>
+                </div>
             </div>
         </div>
 
@@ -797,14 +920,34 @@ defineExpose({
 </template>
 
 <style>
-.center-body {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    height: 100vh;
-    width: 100px;
-    height: 100px;
+.dt-buttons,
+.dt-search {
+    display: none !important;
+}
+
+.table-loading {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: rgba(255, 255, 255, 0.6);
+    z-index: 5;
+}
+
+.table-search {
+    width: min(320px, 100%);
+}
+
+.table-search .form-control {
+    border-left: 0;
+}
+
+.table-search .input-group-text {
+    border-right: 0;
+}
+
+.closed-card {
+    background-image: linear-gradient(to right top, #f3e5e6, #f3e5e6, #f3e5e6, #f3e5e6, #f3e5e6, #f4dbdd, #f5d1d4, #f5c7ca, #f5afb6, #f397a2, #f07e8f, #ec657c);
 }
 
 .loader-circle-57 {
@@ -839,31 +982,8 @@ defineExpose({
 }
 
 
-.dt-search {
-    margin-bottom: -15px;
-    width: 190px;
-}
-
 .Reduct_table_gap {
     margin-top: -10px;
-}
-
-.dt-search input[type=search] {
-    width: 100%;
-    box-sizing: border-box;
-    border: 1px solid #E4EAEF;
-    border-radius: 9px;
-    background-color: white;
-    background-image: url('../../../../../../public/theme/appimages/Search.svg');
-    background-position: 7px 6px;
-    /*left,top*/
-    background-repeat: no-repeat;
-    padding-left: 35px;
-    padding-top: 8px;
-    color: #A1ABB7;
-    padding-bottom: 8px;
-    font-size: 13px;
-    font-family: 'inter';
 }
 
 .text-blue {

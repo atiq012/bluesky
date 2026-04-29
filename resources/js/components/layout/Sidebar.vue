@@ -230,6 +230,12 @@ onMounted(() => {
                                 </router-link>
                             </ul>
                         </li>
+
+                        <li>
+                            <router-link v-wave :to="{ name: 'apiManagement' }">
+                                <i class='bx bx-radio-circle'></i> API Management
+                            </router-link>
+                        </li>
                     </ul>
                 </li>
 

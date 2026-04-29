@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Request;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\Admin\API\APIController;
+use App\Http\Controllers\Admin\ApiManagement\APIManagementController;
 use App\Http\Controllers\Admin\Area\AreaController;
 use App\Http\Controllers\Admin\Agent\AgentController;
 use App\Http\Controllers\Admin\Deposit\DepositController;
@@ -178,6 +179,14 @@ Route::middleware(['auth:api'])->group(function () {
 
     Route::post('/addRequestNote', [RequestDetailsController::class, 'store'])->name('requestDetails.store');
     Route::get('/getRequestDetails/{id}', [RequestDetailsController::class, 'getRequestDetails'])->name('requestDetails.getRequestDetails');
+
+    // API management
+    Route::get('getAPI', [APIManagementController::class, 'index'])->name('api.index');
+    Route::post('/api/save', [APIManagementController::class, 'store'])->name('api.store');
+    Route::post('/changeAPIStatus', [APIManagementController::class, 'changeAPIStatus'])->name('api.changeAPIStatus');
+    Route::post('/editAPI', [APIManagementController::class, 'edit'])->name('api.edit');
+    Route::post('/api/update', [APIManagementController::class, 'update'])->name('api.update');
+    Route::post('/deleteAPI', [APIManagementController::class, 'destroy'])->name('api.destroy');
 });
 Route::get('airports', [AreaController::class, 'airports']);
 
