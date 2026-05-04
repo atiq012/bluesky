@@ -6,7 +6,6 @@ use App\Http\Controllers\BaseController;
 use App\Models\APIManagement\ApiManagement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Yajra\DataTables\DataTables;
 
 class APIManagementController extends BaseController
@@ -17,13 +16,12 @@ class APIManagementController extends BaseController
     public function index()
     {
         $data = DB::table('api_management as am')
-            ->select('am.id as idd', 'am.name', 'am.author', 'am.email', 'am.password', 'am.branch_code', 'am.application_id', 'am.application_secret', 'am.endpoint', 'am.status','am.created_at','am.updated_at', 'u.name as created_by', 'u2.name as updated_by')
+            ->select('am.id as idd', 'am.name', 'am.author', 'am.remark', 'am.status','am.created_at','am.updated_at', 'u.name as created_by', 'u2.name as updated_by')
             ->leftJoin('users as u', 'u.id', '=', 'am.created_by')
             ->leftJoin('users as u2', 'u2.id', '=', 'am.updated_by')
             ->get();
 
         return DataTables::of($data)->addIndexColumn()->make(true);
-
     }
 
     public function changeAPIStatus(Request $request)
@@ -64,33 +62,32 @@ class APIManagementController extends BaseController
     public function store(Request $request)
     {
         // dd($request->all());
-
         // validation
         $request->validate([
             'name' => 'required',
             'author' => 'required',
-            'email' => 'required|email',
-            'password' => 'required',
-            'branch_code' => 'required',
-            'application_id' => 'required',
-            'application_secret' => 'required',
-            'end_point' => 'required',
+            'fields' => 'nullable|array',
+            'fields.*.title' => 'nullable|string|max:255',
+            'fields.*.value' => 'nullable|string|max:255',
         ]);
+
+        $fields = $request->input('fields', []);
+        if (is_string($fields)) {
+            $decoded = json_decode($fields, true);
+            $fields = is_array($decoded) ? $decoded : [];
+        }
 
         $api = new ApiManagement();
         $api->name = $request->name;
         $api->author = $request->author;
-        $api->email = $request->email;
-        $api->password = Hash::make($request->password);
-        $api->branch_code = $request->branch_code;
-        $api->application_id = $request->application_id;
-        $api->application_secret = $request->application_secret;
-        $api->endpoint = $request->end_point;
+        $api->remark = $request->remarks;
+        $api->fields = $fields;
         $api->status = 'active';
         $api->created_by = auth()->user()->id;
         $api->save();
 
         $success = '';
+
         return $this->SuccessResponse($success, 'Successfully API Created.');
     }
 

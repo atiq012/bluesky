@@ -60,6 +60,11 @@ function escAttr(value) {
         .replaceAll(">", "&gt;");
 }
 
+function wrap(value) {
+    if (!value) return null;
+    return `<div class="small text-muted">${escAttr(value)}</div>`;
+}
+
 const options = {
     responsive: true,
     pageLength: 30,
@@ -97,38 +102,14 @@ const options = {
                 return html;
             },
         },
-        {
-            title: "Credentials",
-            render: function (data, type, row) {
-                const email = row.email ?? row.username ?? row.user_email ?? "-";
-                const apiKey = row.api_key ?? row.apiKey ?? row.key ?? "";
-                const apiSecret = row.api_secret ?? row.apiSecret ?? row.secret ?? "";
+        // {
+        //     title: "Credentials",
+        //     render: function (data, type, row) {
+        //         const email = wrap(row.remark ? row.remark : null);
 
-                let html = "";
-                html += `<div class="small text-muted">${email}</div>`;
-                html += `<div class="d-flex flex-column gap-1 mt-1">`;
-                if (apiKey) {
-                    html += `<div class="d-flex align-items-center gap-2">`;
-                    html += `<i class="fa-solid fa-key text-primary small"></i>`;
-                    html += `<span class="font-monospace small">${maskSecret(apiKey)}</span>`;
-                    html += `<button type="button" class="btn btn-sm btn-light border copy-cred" data-copy="${escAttr(apiKey)}" title="Copy"><i class="fa-regular fa-copy"></i></button>`;
-                    html += `</div>`;
-                }
-                if (apiSecret) {
-                    html += `<div class="d-flex align-items-center gap-2">`;
-                    html += `<i class="fa-solid fa-asterisk text-primary small"></i>`;
-                    html += `<span class="font-monospace small">${maskSecret(apiSecret)}</span>`;
-                    html += `<button type="button" class="btn btn-sm btn-light border copy-cred" data-copy="${escAttr(apiSecret)}" title="Copy"><i class="fa-regular fa-copy"></i></button>`;
-                    html += `</div>`;
-                }
-                if (!apiKey && !apiSecret) {
-                    html += `<div class="small text-muted">-</div>`;
-                }
-                html += `</div>`;
-
-                return html;
-            },
-        },
+        //         return email ?? "<div class=\"small text-muted\">-</div>";
+        //     },
+        // },
 
         {
             title: "Created By",

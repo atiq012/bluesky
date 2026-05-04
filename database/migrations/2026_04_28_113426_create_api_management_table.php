@@ -15,12 +15,8 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('author')->nullable();
-            $table->string('email');
-            $table->string('password');
-            $table->string('branch_code');
-            $table->text('application_id');
-            $table->text('application_secret');
-            $table->string('endpoint');
+            $table->string('remark')->nullable();
+            $table->json('fields')->nullable();
             $table->enum('status', ['active', 'inactive'])->default('active');
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('updated_by')->nullable();

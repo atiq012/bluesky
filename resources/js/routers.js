@@ -204,7 +204,7 @@ const routes = [
     { path: '/edit-traveler/:ids', component: TravelerEdit, name: 'TravelerEdit', meta: { auth: true }, props:true },
     { path: '/view-traveler/:ids', component: TravelerView, name: 'TravelerView', meta: { auth: true }, props:true },
 
-    // help desk
+    // help desks
     { path: '/help-desk-index', component: helpDesk, name: 'helpDesk', meta: { auth: true } },
     { path: '/new-request-create', component: requestCreate, name: 'requestCreate', meta: { auth: true } },
     { path: '/edit-request/:ids', component: requestEdit, name: 'requestEdit', meta: { auth: true }, props:true },
