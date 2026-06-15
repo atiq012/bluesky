@@ -178,7 +178,7 @@ const options = {
 
                 html += '<button  style="size: 30px; width: 30px; height: 30px" class="btn btn-outline-only-edit rounded-circle edit-item" placement="top" id="edit_tool" data-item-id=' + idd + '> <i class="fa-solid fa-pencil" style="margin: 0px 0px 10px -5px; font-size: 14px;" ></i> </button>';
 
-                html += '<button type="button" style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-purple rounded-circle status-change" data-item-id=' + idd + ' data-status=' + status + '> <i class="fa fa-refresh" style="margin: 2px 0px 10px -5px; font-size: 14px;"></i> </button>';
+                // html += '<button type="button" style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-purple rounded-circle status-change" data-item-id=' + idd + ' data-status=' + status + '> <i class="fa fa-refresh" style="margin: 2px 0px 10px -5px; font-size: 14px;"></i> </button>';
 
                 html += '<button type="button" v-tippy="Lock" style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-timer rounded-circle history-data" data-item-id=' + idd + '> <i class="fa-solid fa-clock-rotate-left" style="margin: 2px 0px 10px -5px; font-size: 14px;"></i> </button>';
 
@@ -274,7 +274,7 @@ async function getListValues() {
     try {
 
         authStore.GlobalLoading = true;
-        const response = await axiosInstance.get("getExternalUsers");
+        const response = await axiosInstance.get("getAgentExternalUsers");
         rData.value = response.data.data;
         authStore.GlobalLoading = false;
     } catch (error) {

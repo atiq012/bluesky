@@ -24,6 +24,16 @@ class UserController extends BaseController
         // rep_user(u.report_to) as rep_to,
         return DataTables::of($data)->addIndexColumn()->make(true);
     }
+    public function getAgentExternalUsers()
+    {
+        $auth = auth()->user();
+
+        $data = DB::table('users as u')->where('type', 2)->where('agent_id', $auth->agent_id)
+            ->join('roles as r', 'r.id', 'u.user_role')
+            ->selectRaw('u.name,u.email,u.img_path as img,u.phone,u.status,r.name as r_name,u.img_path,u.id as idd,u.created_at,u.updated_at,f_department(u.dept_id) as dept,f_designation(u.designation_id) as desg,u.emp_id,f_off_loc(u.office_loc_id) as off_loc,f_username(u.updated_by) as updated_by,f_username(u.created_by) as created_by')->get();
+
+        return DataTables::of($data)->addIndexColumn()->make(true);
+    }
 
     public function getAllUsers()
     {
@@ -92,6 +102,64 @@ class UserController extends BaseController
         $user->type = 2;
         $user->is_active = 1;
         $user->status = 1;
+        $user->created_by = $auth->id;
+        $user->password = Hash::make('Gblue@sky7');
+        // $user->agent_id = $auth->agent_id;
+        $user->save();
+        return response()->json(['message' => 'Successfully User Saved.', 'types' => 's']);
+
+    }
+    public function agntUserstore(Request $request)
+    {
+        // dd($request->all());
+
+        $auth = User::where('email', $request->useEmail)->first();
+        $validator = validator($request->all(),
+            ['name' => 'required'],
+            ['phone' => 'required'],
+            ['email' => 'required'],
+            ['staff_id' => 'required'],
+            ['dept_name' => 'required'],
+            ['desg' => 'required'],
+            ['off_loct' => 'required'],
+            ['report_to' => 'required'],
+            ['role_id' => 'required'],
+        );
+        if ($validator->fails()) {
+            return response()->json(['message' => $validator->errors()->all(), 'types' => 'e']);
+        }
+        $user = new User;
+        $user->name = $request->name;
+        $user->phone = $request->phone;
+        $user->email = $request->email;
+        $user->emp_id = $request->staff_id;
+        $user->dept_id = $request->dept_name;
+        $user->designation_id = $request->desg;
+        $user->office_loc_id = $request->off_loct;
+        $user->report_to = $request->report_to;
+        $user->user_role = $request->role_id;
+        $user->agent_id = $auth->agent_id;
+
+        if ($request->hasFile('profile_picture')) {
+
+            $request_image = $request->file('profile_picture');
+            $image_name = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
+
+            $image_path = public_path('/uploads/profile_image/');
+            if (!File::exists($image_path)) {
+                File::makeDirectory($image_path, 0777, true);
+            }
+
+            $request_image->move($image_path, $image_name);
+            $user->img_path = '/uploads/profile_image/' . $image_name;
+
+        } else {
+            $profilePicturePath = null;
+        }
+
+        $user->type = 2;
+        $user->is_active = 0; // inactive
+        $user->status = 2; // inactive
         $user->created_by = $auth->id;
         $user->password = Hash::make('Gblue@sky7');
         // $user->agent_id = $auth->agent_id;

@@ -141,6 +141,10 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('/deleteUser', [UserController::class, 'destroy'])->name('user.deleteUser');
     Route::post('/user-status/update', [UserController::class, 'statusUpdate'])->name('user.statusUpdate');
 
+    //agets wise extrenal users
+    Route::get('getAgentExternalUsers', [UserController::class, 'getAgentExternalUsers'])->name('user.getAgentExternalUsers');
+    Route::post('/agent-external-user/save', [UserController::class, 'agntUserstore'])->name('user.agntUserstore');
+
     // traveler section
     Route::get('getTraveler', [TravelerController::class, 'index'])->name('traveler.getTraveler');
     Route::post('/traveler/data/save', [TravelerController::class, 'store'])->name('traveler.store');
