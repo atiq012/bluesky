@@ -26,6 +26,7 @@ const bookingCreate = () => import('./components/admin/booking/create.vue')
 
 // ticketing
 const manualticketing = () => import('./components/admin/ticketing/manual_ticketing.vue')
+
 // agent
 const AgentList = () => import('./components/admin/agent/index.vue')
 const agentDetails = () => import('./components/admin/agent/agentDetails.vue')
@@ -69,6 +70,11 @@ const designationEdit = () => import('./components/admin/designation/edit.vue')
 const offLoc = () => import('./components/admin/officeLocation/index.vue')
 const addoffLoc = () => import('./components/admin/officeLocation/create.vue')
 const offEdit = () => import('./components/admin/officeLocation/edit.vue')
+
+// api management
+const apiManagement = () => import('./components/admin/apiManagement/index.vue')
+const addApi = () => import('./components/admin/apiManagement/create.vue')
+
 //setting deposit
 const issuedBankMFS = () => import('./components/admin/settings/deposit/issuedBankMFS/index.vue')
 const bankMfsCreate = () => import('./components/admin/settings/deposit/issuedBankMFS/create.vue')
@@ -93,6 +99,13 @@ const TravelerList = () => import('./components/admin/traveler/index.vue')
 const CreateTraveller = () => import('./components/admin/traveler/create.vue')
 const TravelerEdit = () => import('./components/admin/traveler/edit.vue')
 const TravelerView = () => import('./components/admin/traveler/view.vue')
+
+// help desk
+const helpDesk = () => import('./components/admin/helpdesk/index.vue')
+const requestCreate = () => import('./components/admin/helpdesk/create.vue')
+const requestEdit = () => import('./components/admin/helpdesk/edit.vue')
+const categoryList = () => import('./components/admin/category/index.vue')
+const categoryCreate = () => import('./components/admin/category/create.vue')
 
 const routes = [
     { path: '/', component: Login, name: 'Login', meta: { guest: true } },
@@ -169,6 +182,10 @@ const routes = [
     { path: '/create-location', component: addoffLoc, name: 'addoffLoc', meta: { auth: true } },
     { path: '/office-location/:id', component: offEdit, name: 'offEdit', meta: { auth: true }, props: true },
 
+
+    // api management
+    { path: '/all-api-list', component: apiManagement, name: 'apiManagement', meta: { auth: true } },
+    { path: '/create-api', component: addApi, name: 'addApi', meta: { auth: true } },
     // sttings deposit bank and mfs
     { path: '/all-bank-&-mfs', component: issuedBankMFS, name: 'issuedBankMFS', meta: { auth: true } },
     { path: '/create-bank-mfs', component: bankMfsCreate, name: 'bankMfsCreate', meta: { auth: true } },

@@ -93,7 +93,8 @@ async function getDepartment() {
 
         });
 
-        let select = $("#deptment_id")
+        let select = $("#deptment_id");
+
         select.select2({
             placeholder: '=Select=',
             theme: 'bootstrap-5',
@@ -331,6 +332,7 @@ const handleFileChange = (event) => {
                         <p class="text-center">Profile Image</p>
 
                         <div class="mb-3 pt-0 text-center mx-auto">
+
                             <img v-if="!previewImage" src=""
                                 height="150" width="150" class="border border-1 rounded rounded-2"
                                 alt="Profile Picture">

@@ -58,6 +58,7 @@ async function getAirLinesData(props) {
         const country_name = response.data[0].country_name;
         const airline_business_type = response.data[0].airline_business_type;
         const logo_path = response.data[0].logo_path;
+        // console.log(response.data[0]);
 
         form.name = name;
         form.code = code;

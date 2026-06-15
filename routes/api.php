@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\Agent\AgentController;
 use App\Http\Controllers\Admin\AircraftType\AircraftTypeDesignatorController;
 use App\Http\Controllers\Admin\AirlineLogo\AirlineLogoController;
 use App\Http\Controllers\Admin\API\APIController;
+use App\Http\Controllers\Admin\ApiManagement\APIManagementController;
 use App\Http\Controllers\Admin\Area\AreaController;
 use App\Http\Controllers\Admin\Department\DepartmentController;
 use App\Http\Controllers\Admin\Deposit\DepositController;
@@ -135,7 +136,7 @@ Route::middleware(['auth:api'])->group(function () {
     //users managemnt
     Route::get('getExternalUsers', [UserController::class, 'index'])->name('user.getExternalUsers');
     Route::get('getAllUsers', [UserController::class, 'getAllUsers'])->name('user.getAllUsers');
-    Route::post('/external-user/save', [UserController::class, 'store'])->name('user.store');
+    Route::post('/internal-user/save', [UserController::class, 'store'])->name('user.store');
     Route::post('/editUser', [UserController::class, 'edit'])->name('user.editUser');
     Route::post('/user-details/update', [UserController::class, 'update'])->name('user.update');
     Route::post('/deleteUser', [UserController::class, 'destroy'])->name('user.deleteUser');

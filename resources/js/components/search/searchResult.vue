@@ -10,6 +10,10 @@ import { useAuthStore } from '../../stores/authStore';
 import '../../../css/searchpanel.css'
 import { useRouter } from "vue-router";
 const router = useRouter();
+<<<<<<< HEAD
+=======
+
+>>>>>>> 3b1cc649fc7318a92e31be760fd317eba1d759d6
 const authStore = useAuthStore();
 
 
@@ -373,13 +377,17 @@ async function Lowfaresearch() {
 
         const startTime = performance.now();
         const response = await axiosInstance.post("Lowfaresearch", form);
+
         const endTime = performance.now();
         ExecutionTime.value = ((endTime - startTime) / 1000).toFixed(2);
 
         flights.value = response.data.flights;
         totalFlights.value = response.data.flights.length;
+<<<<<<< HEAD
         // console.log('test');
 
+=======
+>>>>>>> 3b1cc649fc7318a92e31be760fd317eba1d759d6
         if (totalFlights.value > 0) {
             authStore.GlobalLoading = false;
         } else {

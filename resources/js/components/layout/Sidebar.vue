@@ -125,12 +125,10 @@ onMounted(() => {
                     </ul>
                 </li>
 
-
                 <li>
                     <router-link v-wave :to="{ name: 'depositList' }">
                         <div class="parent-icon">
                             <img src="../../../../public/theme/Sidebar_icons/Deposit.svg" alt="">
-                            <!-- <i class="bx bx-cabinet"></i> -->
                         </div>
                         <div class="menu-title">Deposits
                         </div>
