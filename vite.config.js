@@ -4,6 +4,9 @@ import vue from "@vitejs/plugin-vue";
 
 export default defineConfig({
 
+    server: {
+        hmr: { host: 'localhost' },
+    },
     build: {
         chunkSizeWarningLimit: 1600,
     },

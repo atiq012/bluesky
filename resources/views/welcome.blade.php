@@ -6,7 +6,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>B2B | BlueSky | NDC</title>
-    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+    @production<meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">@endproduction
     <meta name="api-base-url" content="{{ url('') }}" />
     <link rel="icon" href="{{ url('/theme/appimages/blueskywings.png') }}">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
