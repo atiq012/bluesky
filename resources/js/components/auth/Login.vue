@@ -19,7 +19,7 @@ const form = reactive({ email: "", password: "" });
 
 const loading = ref(false);
 const ButtonName = ref("");
-ButtonName.value = "login";
+ButtonName.value = "Login";
 
 
 function handleSubmit() {
@@ -97,6 +97,7 @@ function handleSubmit() {
 };
 
 function ShowPass() {
+    console.log(PassType.value);
 
     if (PassType.value == true) {
         PassType.value = false
@@ -142,123 +143,54 @@ onMounted(() => {
 
 </script>
 <template>
-    <div class="container-fluid vh-100 d-flex flex-column">
-        <div class="row vh-100 content">
-            <div class="d-none d-lg-flex col-lg-6 flex-column p-0 position-relative">
+    <div class="container-fluid vh-100 d-flex flex-column body">
+        <header class="site-header">
+            <a href="#" class="header-logo">
+                <img src="../../../../public/theme/appimages/BS-Logo-B2C-transparent.gif" alt="BlueSky Logo"
+                    class="logo-svg" />
+            </a>
+        </header>
 
-                <video style="z-index: 1" class="vid" src="../../../../public/theme/appimages/la.mp4" autoplay loop
-                    muted />
-                <img style="z-index: 2" class="mixbl shadow-lg" src="../../../../public/theme/appimages/sh3.jpg"
-                    alt="" />
-                <img class="mixbl2" style="z-index: 3" src="../../../../public/theme/appimages/Subtract.svg" alt="" />
+        <div class="split-wrap">
 
-                <img src="../../../../public/theme/appimages/planedowa1.png"
-                    style="height: 190px; margin-top: 330px; margin-left: -425px; z-index: 2; "
-                    class="img-fluid position-absolute" alt="lesstmap" />
-                <img src="../../../../public/theme/appimages/map.svg"
-                    style="height: 180px; margin-top: 410px; margin-left: 100px; z-index: 5"
-                    class="img-fluid position-absolute" alt="leftmap" />
-
-                <img src="../../../../public/theme/appimages/bil.svg" style="z-index: 6" class="img-fluid imgBottom"
-                    alt="leftcityBottom" />
-
-                <div style="z-index: 7;" class="position-absolute">
-                    <div class="h-100 d-flex flex-column p-4 position-relative">
-                        <div class="mt-2 leftfirstpara">
-                            Unlocking The Future Of Travel Management <br />
-                            With <span class="leftfirstparaspan">BlueSky NDC Platform</span>
-                        </div>
-                        <div class="mt-3 leftsecpara">
-                            The perfect way to manage your B2B Agents. Automate the Sales process,<br>
-                            Reduce response time and Increase growth to your business
-                        </div>
-                        <div class="mt-4">
-                            <div class="d-flex justify-content-center leftboletpoint">
-                                <div class="w-100">
-                                    <i class="fas fa-star fastar"></i> Dynamic Pricing
-                                </div>
-                                <div class="w-100">
-                                    <i class="fas fa-star fastar"></i> Inventory Management
-                                </div>
-                                <div class="w-100">
-                                    <i class="fas fa-star fastar"></i> Inventory Management
-                                </div>
-                            </div>
-                            <div class="d-flex justify-content-center leftboletpoint">
-                                <div class="w-100"><i class="fas fa-star fastar"></i> Real-time Feed</div>
-                                <div class="w-100">
-                                    <i class="fas fa-star fastar"></i> Integrated Analytics
-                                </div>
-                                <div class="w-100"><i class="fas fa-star fastar"></i> CRM</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
+            <!-- LEFT PANEL -->
+            <div class="left-panel">
+                <img src="../../../../public/theme/appimages/Bg-Image.png" alt="Left Panel" class="left-bg-img" />
             </div>
-            <div class="col-lg-6 col-md-12 col-sm-12 p-0 position-relative">
-                <img src="../../../../public/theme/appimages/bubble.svg" class="buble" alt="rlogo">
-                <div class="h-100 d-flex flex-column">
 
-                    <div class="d-none d-lg-flex d-xl-flex justify-content-start mt-3">
-                        <div class="p-2 align-content-center">
-                            <img src="../../../../public/theme/appimages/bird.gif" width="35" height="35" alt="rbird">
-                        </div>
-                        <div class="p-1 align-content-center" style="margin-left: -7px;">
-                            <img src="../../../../public/theme/appimages/blueskymainlogo.svg" height="35" alt="rlogo">
-                        </div>
+            <!-- RIGHT PANEL -->
+            <div class="right-panel ">
+                <div class="login-wrapper">
+                    <div class="login-border-wrap">
+                        <div class="login-card">
 
-                    </div>
-                    <div class="d-flex justify-content-center mt-5">
-                        <!-- Show Only in LG and XL -->
-                        <div class="d-none d-lg-block d-xl-block">
-                            <p class="well p-0 m-0">Nice To See You !</p>
-                            <p class="wellbellow p-0 m-0">Bluesky NDC Travel Platform</p>
-                        </div>
-                        <!-- show only in mobile view -->
-                        <div class="d-lg-none d-xl-none d-sm-block mt-5">
-                            <p class="well p-0 m-0">Nice To See You !</p>
-                            <div class="d-flex justify-content-center justify-content-lg-start">
-                                <div class="p-2">
-                                    <img src="../../../../public/theme/appimages/bird.png" width="40" height="30"
-                                        alt="rbird">
-                                </div>
-                                <div class="p-1 align-content-center" style="margin-left: -7px;">
-                                    <img src="../../../../public/theme/appimages/blueskymainlogo.svg" height="35"
-                                        alt="rlogo">
-                                </div>
+                            <!-- ── Logo block ───────────────────────────── -->
+                            <div class="logo-wrap">
+                                <img src="../../../../public/theme/appimages/BS-Logo.png" alt="BlueSky Icon"
+                                    class="card-logo-icon" />
                             </div>
-                        </div>
-                    </div>
-                    <div class="container-fluid mx-auto">
 
-                        <form @submit.prevent="handleSubmit">
-                            <div class="row justify-content-center">
+                            <p class="brand-tagline">BLUESKY NDC TRAVEL LTD</p>
+                            <h2 class="welcome-heading">Welcome to BlueSky</h2>
+                            <p class="subtitle">Easy and hassle-free flight booking portal</p>
 
-                                <div class="col-lg-6 col-md-6 col-sm-10">
+                            <form @submit.prevent="handleSubmit">
+                                <!-- Email -->
+                                <div class="mb-3">
+                                    <input type="email" v-model="authStore.email" id="email"
+                                        class="form-control card-input" placeholder="Email" autocomplete="username" />
+                                </div>
 
-                                    <div class="mt-3">
-
-
-
-                                        <label for="exampleFormControlInput1" class="form-label">Email or Phone</label>
+                                <!-- Password -->
+                                <div class="mb-3">
+                                    <div class="pwd-wrap">
                                         <div class="position-relative">
-                                            <img class="position-absolute p-2"
-                                                src="../../../../public/theme/appimages/Admin.svg" height="40"
-                                                width="40" alt="leftmap">
-                                            <input v-model="authStore.email" class="form-control form-control-lg"
-                                                type="email" required placeholder="Enter your email or phone">
-                                        </div>
-
-
-                                        <label for="exampleFormControlInput1" class="form-label mt-3">Password</label>
-                                        <div class="position-relative">
-                                            <img class="position-absolute p-2"
+                                            <!-- <img class="position-absolute p-2"
                                                 src="../../../../public/theme/appimages/Password.svg" height="40"
-                                                width="40" alt="leftmap">
-                                            <input class="form-control form-control-lg pl-5" v-model="form.password"
-                                                placeholder="Enter Your Password" name="password" id="password"
-                                                :type="PassType ? 'text' : 'password'">
+                                                width="40" alt="leftmap"> -->
+                                            <input id="password" class="form-control card-input"
+                                                placeholder="Password" autocomplete="current-password"
+                                                v-model="form.password" :type="PassType ? 'text' : 'password'" />
                                             <img @click="ShowPass" class="position-absolute p-2" :src="PassImagePath"
                                                 height="40" width="40" id="eye" alt="leftmap"
                                                 style="cursor: pointer; top: 2px; right: 0px;">
@@ -269,70 +201,373 @@ onMounted(() => {
                                         </div>
 
                                     </div>
-
-                                    <div class="d-flex justify-content-between align-items-center mt-3">
-                                        <div class="custom-control custom-checkbox">
-
-                                        </div>
-                                        <router-link class="forgetpassword fw-bold"
-                                            :to="{ name: 'sendResetLinkEmail' }">Forgot Password?</router-link>
-                                    </div>
-
-                                    <div class="mt-3 mb-1 w-100">
-                                        <button :disabled="loading" type="submit" class="btn btn-primary w-100 rounded-2 position-relative">
-                                            <div v-if="loading" class="center-body position-absolute" style="margin-top: -40px;">
-                                                <div class="loader-circle-57">
-                                                    <img class="position-absolute"
-                                                        src="../../../../public/theme/appimages/blueskywings.png"
-                                                        height="16" width="16" alt="">
-                                                </div>
-                                            </div>
-
-                                            <span role="status">{{ ButtonName }}</span>
-                                        </button>
-                                    </div>
-
-                                    <p class="clientDetails">IP : <b>{{ authStore.sInfo.IPv4 }} </b> City : <b>{{
-                                        authStore.sInfo.city }}</b> Contry : <b>{{ authStore.sInfo.country_code
-                                            }}</b> Device : <b>{{
-                                                authStore.sInfo.devicetype }} </b> OS : <b>{{ authStore.sInfo.os }}</b>
-                                    </p>
-
-                                    <div class="mt-5 text-center w-100">
-                                        <p class="it">Information Technology | Galaxy Bangladesh</p>
-                                    </div>
-
                                 </div>
 
-                            </div>
-                        </form>
+                                <!-- Remember me / Forgot -->
+                                <div class="d-flex align-items-center justify-content-between mb-4 mt-1">
+                                    <div class="form-check mb-0">
+                                        <input class="form-check-input card-check" type="checkbox" id="rememberMe" />
+                                        <label class="form-check-label card-check-label rmbr" for="rememberMe">Remember
+                                            me</label>
+                                    </div>
+                                    <router-link class="forgot-link frgt fw-bold"
+                                        :to="{ name: 'sendResetLinkEmail' }">Forgot Password?</router-link>
+                                </div>
 
+                                <!-- Log In -->
+                                <button :disabled="loading" type="submit"
+                                    class="btn-login w-100 rounded-2 position-relative">
+                                    <div v-if="loading" class="center-body position-absolute" style="margin-top: -10px; margin-left: 50px;">
+                                        <div class="loader-circle-57">
+                                            <img class="position-absolute"
+                                                src="../../../../public/theme/appimages/blueskywings.png" height="16"
+                                                width="16" alt="">
+                                        </div>
+                                    </div>
+
+                                    <span role="status">{{ ButtonName }}</span>
+                                </button>
+                            </form>
+
+                            <!-- Register -->
+                            <p class="register-line">New User ?
+                                 <router-link :to="{ name: 'registration' }">Register</router-link>
+                            </p>
+
+                        </div>
                     </div>
-
                 </div>
-                <img src="../../../../public/theme/appimages/BottomrImage.svg" class="w-100 img-fluid imgBottom"
-                    alt="leftcityBottom" />
             </div>
+
         </div>
     </div>
 </template>
 <style scoped>
-@font-face {
+/* @font-face {
     font-family: "Inter";
     src: url('../../fonts/BeVietnamPro/BeVietnamPro-Regular.ttf');
+} */
+
+
+
+
+.hide {
+    color: #08224f;
 }
 
+.rmbr {
+    font-size: 12px !important;
+    color: #1f2b99 !important;
+    cursor: pointer;
+}
 
+.frgt {
+    font-size: 12px !important;
+    color: #1f2b99 !important;
+    cursor: pointer;
+    font-weight: 400 !important;
+}
 
+:root {
+    --brand-deep: #1a1e6e;
+    --brand-mid: #1f2b99;
+    --brand-bright: #3b5bdb;
+    --brand-accent: #4db8ff;
+    --soft-bg: #eef2ff;
+}
 
-.center-body {
-    display: flex;
-    justify-content: center;
-    align-items: center;
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+.body {
+    margin: 0;
+    min-height: 90vh;
+    font-family: 'Euclid Circular B', sans-serif;
+    background: var(--soft-bg);
+    overflow-x: hidden;
+    background-image: url('../../../../public/theme/appimages/Bg_img.png');
+    background-color: rgba(255, 255, 255, 0.9);
+    background-size: cover;
+    background-position: center;
     width: 100%;
-    height: 100vh;
-    width: 100px;
-    height: 100px;
+}
+
+/* ── Header ─────────────────────────────────────────── */
+.site-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 75px;
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid rgba(59, 91, 219, .11);
+    display: flex;
+    align-items: center;
+    padding: 0 2rem;
+    z-index: 100;
+    box-shadow: 0 2px 16px rgba(26, 30, 110, .06);
+}
+
+.header-logo {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+.header-logo .logo-svg {
+    width: 200px;
+    height: 50px;
+}
+
+/* ── Split layout ────────────────────────────────────── */
+.split-wrap {
+    display: flex;
+    height: calc(100vh - 62px);
+    margin-top: 62px;
+}
+
+/* ── Left panel ──────────────────────────────────────── */
+.left-panel {
+    flex: 1.1;
+    overflow: hidden;
+    position: relative;
+}
+
+.left-bg-img {
+    width: 100%;
+    object-fit: contain;
+    object-position: center;
+    display: inline-block;
+    overflow: hidden;
+    margin: 0;
+}
+
+/* ── Right panel ─────────────────────────────────────── */
+.right-panel {
+    flex: 1;
+    display: flex;
+    align-items: right;
+    justify-content: right;
+    position: relative;
+    overflow-y: auto;
+    padding: 7rem .2rem;
+}
+
+.login-wrapper {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    max-width: 400px;
+}
+
+/* ── Card ────────────────────────────────────────────── */
+.login-card {
+    width: 85%;
+    background: rgba(255, 255, 255, 0.97);
+    backdrop-filter: blur(20px);
+    border-radius: 24px;
+    padding: 10px 25px;
+    animation: slideUp .55s cubic-bezier(.22, .68, 0, 1.2) both;
+    box-shadow: 0 4px 6px rgb(197, 200, 255);
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(.97);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* ── Card logo ───────────────────────────────────────── */
+.logo-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.card-logo-icon {
+    width: 200px;
+    flex-shrink: 0;
+    margin-bottom: 6px;
+    align-self: center;
+}
+
+.card-brand-name {
+    font-size: 1.65rem;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    color: #1a1a2e;
+    text-transform: uppercase;
+}
+
+/* ── Card headings ───────────────────────────────────── */
+.brand-tagline {
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--brand-mid);
+    text-align: center;
+    margin-bottom: 4px;
+}
+
+.welcome-heading {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--brand-mid);
+    text-align: center;
+    margin-bottom: 4px;
+}
+
+.subtitle {
+    font-size: .87rem;
+    color: #696e9b;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+/* ── Inputs ──────────────────────────────────────────── */
+.card-input {
+    height: 40px;
+    border: 1.5px solid #bcbcbc !important;
+    border-radius: 10px !important;
+    font-size: .95rem;
+    color: #000000d4 !important;
+    background: #ffffff !important;
+    transition: border-color .18s, box-shadow .18s;
+
+}
+
+.card-input::placeholder {
+    color: #828282;
+    padding-left: 7px;
+}
+
+.card-input:focus {
+    border-color: var(--brand-bright) !important;
+    box-shadow: 0 0 0 3px rgba(59, 91, 219, .12) !important;
+    outline: none;
+    background: #fff !important;
+}
+
+/* password wrapper */
+.pwd-wrap {
+    position: relative;
+}
+
+.pwd-wrap .card-input {
+    padding-right: 44px;
+}
+
+.pwd-toggle {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: #9ca3af;
+    font-size: 1.05rem;
+    line-height: 1;
+}
+
+.pwd-toggle:hover {
+    color: #6b7280;
+}
+
+/* ── Checkbox & forgot ───────────────────────────────── */
+.card-check {
+    width: 15px;
+    height: 15px;
+    border: 1.5px solid #9ca3af !important;
+    border-radius: 3px !important;
+    cursor: pointer;
+}
+
+.card-check:checked {
+    background-color: var(--brand-mid) !important;
+    border-color: var(--brand-mid) !important;
+}
+
+.forgot-link:hover {
+    color: var(--brand-bright);
+}
+
+/* ── Login button ────────────────────────────────────── */
+.btn-login {
+    width: 100%;
+    height: 35px;
+    border-radius: 10px;
+    background: #1E2B99;
+    border: none;
+    color: #fff;
+    font-family: 'Be Vietnam Pro', sans-serif;
+    font-weight: 400;
+    font-size: 14px;
+    letter-spacing: .02em;
+    cursor: pointer;
+    transition: background .18s, transform .1s, box-shadow .18s;
+    box-shadow: 0 6px 20px rgba(55, 63, 220, 0.28);
+    margin-bottom: 1rem;
+    display: block;
+}
+
+.btn-login:hover {
+    background: #1f2b80;
+    box-shadow: 0 10px 28px rgba(55, 63, 220, 0.36);
+    transform: translateY(-1px);
+}
+
+.btn-login:active {
+    transform: scale(.98);
+}
+
+/* ── Register line ───────────────────────────────────── */
+.register-line {
+    text-align: center;
+    margin-top: .2rem;
+    font-size: 13px;
+    color: #1f2b99;
+    margin-bottom: 0;
+}
+
+.register-line a {
+    color: #1f2b99;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.register-line a:hover {
+    color: var(--brand-bright);
+    text-decoration: underline;
+}
+
+/* ── Responsive ──────────────────────────────────────── */
+@media (max-width: 900px) {
+    .left-panel {
+        display: none;
+    }
+
+    .right-panel {
+        flex: 1;
+    }
+}
+
+@media (max-width: 40px) {
+    .login-card {
+        padding: 2rem 1.4rem 1.8rem;
+        border-radius: 20px;
+    }
 }
 
 .loader-circle-57 {
@@ -354,6 +589,7 @@ onMounted(() => {
     animation: loader-circle-57-spin 1s infinite
 }
 
+
 @keyframes loader-circle-57-spin {
     50% {
         transform: rotatez(180deg);
@@ -364,174 +600,5 @@ onMounted(() => {
     100% {
         transform: rotatez(360deg);
     }
-}
-
-.clientDetails {
-    font-family: Inter;
-    font-size: 8px;
-    text-align: center;
-    color: #5e6878;
-}
-
-.form-control-lg {
-    height: 43px !important;
-    font-size: 13px;
-    padding-left: 40px;
-}
-
-::placeholder {
-    font-family: Inter;
-    font-size: 14px;
-    font-weight: 500;
-    line-height: 26px;
-    letter-spacing: 0.5px;
-}
-
-::-ms-input-placeholder {
-    font-family: Inter;
-    font-size: 14px;
-    font-weight: 500;
-    line-height: 26px;
-    letter-spacing: 0.5px;
-}
-
-.buble {
-    position: absolute;
-    right: 0px;
-    top: 0px;
-    width: 8%;
-}
-
-
-.imgBottom {
-    position: absolute;
-    left: 0px;
-    bottom: 0px;
-    width: 100%;
-}
-
-.vid {
-    height: 100vh;
-    width: 100%;
-    object-fit: cover;
-}
-
-.mixbl {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    mix-blend-mode: screen;
-}
-
-.mixbl2 {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 99%;
-    height: 100%;
-    object-fit: cover;
-    opacity: .9;
-}
-
-.leftfirstpara {
-    font-family: Inter;
-    font-size: 26px;
-    font-weight: 700;
-    line-height: 40px;
-    letter-spacing: 0.5px;
-    text-align: left;
-    color: white;
-}
-
-.leftfirstparaspan {
-    font-family: Inter;
-    font-size: 26px;
-    font-weight: 700;
-    line-height: 40px;
-    letter-spacing: 0.5px;
-    text-align: left;
-    color: #fdcbbb;
-}
-
-.fastar {
-    font-size: 10px;
-    margin-bottom: 2px;
-    color: white;
-}
-
-.leftsecpara {
-    font-family: Inter;
-    font-size: 14px;
-    font-weight: 500;
-    line-height: 26px;
-    letter-spacing: 0.5px;
-    text-align: left;
-    color: white;
-}
-
-.leftboletpoint {
-    font-family: Inter;
-    font-size: 13px;
-    font-weight: 700;
-    line-height: 26px;
-    letter-spacing: 0.5px;
-    text-align: left;
-    color: white;
-}
-
-.well {
-    font-family: Inter;
-    font-size: 23px;
-    font-weight: 600;
-    line-height: 27.84px;
-    letter-spacing: 0.5px;
-    justify-content: center;
-    color: #3b79f2;
-    text-align: center;
-}
-
-.wellbellow {
-    font-family: Inter;
-    font-size: 14px;
-    font-weight: 500;
-    line-height: 26px;
-    letter-spacing: 0.5px;
-    text-align: center;
-    color: #5e6878;
-}
-
-.forgetpassword {
-    font-family: Inter;
-    font-size: 12px;
-    font-weight: 600;
-    line-height: 14.52px;
-    letter-spacing: 0.5px;
-}
-
-.rememberme {
-    font-family: Inter;
-    font-size: 12px;
-    color: #5e6878;
-}
-
-.form-label {
-    font-family: Inter;
-    font-size: 14px;
-    font-weight: 600;
-    line-height: 16.94px;
-    letter-spacing: 0.5px;
-    color: #3f4754;
-}
-
-
-.it {
-    font-family: Inter;
-    font-size: 12px;
-    font-weight: 400;
-    line-height: 14.52px;
-    color: #5e6878;
 }
 </style>

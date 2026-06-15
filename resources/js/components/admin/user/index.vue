@@ -77,7 +77,7 @@ const options = {
                 // row
                 html += '<div class="row">';
                 html += '<div class="col-md-4">';
-                html += '<img src="' + row.img + '" height="60"  class="w-100">';
+                html += '<img src="' + row.img + '" height="60"  class="w-50">';
                 html += '</div>';
                 html += '<div class="col-md-8" style="white-space:nowrap;">'
 
@@ -1051,4 +1051,5 @@ async function update() {
     --bs-btn-disabled-border-color: #1ba3f0;
     --bs-gradient: none;
 }
+
 </style>

@@ -12,9 +12,12 @@ const otp = () => import('./components/auth/otp.vue')
 const NF = () => import('./components/auth/NotFound.vue')
 const ForcePassChange = () => import('./components/auth/forcePasswordChange.vue')
 
+//b2b portal
+const registration = () => import('./components/auth/registration.vue')
+
 const flightSearch = () => import('./components/search/flightSearch.vue')
 const searchResult = () => import('./components/search/searchResult.vue')
-const backupsearchResult = () => import('./components/search/searchResult_copy.vue')
+// const backupsearchResult = () => import('./components/search/searchResult_copy.vue')
 const noFlightFound = () => import('./components/search/noSearchResult.vue')
 
 // booking
@@ -96,6 +99,9 @@ const routes = [
     { path: '/sendResetLinkEmail', component: sendResetLinkEmail, name: 'sendResetLinkEmail', meta: { guest: true } },
     { path: '/PassReset/:token/:email', component: PassReset, name: 'PassReset', meta: { guest: true } },
 
+    //b2b portal
+    { path: '/registration', component: registration, name: 'registration', meta: { reg: true } },
+
     { path: '/Reg2Fa', component: Reg2Fa, name: 'register2fa', meta: { RE: true } },
     { path: '/otp', component: otp, name: 'otp', meta: { OTP: true } },
     { path: '/ForcePassChange', component: ForcePassChange, name: 'ForcePassChange', meta: { FPC: true } },
@@ -106,10 +112,11 @@ const routes = [
     { path: '/Logout', component: Logout, name: 'Logout', meta: { auth: true } },
     { path: '/:any(.*)*', component: NF, name: 'NF', meta: { auth: true } },
 
+
     //flight search
     { path: '/flight-search', component: flightSearch, name: 'flightSearch', meta: { auth: true } },
     { path: '/flight-search-way', component: searchResult, name: 'searchResult', meta: { auth: true } },
-    { path: '/flight-search-result', component: backupsearchResult, name: 'backupsearchResult', meta: { auth: true } },
+    // { path: '/flight-search-result', component: backupsearchResult, name: 'backupsearchResult', meta: { auth: true } },
     { path: '/no-flight-result', component: noFlightFound, name: 'noFlightFound', meta: { auth: true } },
 
     //booking
@@ -122,9 +129,9 @@ const routes = [
     // agent
     { path: '/agent-list', component: AgentList, name: 'AgentList', meta: { auth: true } },
     { path: '/agent-details', component: agentDetails, name: 'agentDetails', meta: { auth: true } },
-    { path: '/agent-recommended/:ids', component: agentRecomanded, name: 'agentRecomanded',  meta: { auth: true },props:true},
-    { path: '/agent-approve/:ids', component: agentApproved, name: 'agentApproved', meta: { auth: true },props:true},
-    { path: '/agent-view/:ids', component: agentView, name: 'agentView', meta: { auth: true } ,props:true},
+    { path: '/agent-recommended/:ids', component: agentRecomanded, name: 'agentRecomanded', meta: { auth: true }, props: true },
+    { path: '/agent-approve/:ids', component: agentApproved, name: 'agentApproved', meta: { auth: true }, props: true },
+    { path: '/agent-view/:ids', component: agentView, name: 'agentView', meta: { auth: true }, props: true },
     { path: '/agent-create', component: CreateAgency, name: 'CreateAgency', meta: { auth: true } },
 
     //deposit
@@ -135,57 +142,57 @@ const routes = [
     //user
     { path: '/all-user-list', component: UserList, name: 'UserList', meta: { auth: true } },
     { path: '/create-user', component: CreateUser, name: 'CreateUser', meta: { auth: true } },
-    { path: '/edit-user/:id', component: EditUser, name: 'EditUser', meta: { auth: true },props:true },
-    { path: '/log-user/:id', component: UserLog, name: 'UserLog', meta: { auth: true },props:true },
+    { path: '/edit-user/:id', component: EditUser, name: 'EditUser', meta: { auth: true }, props: true },
+    { path: '/log-user/:id', component: UserLog, name: 'UserLog', meta: { auth: true }, props: true },
 
     //roles permission
     { path: '/all-roles-list', component: roleList, name: 'roleList', meta: { auth: true } },
     { path: '/create-role', component: roleCreate, name: 'roleCreate', meta: { auth: true } },
-    { path: '/edit-role/:id', component: roleEdit, name: 'roleEdit', meta: { auth: true },props:true },
+    { path: '/edit-role/:id', component: roleEdit, name: 'roleEdit', meta: { auth: true }, props: true },
 
     //Zone
     { path: '/all-zone-list', component: zoneList, name: 'zoneList', meta: { auth: true } },
     { path: '/create-zone', component: zoneCreate, name: 'zoneCreate', meta: { auth: true } },
-    { path: '/edit-zone/:id', component: zoneEdit, name: 'zoneEdit', meta: { auth: true },props:true },
+    { path: '/edit-zone/:id', component: zoneEdit, name: 'zoneEdit', meta: { auth: true }, props: true },
     // department
     { path: '/all-department-list', component: departmentList, name: 'departmentList', meta: { auth: true } },
     { path: '/create-department', component: deptCreate, name: 'deptCreate', meta: { auth: true } },
-    { path: '/edit-department/:id', component: deptEdit, name: 'deptEdit', meta: { auth: true },props:true  },
+    { path: '/edit-department/:id', component: deptEdit, name: 'deptEdit', meta: { auth: true }, props: true },
 
     // designation
     { path: '/all-designation-list', component: designationList, name: 'designationList', meta: { auth: true } },
     { path: '/create-designation', component: designationCreate, name: 'designationCreate', meta: { auth: true } },
-    { path: '/edit-designation/:id', component: designationEdit, name: 'designationEdit', meta: { auth: true },props:true  },
+    { path: '/edit-designation/:id', component: designationEdit, name: 'designationEdit', meta: { auth: true }, props: true },
 
     // office location
     { path: '/all-office-location', component: offLoc, name: 'offLoc', meta: { auth: true } },
     { path: '/create-location', component: addoffLoc, name: 'addoffLoc', meta: { auth: true } },
-    { path: '/office-location/:id', component: offEdit, name: 'offEdit', meta: { auth: true },props:true  },
+    { path: '/office-location/:id', component: offEdit, name: 'offEdit', meta: { auth: true }, props: true },
 
     // sttings deposit bank and mfs
     { path: '/all-bank-&-mfs', component: issuedBankMFS, name: 'issuedBankMFS', meta: { auth: true } },
     { path: '/create-bank-mfs', component: bankMfsCreate, name: 'bankMfsCreate', meta: { auth: true } },
-    { path: '/edit-bank-mfs/:id', component: bankMfsEdit, name: 'bankMfsEdit', meta: { auth: true },props:true  },
+    { path: '/edit-bank-mfs/:id', component: bankMfsEdit, name: 'bankMfsEdit', meta: { auth: true }, props: true },
     //paymentacct
     { path: '/all-payment-accounts', component: paymentacct, name: 'paymentacct', meta: { auth: true } },
     { path: '/create-payment-account', component: paymentAcctCreate, name: 'paymentAcctCreate', meta: { auth: true } },
-    { path: '/edit-payment-account/:id', component: payAcctEdit, name: 'payAcctEdit', meta: { auth: true },props:true  },
+    { path: '/edit-payment-account/:id', component: payAcctEdit, name: 'payAcctEdit', meta: { auth: true }, props: true },
 
     //aircraft
     { path: '/all-aircraft-list', component: aircraftList, name: 'aircraftList', meta: { auth: true } },
     { path: '/create-aircraft', component: aircraftCreate, name: 'aircraftCreate', meta: { auth: true } },
-    { path: '/edit-aircraft/:id', component: aircraftEdit, name: 'aircraftEdit', meta: { auth: true },props:true  },
+    { path: '/edit-aircraft/:id', component: aircraftEdit, name: 'aircraftEdit', meta: { auth: true }, props: true },
 
     //airlines
     { path: '/all-airlinesList-list', component: airlinesList, name: 'airlinesList', meta: { auth: true } },
     { path: '/create-airline', component: airlinesCreate, name: 'airlinesCreate', meta: { auth: true } },
-    { path: '/edit-airlines/:id', component: airlinesEdit, name: 'airlinesEdit', meta: { auth: true },props:true  },
+    { path: '/edit-airlines/:id', component: airlinesEdit, name: 'airlinesEdit', meta: { auth: true }, props: true },
 
     //traveler
     { path: '/all-traveler-list', component: TravelerList, name: 'TravelerList', meta: { auth: true } },
     { path: '/create-traveler', component: CreateTraveller, name: 'CreateTraveller', meta: { auth: true } },
-    { path: '/edit-traveler/:ids', component: TravelerEdit, name: 'TravelerEdit', meta: { auth: true }, props:true },
-    { path: '/view-traveler/:ids', component: TravelerView, name: 'TravelerView', meta: { auth: true }, props:true },
+    { path: '/edit-traveler/:ids', component: TravelerEdit, name: 'TravelerEdit', meta: { auth: true }, props: true },
+    { path: '/view-traveler/:ids', component: TravelerView, name: 'TravelerView', meta: { auth: true }, props: true },
 ]
 
 const router = createRouter({

@@ -64,14 +64,10 @@ router.beforeEach(async (to, from) => {
         $("html").attr("data-bs-theme", "light");
     }
 
-
     if (authStore.hasToken() && to.meta.guest) {
         return { name: "Home" };
     }
 
-    if (!authStore.hasToken() && to.meta.auth) {
-        return { name: "Login" };
-    }
     if (!authStore.hasToken() && to.meta.RE) {
         return { name: "Login" };
     }

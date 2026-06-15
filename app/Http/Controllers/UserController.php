@@ -94,7 +94,7 @@ class UserController extends BaseController
         $user->status = 1;
         $user->created_by = $auth->id;
         $user->password = Hash::make('Gblue@sky7');
-
+        // $user->agent_id = $auth->agent_id;
         $user->save();
         return response()->json(['message' => 'Successfully User Saved.', 'types' => 's']);
 

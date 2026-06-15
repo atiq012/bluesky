@@ -13,6 +13,7 @@ function menuTaggle() {
 }
 
 async function getPermissionValues() {
+
     try {
         const response = await axiosInstance.get("abilities");
         const permissions = response.data;
@@ -22,7 +23,7 @@ async function getPermissionValues() {
         // console.log(permissions);
 
     } catch (error) {
-        console.log(error);
+
     }
 }
 

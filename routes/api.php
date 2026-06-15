@@ -1,24 +1,24 @@
 <?php
 
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Request;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\UserController;
+use App\Http\Controllers\Admin\Agent\AgentController;
+use App\Http\Controllers\Admin\AircraftType\AircraftTypeDesignatorController;
+use App\Http\Controllers\Admin\AirlineLogo\AirlineLogoController;
 use App\Http\Controllers\Admin\API\APIController;
 use App\Http\Controllers\Admin\Area\AreaController;
-use App\Http\Controllers\Admin\Agent\AgentController;
-use App\Http\Controllers\Admin\Deposit\DepositController;
-use App\Http\Controllers\Admin\Traveler\TravelerController;
-use App\Http\Controllers\Admin\Role\RolePermissionController;
 use App\Http\Controllers\Admin\Department\DepartmentController;
-use App\Http\Controllers\Admin\AirlineLogo\AirlineLogoController;
+use App\Http\Controllers\Admin\Deposit\DepositController;
 use App\Http\Controllers\Admin\Designation\DesignationController;
-use App\Http\Controllers\Admin\OfficeLocation\LocationController;
 use App\Http\Controllers\Admin\IssuedBankMFS\IssuedBankMFSController;
+use App\Http\Controllers\Admin\OfficeLocation\LocationController;
 use App\Http\Controllers\Admin\PaymentAccount\PaymentAccountSController;
-use App\Http\Controllers\Admin\AircraftType\AircraftTypeDesignatorController;
+use App\Http\Controllers\Admin\Role\RolePermissionController;
+use App\Http\Controllers\Admin\Traveler\TravelerController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\UserController;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Request;
+use Illuminate\Support\Facades\Route;
 
 Route::post('login', [AuthController::class, 'login'])->name('login');
 Route::post('register', [AuthController::class, 'register'])->name('register');
@@ -26,7 +26,6 @@ Route::post('sendResetLinkEmail', [AuthController::class, 'sendResetLinkEmail'])
 Route::post('PassReset', [AuthController::class, 'resetPassword'])->name('password.reset');
 
 Route::get('airports', [AreaController::class, 'airports']);
-
 
 Route::get('/migrate', function () {Artisan::call('migrate:refresh');return Artisan::output();})->name('migrate');
 
@@ -159,10 +158,11 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('/farerules', [APIController::class, 'getFareRules']);
     Route::post('/PricingRequestBody', [APIController::class, 'PricingRequestBody'])->name('PricingRequestBody');
 
-
 });
 Route::get('airports', [AreaController::class, 'airports']);
 
-Route::get('abilities', function(Request $request) {
+Route::post('/agent/registration', [AgentController::class, 'registration']);
+
+Route::get('abilities', function (Request $request) {
     return Auth::user()->role()->with('role_permissions')->get()->pluck('role_permissions')->flatten()->pluck('feature_name')->unique()->values()->toArray();
 });

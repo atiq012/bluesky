@@ -20,6 +20,7 @@ export const useAuthStore = defineStore(
         const name = ref("");
         const GlobalLoading = ref(false);
 
+
         const showExpireWarrning = ref(false);
         const isDarkMode = ref(false);
         const isLogged = ref("0");
@@ -44,14 +45,14 @@ export const useAuthStore = defineStore(
         };
 
         function hasToken() {
+
             if (this.token !== "") {
                 const dToken = decryptWithAES(this.token);
 
                 const sToken = dToken.split(".")[1];
                 const sURL = JSON.parse(atob(sToken)).iss;
 
-                const isExpired =
-                    Date.now() >= JSON.parse(window.atob(sToken)).exp * 1000;
+                const isExpired = Date.now() >= JSON.parse(window.atob(sToken)).exp * 1000;
                 const isFrmRealURL =
                     sURL == "http://127.0.0.1:8000/api/login" ||
                     "http://127.0.0.1:8000/api/refresh"

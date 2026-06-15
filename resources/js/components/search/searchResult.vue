@@ -8,8 +8,8 @@ import SimpleBar from "simplebar-vue";
 import "simplebar-vue/dist/simplebar.min.css";
 import { useAuthStore } from '../../stores/authStore';
 import '../../../css/searchpanel.css'
-
-
+import { useRouter } from "vue-router";
+const router = useRouter();
 const authStore = useAuthStore();
 
 
@@ -378,6 +378,13 @@ async function Lowfaresearch() {
 
         flights.value = response.data.flights;
         totalFlights.value = response.data.flights.length;
+        // console.log('test');
+
+        if (totalFlights.value > 0) {
+            authStore.GlobalLoading = false;
+        } else {
+            return router.push({ name: 'noFlightFound' });
+        }
 
     } catch (error) {
         console.log(error);

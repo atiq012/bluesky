@@ -75,6 +75,8 @@ onBeforeMount(async () => {
         }
 
     } else {
+        // console.log("No token found, redirecting to login");
+
         authStore.logout();
         return { name: 'Login' };
     }
@@ -102,7 +104,7 @@ const text = computed(() => online.value ? 'Online' : 'Offline')
         <p class="text-center w-100 bg-danger p-0 m-0">Offline..</p>
     </div>
 
-    <div v-if="$route.path === '/' || $route.path === '/Reg2Fa' || $route.path === '/otp' || $route.path === '/sendResetLinkEmail' || $route.path.substring(0, 10) === '/PassReset' || $route.path === '/ForcePassChange' ? false : true"
+    <div v-if="$route.path === '/' || $route.path === '/Reg2Fa' || $route.path === '/registration' || $route.path === '/otp' || $route.path === '/sendResetLinkEmail' || $route.path.substring(0, 10) === '/PassReset' || $route.path === '/ForcePassChange' ? false : true"
         class="wrapper" id="app">
         <Sidebar />
         <Topbar />
