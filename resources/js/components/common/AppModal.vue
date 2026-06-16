@@ -91,11 +91,15 @@ const panelStyle = computed(() => {
     overflow: hidden;
     border-radius: 0.5rem;
     box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.2);
+    background-color: #fff;
+    border: 1px solid #e2e8f0;
 }
 
 .app-modal-header {
     flex-shrink: 0;
     padding: 0.65rem 1rem;
+    background-color: #fff;
+    border-bottom: 1px solid #e2e8f0;
 }
 
 .app-modal-title {

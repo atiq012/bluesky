@@ -295,6 +295,14 @@ class AgentController extends BaseController
             $agent_img->save();
         }
 
+        $this->logAgentApprovalStatus(
+            $agent,
+            $agent->status,
+            'Agent created from admin panel.',
+            null,
+            (int) auth()->user()->id
+        );
+
         $success = '';
 
         return $this->SuccessResponse($success, 'Successfully Agent Saved.');
@@ -417,9 +425,33 @@ class AgentController extends BaseController
             }
         }
 
+        $this->logAgentApprovalStatus(
+            $agent,
+            $agent->status,
+            'Agency registration submitted via online registration form.',
+            null,
+            (int) $agent->created_by
+        );
+
         $success = '';
 
         return $this->SuccessResponse($success, 'Successfully Agent Saved.');
+    }
+
+    private function logAgentApprovalStatus(
+        Agent $agent,
+        string $status,
+        ?string $remarks = null,
+        ?int $approverId = null,
+        ?int $createdBy = null
+    ): void {
+        $agentApprovalLog = new AgentApprovalLog;
+        $agentApprovalLog->agent_id = $agent->id;
+        $agentApprovalLog->status = $status;
+        $agentApprovalLog->remarks = $remarks;
+        $agentApprovalLog->approver_id = $approverId;
+        $agentApprovalLog->created_by = $createdBy ?? (int) auth()->id();
+        $agentApprovalLog->save();
     }
 
     /**

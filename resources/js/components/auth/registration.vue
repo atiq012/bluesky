@@ -7,6 +7,8 @@ import EmailInput from "../common/EmailInput.vue";
 import Select2 from "../common/Select2.vue";
 import ImageCropUpload from "../common/ImageCropUpload.vue";
 import PhoneInput from "../common/PhoneInput.vue";
+import AgencyLegalModal from "./AgencyLegalModal.vue";
+import { AGENCY_TERMS_OF_SERVICE, AGENCY_PRIVACY_POLICY } from "../../content/agencyLegalDocuments.js";
 const authStore = useAuthStore();
 import { useRouter } from 'vue-router';
 const router = useRouter();
@@ -92,6 +94,8 @@ const isDragging = reactive({
 
 // Modal state
 const isSuccessModalOpen = ref(false);
+const isTermsModalOpen = ref(false);
+const isPrivacyModalOpen = ref(false);
 
 // Validation errors (null = not validated, true = has error, false = valid)
 const errors = reactive({
@@ -381,6 +385,24 @@ function closeSuccessModal() {
     isSuccessModalOpen.value = false;
 }
 
+function openTermsModal() {
+    isPrivacyModalOpen.value = false;
+    isTermsModalOpen.value = true;
+}
+
+function closeTermsModal() {
+    isTermsModalOpen.value = false;
+}
+
+function openPrivacyModal() {
+    isTermsModalOpen.value = false;
+    isPrivacyModalOpen.value = true;
+}
+
+function closePrivacyModal() {
+    isPrivacyModalOpen.value = false;
+}
+
 watch(isSuccessModalOpen, (isOpen) => {
     if (isOpen) {
         document.body.style.overflow = 'hidden';
@@ -560,7 +582,10 @@ function init() {
 }
 
 const handleKeyDown = (e) => {
-    if (e.key === 'Escape') closeSuccessModal();
+    if (e.key !== 'Escape') return;
+    if (isTermsModalOpen.value) closeTermsModal();
+    else if (isPrivacyModalOpen.value) closePrivacyModal();
+    else closeSuccessModal();
 };
 
 onMounted(() => {
@@ -1004,9 +1029,10 @@ onUnmounted(() => {
                                         required style="accent-color:#2563EB;">
                                     <label class="form-check-label" for="agreeTerms"
                                         style="font-size:.88rem;color:#475569;">
-                                        I agree to the <a href="#" style="color:#2563EB;font-weight:600;">Terms
-                                            of Service</a> and <a href="#"
-                                            style="color:#2563EB;font-weight:600;">Privacy Policy</a>
+                                        I agree to the <a href="#" class="legal-link" role="button"
+                                            @click.prevent="openTermsModal">Terms
+                                            of Service</a> and <a href="#" class="legal-link" role="button"
+                                            @click.prevent="openPrivacyModal">Privacy Policy</a>
                                     </label>
                                     <div class="invalid-feedback">You must agree to the terms before proceeding.</div>
                                 </div>
@@ -1016,7 +1042,7 @@ onUnmounted(() => {
                             <button type="button" class="btn-back" @click="goPrev(3)"><i
                                     class="bi bi-arrow-left me-1"></i>
                                 Back</button>
-                            <button type="button" class="btn-submit" @click="submitForm">
+                            <button type="button" class="btn-submit" :disabled="!form.agreeTerms" @click="submitForm">
                                 <i class="bi bi-send-check me-1"></i> Submit Registration
                             </button>
                         </div>
@@ -1026,6 +1052,24 @@ onUnmounted(() => {
 
             </main>
         </div>
+
+        <AgencyLegalModal
+            :is-open="isTermsModalOpen"
+            :title="AGENCY_TERMS_OF_SERVICE.title"
+            :effective-date="AGENCY_TERMS_OF_SERVICE.effectiveDate"
+            :intro="AGENCY_TERMS_OF_SERVICE.intro"
+            :sections="AGENCY_TERMS_OF_SERVICE.sections"
+            @close="closeTermsModal"
+        />
+
+        <AgencyLegalModal
+            :is-open="isPrivacyModalOpen"
+            :title="AGENCY_PRIVACY_POLICY.title"
+            :effective-date="AGENCY_PRIVACY_POLICY.effectiveDate"
+            :intro="AGENCY_PRIVACY_POLICY.intro"
+            :sections="AGENCY_PRIVACY_POLICY.sections"
+            @close="closePrivacyModal"
+        />
 
         <!-- ══════════════ SUCCESS MODAL ══════════════ -->
         <div class="success-modal-overlay" :class="{ show: isSuccessModalOpen }" role="dialog" aria-modal="true"
@@ -1591,10 +1635,29 @@ textarea.form-control {
 }
 
 .btn-next:hover,
-.btn-submit:hover {
+.btn-submit:hover:not(:disabled) {
     background: #1D4ED8;
     box-shadow: 0 6px 20px rgba(37, 99, 235, .35);
     transform: translateY(-1px);
+}
+
+.btn-submit:disabled {
+    background: #94A3B8;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+    opacity: 0.85;
+}
+
+.legal-link {
+    color: #2563EB;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.legal-link:hover {
+    color: #1D4ED8;
+    text-decoration: underline;
 }
 
 .btn-back {
