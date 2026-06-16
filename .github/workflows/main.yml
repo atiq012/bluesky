@@ -1,21 +1,92 @@
 name: Deploy to cPanel
+
 on:
   push:
     branches:
-      - main  # or your default branch
+      - main
 
 jobs:
   FTP-Deploy-Action:
-    name: FTP-Deploy-Action
+    name: FTP Deploy
     runs-on: ubuntu-latest
+
     steps:
-      - name: Get latest code
-        uses: actions/checkout@v3
-        
-      - name: Sync files via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Node.js dependencies
+        run: npm install --prefer-offline --no-audit
+
+      - name: Build assets
+        run: npm run build
+
+      # Avoid running artisan in CI: app env/services (DB/Redis) may be unavailable here.
+      # Run cache/config optimize commands on cPanel after deployment.
+
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@4.3.0
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USER }}
           password: ${{ secrets.FTP_PASSWORD }}
           server-dir: /
+          local-dir: ./
+          log-level: verbose
+          dangerous-clean-slate: false
+          state-name: .ftp-deploy-sync-state-bluesky.json
+          exclude: |
+            **/.git*/**
+            **/node_modules/**
+            **/vendor/**
+            **/tests/**
+            **/.env
+            **/.env.backup
+            **/.env.local
+            **/docker/**
+            **/phpunit.xml
+            **/README.md
+            **/LICENSE
+            **/CHANGELOG.md
+            **/CONTRIBUTING.md
+
+      - name: Laravel optimize on server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          command_timeout: 10m
+          script: |
+            set -e
+            cd /home/dev2blue/apps/b2b
+            mv vendor vendor_old 2>/dev/null || true
+            composer install --no-dev --optimize-autoloader --no-interaction
+            rm -rf vendor_old 2>/dev/null || true
+            php artisan migrate --force
+            php artisan optimize:clear
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+            chmod -R 775 storage bootstrap/cache
+            chmod -R 775 public/uploads
+            if command -v rsync >/dev/null 2>&1; then
+              rsync -av \
+                --exclude='.well-known/' \
+                --exclude='index.php' \
+                --exclude='.htaccess' \
+                /home/dev2blue/apps/b2b/public/ /home/dev2blue/public_html/
+            else
+              (
+                cd /home/dev2blue/apps/b2b/public
+                tar --exclude='index.php' --exclude='.htaccess' -cf - .
+              ) | (
+                cd /home/dev2blue/public_html
+                tar -xf -
+              )
+            fi
