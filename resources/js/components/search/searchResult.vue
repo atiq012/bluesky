@@ -379,6 +379,8 @@ async function Lowfaresearch() {
 
         flights.value = response.data.flights;
         totalFlights.value = response.data.flights.length;
+        // console.log('test');
+
         if (totalFlights.value > 0) {
             authStore.GlobalLoading = false;
         } else {

@@ -1148,7 +1148,7 @@ function addSegment() {
                                                             <div class="card">
                                                                 <div class="card-body">
                                                                     <div class="d-flex ">
-                                                                        <img src="../../../../../public/uploads/agents/agency_img/02022025-1738483880.png"
+                                                                        <img :src="'/uploads/agents/agency_img/02022025-1738483880.png'"
                                                                             height="60" width="60"
                                                                             class="border border-1 rounded rounded-2"
                                                                             alt="Profile Picture">

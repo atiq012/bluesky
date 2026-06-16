@@ -139,6 +139,7 @@ class AgentController extends BaseController
         $agent->kam                = $request->kam_id;
         $agent->remarks            = $request->remarks;
         $agent->status             = 'Pending';
+        $agent->account_ledger_id  = 1;
         // $agent->designation        = $request->designation;
         $agent->created_by = auth()->user()->id;
 
@@ -332,6 +333,7 @@ class AgentController extends BaseController
         // $agent->kam                = $request->kam_id;
         // $agent->remarks            = $request->remarks;
         $agent->status = 'Pending';
+        $agent->account_ledger_id  = 1;
         // $agent->designation        = $request->designation;
         $agent->created_by = 1;
 

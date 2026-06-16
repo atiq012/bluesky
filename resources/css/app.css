@@ -11,17 +11,9 @@
 
 @import url("https://cdnjs.cloudflare.com/ajax/libs/izitoast/1.4.0/css/iziToast.min.css");
 @import url("https://cdnjs.cloudflare.com/ajax/libs/tippy.js/6.3.7/tippy.min.css");
-@import url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css");
 @import url("https://cdn.datatables.net/responsive/3.0.3/css/responsive.bootstrap5.css");
 @import url("https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css");
 @import url("https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css");
-@import url("https://site-assets.fontawesome.com/releases/v6.7.2/css/all.css");
-@import url("https://site-assets.fontawesome.com/releases/v6.7.2/css/sharp-duotone-thin.css");
-@import url("https://site-assets.fontawesome.com/releases/v6.7.2/css/sharp-duotone-solid.css");
-@import url("https://site-assets.fontawesome.com/releases/v6.7.2/css/sharp-duotone-regular.css");
-@import url("https://site-assets.fontawesome.com/releases/v6.7.2/css/sharp-duotone-light.css");
-@import url("https://site-assets.fontawesome.com/releases/v6.7.2/css/sharp-thin.css");
-@import url("https://site-assets.fontawesome.com/releases/v6.7.2/css/sharp-regular.css");
 
 .center-body1 {
     display: flex;
