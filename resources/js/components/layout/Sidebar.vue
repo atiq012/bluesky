@@ -105,7 +105,7 @@ onMounted(() => {
                     </router-link>
                 </li>
 
-
+<li class="menu-label">Administration</li>
 
                 <li>
                     <router-link v-wave :to="{ name: 'TravelerList' }">
@@ -117,7 +117,7 @@ onMounted(() => {
                         <div class="menu-title">Travelers</div>
                     </router-link>
                 </li>
-                <li class="menu-label">Administration</li>
+
 
                 <li>
                     <a v-wave class="has-arrow" href="javascript:;">
