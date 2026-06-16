@@ -2,13 +2,16 @@
     "name": "laravel/laravel",
     "type": "project",
     "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
+    "keywords": [
+        "laravel",
+        "framework"
+    ],
     "license": "MIT",
     "require": {
         "php": "^8.1",
         "devfaysal/laravel-bangladesh-geocode": "^2.2",
         "guzzlehttp/guzzle": "^7.7",
-        "intervention/image": "*",
+        "intervention/image": "^3.0",
         "laravel/framework": "^10.24",
         "laravel/sanctum": "^3.3",
         "laravel/tinker": "^2.8",
@@ -65,6 +68,9 @@
         }
     },
     "config": {
+        "platform": {
+            "php": "8.2.31"
+        },
         "platform-check": false,
         "optimize-autoloader": true,
         "preferred-install": "dist",
