@@ -49,51 +49,20 @@ onMounted(() => {
         <!--navigation-->
         <Scrollbar height="100%">
             <ul class="metismenu" id="menu">
-                <!-- <li class="menu-label">Menu</li> -->
+                <li class="menu-label">MAIN</li>
 
                 <li>
-                    <a v-wave href="#" class="has-arrow">
-                        <div class="parent-icon">
-                            <!-- <i class="bx bx-home-alt"></i> -->
-                             <img src="../../../../public/theme/Sidebar_icons/Dashboard.svg" alt="">
-                        </div>
+                    <router-link v-wave :to="{ name: 'Home' }">
+                        <!-- <div class="parent-icon">
+                            <img src="../../../../public/theme/Sidebar_icons/B2B_Agency.svg" alt="">
+
+                        </div> -->
+                        <i class="bx bx-home-circle fs-5"></i>
                         <div class="menu-title">Dashboard</div>
-                    </a>
-                    <ul class="sub-menu" aria-expanded="true">
-                        <li>
-                            <a v-wave href="#" class="has-arrow">
-                                <i class='bx bx-radio-circle'></i>
-                                Vertical</a>
-                            <ul class="sub-menu" aria-expanded="true">
-                                <li> <a v-wave href="index.html">
-                                    <i class='bx bx-radio-circle'></i>
-                                    Infographic</a>
-                                </li>
-                                <li> <a v-wave href="index2.html">
-                                    <i class='bx bx-radio-circle'></i>
-                                    eCommerce</a>
-                                </li>
-                                <li> <a v-wave href="index3.html">
-                                    <i class='bx bx-radio-circle'></i>
-                                    Analytics</a>
-                                </li>
-                            </ul>
-                        </li>
-                        <li>
-                            <a v-wave href="#" class="has-arrow"><i class='bx bx-radio-circle'></i>Horizontal</a>
-                            <ul class="sub-menu" aria-expanded="true">
-                                <li><a v-wave href="layouts-horizontal.html"><i
-                                            class='bx bx-radio-circle'></i>Horizontal</a></li>
-                                <li><a v-wave href="layouts-hori-topbar-dark.html"><i
-                                            class='bx bx-radio-circle'></i>Topbar
-                                        Dark</a></li>
-                                <li><a v-wave href="layouts-hori-boxed-width.html"><i
-                                            class='bx bx-radio-circle'></i>Boxed
-                                        Width</a></li>
-                            </ul>
-                        </li>
-                    </ul>
+                    </router-link>
                 </li>
+
+                <li class="menu-label">OPERATIONS</li>
 
                 <li>
                     <a v-wave class="has-arrow" href="javascript:;">
@@ -124,6 +93,7 @@ onMounted(() => {
                         </li>
                     </ul>
                 </li>
+                <li class="menu-label">Finance</li>
 
                 <li>
                     <router-link v-wave :to="{ name: 'depositList' }">
@@ -147,6 +117,7 @@ onMounted(() => {
                         <div class="menu-title">Travelers</div>
                     </router-link>
                 </li>
+                <li class="menu-label">Administration</li>
 
                 <li>
                     <a v-wave class="has-arrow" href="javascript:;">
@@ -158,12 +129,12 @@ onMounted(() => {
                     </a>
                     <ul>
                         <router-link v-wave :to="{ name: 'UserList' }">
-                        <div class="parent-icon">
-                            <img src="../../../../public/theme/Sidebar_icons/User.svg" alt="">
-                            <!-- <i class="bx bx-user"></i> -->
-                        </div>
-                        <div class="menu-title">Users</div>
-                    </router-link>
+                            <div class="parent-icon">
+                                <img src="../../../../public/theme/Sidebar_icons/User.svg" alt="">
+                                <!-- <i class="bx bx-user"></i> -->
+                            </div>
+                            <div class="menu-title">Users</div>
+                        </router-link>
                     </ul>
                 </li>
 
