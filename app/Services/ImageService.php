@@ -18,10 +18,8 @@ class ImageService
             $this->deleteByDbPath($oldDbPath);
         }
 
-        $absoluteDir = rtrim(config('agent_uploads.base_path'), '/') . '/' . $folder;
-        if (!File::exists($absoluteDir)) {
-            File::makeDirectory($absoluteDir, 0777, true);
-        }
+        $absoluteDir = rtrim($this->basePath(), '/') . '/' . $folder;
+        $this->ensureWritableDirectory($absoluteDir);
 
         $extension = $this->resolveExtension($image->getMimeType() ?? '', $image->getClientOriginalExtension());
         $filename = now()->format('dmY-His') . '_' . uniqid() . '.' . $extension;
@@ -62,7 +60,7 @@ class ImageService
         }
 
         $relativePath = ltrim(preg_replace('#^/?uploads/agents/#', '', $dbPath), '/');
-        $absolutePath = rtrim(config('agent_uploads.base_path'), '/') . '/' . $relativePath;
+        $absolutePath = rtrim($this->basePath(), '/') . '/' . $relativePath;
 
         if (File::exists($absolutePath)) {
             return File::delete($absolutePath);
@@ -82,6 +80,55 @@ class ImageService
             'nidFiles' => 'nid_img',
             default => 'agent_img',
         };
+    }
+
+    public function basePath(): string
+    {
+        return rtrim((string) config('agent_uploads.base_path'), '/');
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function requiredSubdirectories(): array
+    {
+        return [
+            'agency_img',
+            'trade_licence_img',
+            'ca_img',
+            'iata_img',
+            'hajj_licence_img',
+            'tin_img',
+            'nid_img',
+            'misc',
+        ];
+    }
+
+    public function ensureWritableDirectory(string $absoluteDir): void
+    {
+        if (! File::exists($absoluteDir)) {
+            if (! @File::makeDirectory($absoluteDir, 0775, true) && ! File::isDirectory($absoluteDir)) {
+                throw new \RuntimeException("Failed to create upload directory: {$absoluteDir}");
+            }
+        }
+
+        if (! File::isDirectory($absoluteDir)) {
+            throw new \RuntimeException("Upload path is not a directory: {$absoluteDir}");
+        }
+
+        if (! is_writable($absoluteDir)) {
+            @chmod($absoluteDir, 0775);
+        }
+
+        $testFile = $absoluteDir . '/.write_test_' . uniqid('', true);
+        if (@file_put_contents($testFile, '1') === false) {
+            throw new \RuntimeException(
+                "Upload directory is not writable by the web server: {$absoluteDir}. " .
+                    'Run `php artisan agent-uploads:ensure` on the server or fix ownership/ACL for the PHP user.'
+            );
+        }
+
+        @unlink($testFile);
     }
 
     private function resolveFolderByField(string $fieldKey): string

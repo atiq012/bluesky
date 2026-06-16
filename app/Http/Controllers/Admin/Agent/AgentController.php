@@ -302,6 +302,27 @@ class AgentController extends BaseController
 
     public function registration(Request $request)
     {
+        try {
+            return $this->processRegistration($request);
+        } catch (\RuntimeException $e) {
+            if (str_contains($e->getMessage(), 'writable') || str_contains($e->getMessage(), 'upload directory')) {
+                return $this->ErrorResponse(
+                    'Upload storage is not writable on the server. Please contact support.',
+                    [],
+                    503
+                );
+            }
+
+            throw $e;
+        } catch (\Throwable $e) {
+            report($e);
+
+            return $this->ErrorResponse('Registration failed. Please try again later.', [], 500);
+        }
+    }
+
+    private function processRegistration(Request $request)
+    {
         // dd($request->all());
 
         $nullIfEmpty = static function ($value) {

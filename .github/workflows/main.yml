@@ -78,24 +78,31 @@ jobs:
 
             # Shared upload path setup (single source for both domains)
             SHARED_UPLOAD_BASE="/home/devblues/public_html/uploads/agents"
+            UPLOADS_ROOT="/home/devblues/public_html/uploads"
             APP_PUBLIC_UPLOADS="/home/dev2blue/public_html/uploads"
             APP_AGENT_UPLOAD_LINK="$APP_PUBLIC_UPLOADS/agents"
+            PHP_USER="dev2blue"
 
-            mkdir -p "$APP_PUBLIC_UPLOADS"
+            mkdir -p "$UPLOADS_ROOT" "$SHARED_UPLOAD_BASE"/{agency_img,trade_licence_img,ca_img,iata_img,hajj_licence_img,tin_img,nid_img,misc}
 
-            # Create shared folders when writable from SSH user.
-            if [ -w "$(dirname "$SHARED_UPLOAD_BASE")" ] || [ -w "$SHARED_UPLOAD_BASE" ]; then
-              mkdir -p "$SHARED_UPLOAD_BASE"/{agency_img,trade_licence_img,ca_img,iata_img,hajj_licence_img,tin_img,nid_img,misc}
-              chmod -R 775 /home/devblues/public_html/uploads 2>/dev/null || true
+            # Prefer shared group write + setgid so new files stay group-writable.
+            if command -v sudo >/dev/null 2>&1; then
+              sudo chown -R devblues:"$PHP_USER" "$UPLOADS_ROOT" 2>/dev/null || \
+              sudo chown -R "$PHP_USER":"$PHP_USER" "$UPLOADS_ROOT" 2>/dev/null || true
+              sudo chmod -R 2775 "$UPLOADS_ROOT" 2>/dev/null || true
             else
-              echo "WARN: No write access to $SHARED_UPLOAD_BASE (check ownership/group/ACL)."
+              chmod -R 2775 "$UPLOADS_ROOT" 2>/dev/null || true
             fi
 
-            # Try ACL grant for dev2blue when server supports sudo + setfacl.
             if command -v sudo >/dev/null 2>&1 && command -v setfacl >/dev/null 2>&1; then
-              sudo setfacl -R -m u:dev2blue:rwx /home/devblues/public_html/uploads 2>/dev/null || true
-              sudo setfacl -R -d -m u:dev2blue:rwx /home/devblues/public_html/uploads 2>/dev/null || true
+              sudo setfacl -R -m u:"$PHP_USER":rwx "$UPLOADS_ROOT" 2>/dev/null || true
+              sudo setfacl -R -d -m u:"$PHP_USER":rwx "$UPLOADS_ROOT" 2>/dev/null || true
             fi
+
+            php artisan agent-uploads:ensure || {
+              echo "ERROR: PHP cannot write to agent upload path. Fix server permissions before continuing."
+              exit 1
+            }
 
             # Link second domain uploads/agents -> shared agents folder (non-destructive).
             if [ -L "$APP_AGENT_UPLOAD_LINK" ]; then
