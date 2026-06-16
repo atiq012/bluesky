@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Admin\Agent;
 
 use App\Http\Controllers\BaseController;
@@ -7,6 +8,8 @@ use App\Models\Agent\AgentApprovalLog;
 use App\Models\Agent\AgentImage;
 use App\Models\Agent\AgentUser;
 use App\Models\User;
+use App\Services\ImageService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -73,7 +76,6 @@ class AgentController extends BaseController
         $success = '';
 
         return $this->SuccessResponse($success, 'Successfully Agent Saved.');
-
     }
 
     public function agentApproval(Request $request)
@@ -93,14 +95,12 @@ class AgentController extends BaseController
         $success = '';
 
         return $this->SuccessResponse($success, 'Successfully Agent Saved.');
-
     }
 
     public function AgentAllImage(Request $request)
     {
         $data = AgentImage::where('agent_id', $request->id)->get();
         return response()->json($data);
-
     }
     public function getAgentApprovalLog(Request $request)
     {
@@ -108,7 +108,6 @@ class AgentController extends BaseController
             ->selectRaw('aal.remarks as remarks,aal.status as status,f_username(aal.approver_id) as approver_name')
             ->get();
         return response()->json($data);
-
     }
     public function create()
     {
@@ -156,7 +155,6 @@ class AgentController extends BaseController
             $request_image->move($image_path, $image_name);
 
             $agent->logo_path = '/uploads/agents/agency_img/' . $image_name;
-
         }
 
         $agent->save();
@@ -299,7 +297,6 @@ class AgentController extends BaseController
         $success = '';
 
         return $this->SuccessResponse($success, 'Successfully Agent Saved.');
-
     }
 
     public function registration(Request $request)
@@ -316,34 +313,32 @@ class AgentController extends BaseController
         $agent->city             = $request->city;              // done
         // $agent->zone             = 1;
         $agent->address          = $request->address;         // done
-        $agent->established_date = $request->establishedDate; // done
+        $agent->established_date = null;
+        if (!empty($request->establishedDate)) {
+            try {
+                $agent->established_date = Carbon::parse($request->establishedDate)->format('Y-m-d');
+            } catch (\Throwable $e) {
+                // keep null if parsing fails; validation layer can enforce format if needed
+                $agent->established_date = null;
+            }
+        }
         $agent->postal_code      = $request->postalCode;      // done
         $agent->ca_number        = $request->cacNumber;       // done
         $agent->iata_number      = $request->iataNumber;      // done
-                                                              // $agent->reg_number         = $request->reg_number;
-                                                              // $agent->fax                = $request->fax;
+        // $agent->reg_number         = $request->reg_number;
+        // $agent->fax                = $request->fax;
         $agent->trade_licence      = $request->tradeLicense;  // done
         $agent->hajj_agency_number = $request->hajjNumber;    // done
-                                                              // $agent->kam                = $request->kam_id;
-                                                              // $agent->remarks            = $request->remarks;
+        // $agent->kam                = $request->kam_id;
+        // $agent->remarks            = $request->remarks;
         $agent->status = 'Pending';
         // $agent->designation        = $request->designation;
         $agent->created_by = 1;
 
-        if (($request->hasFile('logo'))) {
-
-            $request_image = $request->file('logo');
-            $image_name    = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
-
-            $image_path = public_path('/uploads/agents/agency_img/');
-            if (! File::exists($image_path)) {
-                File::makeDirectory($image_path, 0777, true);
-            }
-
-            $request_image->move($image_path, $image_name);
-
-            $agent->logo_path = '/uploads/agents/agency_img/' . $image_name;
-
+        /** @var ImageService $imageService */
+        $imageService = app(ImageService::class);
+        if ($request->hasFile('logo')) {
+            $agent->logo_path = $imageService->uploadAgentImage($request->file('logo'), 'logo');
         }
 
         $agent->save();
@@ -363,274 +358,31 @@ class AgentController extends BaseController
         // $agent->user_id = $agent_user->id;
         // $agent->save();
 
-
-        // Handle NID Files
-        if (($request->hasFile('nidFiles'))) {
-            $request_image = $request->file('nidFiles');
-
-            // Skip if it's an empty array
-            if (is_array($request_image) && empty($request_image)) {
-                // Do nothing - no file uploaded
+        $fileFields = ['nidFiles', 'tradeFiles', 'cacFiles', 'iataFiles', 'hajjFiles', 'tinFiles'];
+        foreach ($fileFields as $field) {
+            if (! $request->hasFile($field)) {
+                continue;
             }
-            // Handle if it's an array with files (multiple uploads)
-            else if (is_array($request_image)) {
-                foreach ($request_image as $single_image) {
-                    if ($single_image) {
-                        $agent_img                  = new AgentImage;
-                        $agent_img->agent_id        = $agent->id;
-                        $agent_img->attachment_type = 'nid_img';
 
-                        $image_name = str_replace(' ', '', (now()->format('dmY-') . time() . '_' . uniqid())) . '.' . $single_image->extension();
-                        $image_path = public_path('/uploads/agents/nid_img/');
+            $requestFiles = $request->file($field);
+            $files = is_array($requestFiles) ? $requestFiles : [$requestFiles];
 
-                        if (! File::exists($image_path)) {
-                            File::makeDirectory($image_path, 0777, true);
-                        }
-
-                        $single_image->move($image_path, $image_name);
-                        $agent_img->attachment_path = '/uploads/agents/nid_img/' . $image_name;
-                        $agent_img->save();
-                    }
-                }
-            }
-            // Handle single file
-            else {
-                $agent_img                  = new AgentImage;
-                $agent_img->agent_id        = $agent->id;
-                $agent_img->attachment_type = 'nid_img';
-
-                $image_name = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
-                $image_path = public_path('/uploads/agents/nid_img/');
-
-                if (! File::exists($image_path)) {
-                    File::makeDirectory($image_path, 0777, true);
+            foreach ($files as $singleImage) {
+                if (! $singleImage) {
+                    continue;
                 }
 
-                $request_image->move($image_path, $image_name);
-                $agent_img->attachment_path = '/uploads/agents/nid_img/' . $image_name;
-                $agent_img->save();
-            }
-        }
-
-// Handle Trade License Files
-        if (($request->hasFile('tradeFiles'))) {
-            $request_image = $request->file('tradeFiles');
-
-            if (is_array($request_image) && empty($request_image)) {
-                // Skip
-            } else if (is_array($request_image)) {
-                foreach ($request_image as $single_image) {
-                    if ($single_image) {
-                        $agent_img                  = new AgentImage;
-                        $agent_img->agent_id        = $agent->id;
-                        $agent_img->attachment_type = 'trade_licence_img';
-
-                        $image_name = str_replace(' ', '', (now()->format('dmY-') . time() . '_' . uniqid())) . '.' . $single_image->extension();
-                        $image_path = public_path('/uploads/agents/trade_licence_img/');
-
-                        if (! File::exists($image_path)) {
-                            File::makeDirectory($image_path, 0777, true);
-                        }
-
-                        $single_image->move($image_path, $image_name);
-                        $agent_img->attachment_path = '/uploads/agents/trade_licence_img/' . $image_name;
-                        $agent_img->save();
-                    }
-                }
-            } else {
-                $agent_img                  = new AgentImage;
-                $agent_img->agent_id        = $agent->id;
-                $agent_img->attachment_type = 'trade_licence_img';
-
-                $image_name = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
-                $image_path = public_path('/uploads/agents/trade_licence_img/');
-
-                if (! File::exists($image_path)) {
-                    File::makeDirectory($image_path, 0777, true);
-                }
-
-                $request_image->move($image_path, $image_name);
-                $agent_img->attachment_path = '/uploads/agents/trade_licence_img/' . $image_name;
-                $agent_img->save();
-            }
-        }
-
-// Handle CAC Files
-        if (($request->hasFile('cacFiles'))) {
-            $request_image = $request->file('cacFiles');
-
-            if (is_array($request_image) && empty($request_image)) {
-                // Skip
-            } else if (is_array($request_image)) {
-                foreach ($request_image as $single_image) {
-                    if ($single_image) {
-                        $agent_img                  = new AgentImage;
-                        $agent_img->agent_id        = $agent->id;
-                        $agent_img->attachment_type = 'ca_img';
-
-                        $image_name = str_replace(' ', '', (now()->format('dmY-') . time() . '_' . uniqid())) . '.' . $single_image->extension();
-                        $image_path = public_path('/uploads/agents/ca_img/');
-
-                        if (! File::exists($image_path)) {
-                            File::makeDirectory($image_path, 0777, true);
-                        }
-
-                        $single_image->move($image_path, $image_name);
-                        $agent_img->attachment_path = '/uploads/agents/ca_img/' . $image_name;
-                        $agent_img->save();
-                    }
-                }
-            } else {
-                $agent_img                  = new AgentImage;
-                $agent_img->agent_id        = $agent->id;
-                $agent_img->attachment_type = 'ca_img';
-
-                $image_name = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
-                $image_path = public_path('/uploads/agents/ca_img/');
-
-                if (! File::exists($image_path)) {
-                    File::makeDirectory($image_path, 0777, true);
-                }
-
-                $request_image->move($image_path, $image_name);
-                $agent_img->attachment_path = '/uploads/agents/ca_img/' . $image_name;
-                $agent_img->save();
-            }
-        }
-
-// Handle IATA Files
-        if (($request->hasFile('iataFiles'))) {
-            $request_image = $request->file('iataFiles');
-
-            if (is_array($request_image) && empty($request_image)) {
-                // Skip
-            } else if (is_array($request_image)) {
-                foreach ($request_image as $single_image) {
-                    if ($single_image) {
-                        $agent_img                  = new AgentImage;
-                        $agent_img->agent_id        = $agent->id;
-                        $agent_img->attachment_type = 'iata_img';
-
-                        $image_name = str_replace(' ', '', (now()->format('dmY-') . time() . '_' . uniqid())) . '.' . $single_image->extension();
-                        $image_path = public_path('/uploads/agents/iata_img/');
-
-                        if (! File::exists($image_path)) {
-                            File::makeDirectory($image_path, 0777, true);
-                        }
-
-                        $single_image->move($image_path, $image_name);
-                        $agent_img->attachment_path = '/uploads/agents/iata_img/' . $image_name;
-                        $agent_img->save();
-                    }
-                }
-            } else {
-                $agent_img                  = new AgentImage;
-                $agent_img->agent_id        = $agent->id;
-                $agent_img->attachment_type = 'iata_img';
-
-                $image_name = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
-                $image_path = public_path('/uploads/agents/iata_img/');
-
-                if (! File::exists($image_path)) {
-                    File::makeDirectory($image_path, 0777, true);
-                }
-
-                $request_image->move($image_path, $image_name);
-                $agent_img->attachment_path = '/uploads/agents/iata_img/' . $image_name;
-                $agent_img->save();
-            }
-        }
-
-// Handle Hajj Files
-        if (($request->hasFile('hajjFiles'))) {
-            $request_image = $request->file('hajjFiles');
-
-            if (is_array($request_image) && empty($request_image)) {
-                // Skip
-            } else if (is_array($request_image)) {
-                foreach ($request_image as $single_image) {
-                    if ($single_image) {
-                        $agent_img                  = new AgentImage;
-                        $agent_img->agent_id        = $agent->id;
-                        $agent_img->attachment_type = 'hajj_licence_img';
-
-                        $image_name = str_replace(' ', '', (now()->format('dmY-') . time() . '_' . uniqid())) . '.' . $single_image->extension();
-                        $image_path = public_path('/uploads/agents/hajj_licence_img/');
-
-                        if (! File::exists($image_path)) {
-                            File::makeDirectory($image_path, 0777, true);
-                        }
-
-                        $single_image->move($image_path, $image_name);
-                        $agent_img->attachment_path = '/uploads/agents/hajj_licence_img/' . $image_name;
-                        $agent_img->save();
-                    }
-                }
-            } else {
-                $agent_img                  = new AgentImage;
-                $agent_img->agent_id        = $agent->id;
-                $agent_img->attachment_type = 'hajj_licence_img';
-
-                $image_name = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
-                $image_path = public_path('/uploads/agents/hajj_licence_img/');
-
-                if (! File::exists($image_path)) {
-                    File::makeDirectory($image_path, 0777, true);
-                }
-
-                $request_image->move($image_path, $image_name);
-                $agent_img->attachment_path = '/uploads/agents/hajj_licence_img/' . $image_name;
-                $agent_img->save();
-            }
-        }
-
-// Handle TIN Files
-        if (($request->hasFile('tinFiles'))) {
-            $request_image = $request->file('tinFiles');
-
-            if (is_array($request_image) && empty($request_image)) {
-                // Skip
-            } else if (is_array($request_image)) {
-                foreach ($request_image as $single_image) {
-                    if ($single_image) {
-                        $agent_img                  = new AgentImage;
-                        $agent_img->agent_id        = $agent->id;
-                        $agent_img->attachment_type = 'tin_img';
-
-                        $image_name = str_replace(' ', '', (now()->format('dmY-') . time() . '_' . uniqid())) . '.' . $single_image->extension();
-                        $image_path = public_path('/uploads/agents/tin_img/');
-
-                        if (! File::exists($image_path)) {
-                            File::makeDirectory($image_path, 0777, true);
-                        }
-
-                        $single_image->move($image_path, $image_name);
-                        $agent_img->attachment_path = '/uploads/agents/tin_img/' . $image_name;
-                        $agent_img->save();
-                    }
-                }
-            } else {
-                $agent_img                  = new AgentImage;
-                $agent_img->agent_id        = $agent->id;
-                $agent_img->attachment_type = 'tin_img';
-
-                $image_name = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
-                $image_path = public_path('/uploads/agents/tin_img/');
-
-                if (! File::exists($image_path)) {
-                    File::makeDirectory($image_path, 0777, true);
-                }
-
-                $request_image->move($image_path, $image_name);
-                $agent_img->attachment_path = '/uploads/agents/tin_img/' . $image_name;
-                $agent_img->save();
+                $agentImg = new AgentImage;
+                $agentImg->agent_id = $agent->id;
+                $agentImg->attachment_type = $imageService->resolveAttachmentTypeByField($field);
+                $agentImg->attachment_path = $imageService->uploadAgentImage($singleImage, $field);
+                $agentImg->save();
             }
         }
 
         $success = '';
 
         return $this->SuccessResponse($success, 'Successfully Agent Saved.');
-
     }
 
     /**

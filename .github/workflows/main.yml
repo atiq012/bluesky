@@ -75,6 +75,37 @@ jobs:
             php artisan view:cache
             chmod -R 775 storage bootstrap/cache
             chmod -R 775 public/uploads
+
+            # Shared upload path setup (single source for both domains)
+            SHARED_UPLOAD_BASE="/home/devblues/public_html/uploads/agents"
+            APP_PUBLIC_UPLOADS="/home/dev2blue/public_html/uploads"
+            APP_AGENT_UPLOAD_LINK="$APP_PUBLIC_UPLOADS/agents"
+
+            mkdir -p "$APP_PUBLIC_UPLOADS"
+
+            # Create shared folders when writable from SSH user.
+            if [ -w "$(dirname "$SHARED_UPLOAD_BASE")" ] || [ -w "$SHARED_UPLOAD_BASE" ]; then
+              mkdir -p "$SHARED_UPLOAD_BASE"/{agency_img,trade_licence_img,ca_img,iata_img,hajj_licence_img,tin_img,nid_img,misc}
+              chmod -R 775 /home/devblues/public_html/uploads 2>/dev/null || true
+            else
+              echo "WARN: No write access to $SHARED_UPLOAD_BASE (check ownership/group/ACL)."
+            fi
+
+            # Try ACL grant for dev2blue when server supports sudo + setfacl.
+            if command -v sudo >/dev/null 2>&1 && command -v setfacl >/dev/null 2>&1; then
+              sudo setfacl -R -m u:dev2blue:rwx /home/devblues/public_html/uploads 2>/dev/null || true
+              sudo setfacl -R -d -m u:dev2blue:rwx /home/devblues/public_html/uploads 2>/dev/null || true
+            fi
+
+            # Link second domain uploads/agents -> shared agents folder (non-destructive).
+            if [ -L "$APP_AGENT_UPLOAD_LINK" ]; then
+              ln -sfn "$SHARED_UPLOAD_BASE" "$APP_AGENT_UPLOAD_LINK"
+            elif [ -e "$APP_AGENT_UPLOAD_LINK" ]; then
+              echo "WARN: $APP_AGENT_UPLOAD_LINK exists and is not symlink. Skipping link creation."
+            else
+              ln -s "$SHARED_UPLOAD_BASE" "$APP_AGENT_UPLOAD_LINK" || true
+            fi
+
             if command -v rsync >/dev/null 2>&1; then
               rsync -av \
                 --exclude='.well-known/' \
