@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 
 const COUNTRIES = [
-    { code: 'bd', name: 'Bangladesh',     dial: '+880', maxLen: 11, placeholder: '01XXXXXXXXX',  pattern: /^01[3-9]\d{8}$/,  hint: 'Format: 01X XXXXXXXX (11 digits)' },
+    { code: 'bd', name: 'Bangladesh',     dial: '+88', maxLen: 11, placeholder: '01XXXXXXXXX',  pattern: /^01[3-9]\d{8}$/,  hint: 'Format: 01X XXXXXXXX (11 digits)' },
     { code: 'us', name: 'United States',  dial: '+1',   maxLen: 10, placeholder: 'XXXXXXXXXX',   pattern: /^\d{10}$/,         hint: 'Format: 10 digits' },
     { code: 'gb', name: 'United Kingdom', dial: '+44',  maxLen: 11, placeholder: '07XXXXXXXXX',  pattern: /^0\d{9,10}$/,      hint: 'Format: 07XXX XXXXXX (10-11 digits)' },
     { code: 'in', name: 'India',          dial: '+91',  maxLen: 10, placeholder: 'XXXXXXXXXX',   pattern: /^[6-9]\d{9}$/,     hint: 'Format: 10 digits starting 6-9' },
@@ -14,7 +14,7 @@ const COUNTRIES = [
 
 const props = defineProps({
     modelValue: { type: String, default: '' },
-    dialCode:   { type: String, default: '+880' },
+    dialCode:   { type: String, default: '+88' },
     label:      { type: String, default: 'Phone' },
     required:   { type: Boolean, default: false },
     error:      { type: String, default: '' },

@@ -28,7 +28,7 @@ const form = reactive({
     agencyName: "",
     establishedDate: "",
     agencyEmail: "",
-    agencyCountryDial: "+880",
+    agencyCountryDial: "+88",
     agencyPhone: "",
     country: "",
     city: "",
@@ -48,7 +48,7 @@ const form = reactive({
     nidNumber: "",
     birthDate: "",
     email: "",
-    userCountryDial: "+880",
+    userCountryDial: "+88",
     userPhone: "",
     agreeTerms: false
 });
@@ -145,10 +145,31 @@ function validateEmail(e) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 }
 
+function parseDisplayDate(str) {
+    if (!str || typeof str !== "string") return null;
+    const parts = str.trim().split("-");
+    if (parts.length !== 3) return null;
+    const [dStr, monStr, yStr] = parts;
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const day = parseInt(dStr, 10);
+    const month = months.indexOf(monStr);
+    const year = parseInt(yStr, 10);
+    if (Number.isNaN(day) || Number.isNaN(year) || month < 0) return null;
+    const d = new Date(year, month, day);
+    d.setHours(0, 0, 0, 0);
+    return Number.isNaN(d.getTime()) ? null : d;
+}
+
+const todayMaxDate = computed(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+});
+
 // Flags
 const agencyFlag = computed(() => {
     const options = {
-        '+880': 'bd',
+        '+88': 'bd',
         '+1': 'us',
         '+44': 'gb',
         '+91': 'in',
@@ -162,7 +183,7 @@ const agencyFlag = computed(() => {
 
 const userFlag = computed(() => {
     const options = {
-        '+880': 'bd'
+        '+88': 'bd'
     };
     return options[form.userCountryDial] || 'bd';
 });
@@ -175,8 +196,11 @@ const iataPlaceholder = computed(() => {
 
 // Methods
 function validateStep1() {
+    const establishedDateObj = parseDisplayDate(form.establishedDate);
+    const hasFutureEstablishedDate = !!establishedDateObj && establishedDateObj > todayMaxDate.value;
+
     errors.agencyName = !form.agencyName.trim();
-    errors.establishedDate = !form.establishedDate;
+    errors.establishedDate = !form.establishedDate || !establishedDateObj || hasFutureEstablishedDate;
     errors.agencyEmail = !validateEmail(form.agencyEmail);
     errors.country = !form.country;
     errors.city = !form.city;
@@ -212,10 +236,13 @@ function validateStep2() {
 }
 
 function validateStep3() {
+    const birthDateObj = parseDisplayDate(form.birthDate);
+    const hasFutureBirthDate = !!birthDateObj && birthDateObj > todayMaxDate.value;
+
     errors.firstName = !form.firstName.trim();
     errors.lastName = !form.designation.trim();
     errors.nidNumber = !form.nidNumber.trim();
-    errors.birthDate = !form.birthDate;
+    errors.birthDate = !form.birthDate || !birthDateObj || hasFutureBirthDate;
     errors.email = !validateEmail(form.email);
     errors.userPhone = form.userPhone.trim().length < 4;
     errors.agreeTerms = !form.agreeTerms;
@@ -459,7 +486,7 @@ function resetForm() {
     form.agencyName = "";
     form.establishedDate = "";
     form.agencyEmail = "";
-    form.agencyCountryDial = "+880";
+    form.agencyCountryDial = "+88";
     form.agencyPhone = "";
     form.country = "";
     form.city = "";
@@ -479,7 +506,7 @@ function resetForm() {
     form.nidNumber = "";
     form.birthDate = "";
     form.email = "";
-    form.userCountryDial = "+880";
+    form.userCountryDial = "+88";
     form.userPhone = "";
     form.agreeTerms = false;
 
@@ -630,11 +657,12 @@ onUnmounted(() => {
                                 <label class="form-label">Established Date <span class="text-danger">*</span></label>
                                 <AppDatePicker
                                     v-model="form.establishedDate"
+                                    :max-date="todayMaxDate"
                                     placeholder="Select established date"
                                     :input-class="errors.establishedDate === true ? 'form-control is-invalid' : errors.establishedDate === false ? 'form-control is-valid' : 'form-control'"
                                     input-style="border-radius: 10px; padding: 10px 14px 10px 2.25rem; font-size: .9rem; color: #3F4754; border: 1.5px solid #E2E8F0; cursor: pointer;"
                                 />
-                                <div class="invalid-feedback" v-show="errors.establishedDate === true">Please select the established date.</div>
+                                <div class="invalid-feedback" v-show="errors.establishedDate === true">Please select a valid established date (today or earlier).</div>
                             </div>
                             <div class="col-md-6">
                                 <EmailInput
@@ -938,10 +966,14 @@ onUnmounted(() => {
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Birth Date <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control" v-model="form.birthDate"
-                                    :class="{ 'is-invalid': errors.birthDate === true, 'is-valid': errors.birthDate === false }"
-                                    required>
-                                <div class="invalid-feedback">Please select the birth date.</div>
+                                <AppDatePicker
+                                    v-model="form.birthDate"
+                                    :max-date="todayMaxDate"
+                                    placeholder="Select birth date"
+                                    :input-class="errors.birthDate === true ? 'form-control is-invalid' : errors.birthDate === false ? 'form-control is-valid' : 'form-control'"
+                                    input-style="border-radius: 10px; padding: 10px 14px 10px 2.25rem; font-size: .9rem; color: #3F4754; border: 1.5px solid #E2E8F0; cursor: pointer;"
+                                />
+                                <div class="invalid-feedback" v-show="errors.birthDate === true">Please select a valid birth date (today or earlier).</div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Email <span class="text-danger">*</span></label>

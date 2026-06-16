@@ -357,7 +357,14 @@ class AgentController extends BaseController
         $agent_user->nid         = $request->nidNumber;
         $agent_user->email       = $request->email;
         $agent_user->designation = $request->designation;
-        $agent_user->dob         = $request->birthDate;
+        $agent_user->dob         = null;
+        if (!empty($request->birthDate)) {
+            try {
+                $agent_user->dob = Carbon::parse($request->birthDate)->format('Y-m-d');
+            } catch (\Throwable $e) {
+                $agent_user->dob = null;
+            }
+        }
         $agent_user->phone       = $request->userPhone;
         $agent_user->agent_id    = $agent->id;
         $agent_user->created_by  = 1;
