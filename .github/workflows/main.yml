@@ -65,8 +65,9 @@ jobs:
           script: |
             set -e
             cd /home/dev2blue/apps/b2b
-            rm -rf vendor
+            mv vendor vendor_old 2>/dev/null || true
             composer install --no-dev --optimize-autoloader --no-interaction
+            rm -rf vendor_old 2>/dev/null || true
             php artisan migrate --force
             php artisan optimize:clear
             php artisan config:cache
