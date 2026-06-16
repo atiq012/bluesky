@@ -44,6 +44,7 @@ const form = reactive({
     logoName: "",
     firstName: "",
     lastName: "",
+    designation: "",
     nidNumber: "",
     birthDate: "",
     email: "",
@@ -212,7 +213,7 @@ function validateStep2() {
 
 function validateStep3() {
     errors.firstName = !form.firstName.trim();
-    errors.lastName = !form.lastName.trim();
+    errors.lastName = !form.designation.trim();
     errors.nidNumber = !form.nidNumber.trim();
     errors.birthDate = !form.birthDate;
     errors.email = !validateEmail(form.email);
@@ -415,7 +416,7 @@ async function submitForm() {
 
         // Primary User Info
         fd.append('firstName',       form.firstName);
-        fd.append('designation',     form.designation);
+        fd.append('designation',     form.designation || form.lastName || '');
         fd.append('nidNumber',       form.nidNumber);
         fd.append('birthDate',       form.birthDate);
         fd.append('email',           form.email);
@@ -474,6 +475,7 @@ function resetForm() {
     form.logoName = "";
     form.firstName = "";
     form.lastName = "";
+    form.designation = "";
     form.nidNumber = "";
     form.birthDate = "";
     form.email = "";
@@ -512,7 +514,7 @@ watch(() => form.country,        v => { if (v) errors.country = false; });
 watch(() => form.city,           v => { if (v) errors.city = false; });
 watch(() => form.address,        v => { if (v?.trim()) errors.address = false; });
 watch(() => form.firstName,      v => { if (v?.trim()) errors.firstName = false; });
-watch(() => form.lastName,       v => { if (v?.trim()) errors.lastName = false; });
+watch(() => form.designation,    v => { if (v?.trim()) errors.lastName = false; });
 watch(() => form.nidNumber,      v => { if (v?.trim()) errors.nidNumber = false; });
 watch(() => form.birthDate,      v => { if (v) errors.birthDate = false; });
 watch(() => form.email,          v => { if (v) errors.email = false; });
@@ -921,7 +923,7 @@ onUnmounted(() => {
                             <div class="col-md-6">
                                 <label class="form-label">Designation <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" placeholder="Designation"
-                                    v-model="form.lastName"
+                                    v-model="form.designation"
                                     :class="{ 'is-invalid': errors.lastName === true, 'is-valid': errors.lastName === false }"
                                     required>
                                 <div class="invalid-feedback">Please enter designation.</div>

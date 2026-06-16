@@ -304,6 +304,13 @@ class AgentController extends BaseController
     {
         // dd($request->all());
 
+        $nullIfEmpty = static function ($value) {
+            if (is_string($value)) {
+                $value = trim($value);
+            }
+            return $value === '' ? null : $value;
+        };
+
         $agent = new Agent;
 
         $agent->name             = $request->agencyName;        // done
@@ -323,13 +330,13 @@ class AgentController extends BaseController
                 $agent->established_date = null;
             }
         }
-        $agent->postal_code      = $request->postalCode;      // done
-        $agent->ca_number        = $request->cacNumber;       // done
-        $agent->iata_number      = $request->iataNumber;      // done
+        $agent->postal_code      = $nullIfEmpty($request->postalCode);   // done
+        $agent->ca_number        = $nullIfEmpty($request->cacNumber);    // done
+        $agent->iata_number      = $nullIfEmpty($request->iataNumber);   // done
         // $agent->reg_number         = $request->reg_number;
         // $agent->fax                = $request->fax;
-        $agent->trade_licence      = $request->tradeLicense;  // done
-        $agent->hajj_agency_number = $request->hajjNumber;    // done
+        $agent->trade_licence      = $nullIfEmpty($request->tradeLicense); // done
+        $agent->hajj_agency_number = $nullIfEmpty($request->hajjNumber);   // done
         // $agent->kam                = $request->kam_id;
         // $agent->remarks            = $request->remarks;
         $agent->status = 'Pending';
