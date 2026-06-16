@@ -76,21 +76,21 @@ const options = {
                 var html = "";
                 // row
                 html += '<div class="row">';
-                html += '<div class="col-md-4">';
-                html += '<img src="' + row.img + '" height="60"  class="w-50">';
-                html += '</div>';
+                // html += '<div class="col-md-4">';
+                // html += '<img src="' + row.img + '" height="60"  class="w-50">';
+                // html += '</div>';
                 html += '<div class="col-md-8" style="white-space:nowrap;">'
 
                 html += row.name;
                 html += "<br>";
-                html += '<span class="text-primary">';
+                // html += '<span class="text-primary">';
 
-                html += row.emp_id + "</span>";
-                html += "<br>";
-                html += row.desg;
-                html += " | ";
-                html += row.dept;
-                html += "</div>";
+                // html += row.emp_id + "</span>";
+                // html += "<br>";
+                // html += row.desg;
+                // html += " | ";
+                // html += row.dept;
+                // html += "</div>";
 
                 html += '</div>';
                 return html;
@@ -105,7 +105,7 @@ const options = {
                 var html = "";
                 html += row.r_name;
                 html += "<br>";
-                html += row.off_loc;
+                // html += row.off_loc;
 
                 return html;
             },
