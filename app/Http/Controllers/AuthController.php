@@ -62,6 +62,10 @@ class AuthController extends BaseController {
                 ] );
 
                 $la = User::where( 'email', $request->email )->first();
+                if($la->type ==1){
+                return $this->ErrorResponse( 'User not found !' );
+
+                }
                 $la->login_attamp = $la->login_attamp+1;
                 $la->save();
 

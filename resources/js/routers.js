@@ -128,7 +128,7 @@ const routes = [
 
     //flight search
     { path: '/flight-search', component: flightSearch, name: 'flightSearch', meta: { auth: true } },
-    // { path: '/flight-search-way', component: searchResult, name: 'searchResult', meta: { auth: true } },
+    { path: '/flight-search-way', component: searchResult, name: 'searchResult', meta: { auth: true } },
     // { path: '/flight-search-result', component: backupsearchResult, name: 'backupsearchResult', meta: { auth: true } },
     { path: '/no-flight-result', component: noFlightFound, name: 'noFlightFound', meta: { auth: true } },
 
