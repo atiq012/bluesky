@@ -124,8 +124,12 @@ const options = {
                 var html = "";
                 var status = row.status;
 
-                html += '<div class="badge rounded-pill text-danger bg-light-danger p-2 text-uppercase px-3"><i class="bx bxs-circle me-1"></i>' + status + '</div>';
+                if(status == 'Requested'){
 
+                    html += '<div class="badge rounded-pill text-danger bg-light-danger p-2 text-uppercase px-3"><i class="bx bxs-circle me-1"></i>' + status + '</div>';
+                }else{
+                    html += '<div class="badge rounded-pill text-success bg-light-success p-2 text-uppercase px-3"><i class="bx bxs-circle me-1"></i>' + status + '</div>';
+                }
 
                 return html;
             },

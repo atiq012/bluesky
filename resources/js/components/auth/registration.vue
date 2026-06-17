@@ -2,6 +2,13 @@
 import { reactive, ref, watch, computed, onMounted, onUnmounted } from "vue";
 import VOtpInput from "vue3-otp-input";
 import { useAuthStore } from "../../stores/authStore";
+import AppDatePicker from "../common/AppDatePicker.vue";
+import EmailInput from "../common/EmailInput.vue";
+import Select2 from "../common/Select2.vue";
+import ImageCropUpload from "../common/ImageCropUpload.vue";
+import PhoneInput from "../common/PhoneInput.vue";
+import AgencyLegalModal from "./AgencyLegalModal.vue";
+import { AGENCY_TERMS_OF_SERVICE, AGENCY_PRIVACY_POLICY } from "../../content/agencyLegalDocuments.js";
 const authStore = useAuthStore();
 import { useRouter } from 'vue-router';
 const router = useRouter();
@@ -23,7 +30,7 @@ const form = reactive({
     agencyName: "",
     establishedDate: "",
     agencyEmail: "",
-    agencyCountryDial: "+880",
+    agencyCountryDial: "+88",
     agencyPhone: "",
     country: "",
     city: "",
@@ -39,10 +46,11 @@ const form = reactive({
     logoName: "",
     firstName: "",
     lastName: "",
+    designation: "",
     nidNumber: "",
     birthDate: "",
     email: "",
-    userCountryDial: "+880",
+    userCountryDial: "+88",
     userPhone: "",
     agreeTerms: false
 });
@@ -63,6 +71,16 @@ const fileHajjInput = ref(null);
 const fileTinInput = ref(null);
 const fileNidInput = ref(null);
 const logoInput = ref(null);
+const DOC_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
+const DOC_IMAGE_TYPES = ['image/jpeg', 'image/png'];
+const docImagePreviews = reactive({
+    trade: "",
+    cac: "",
+    iata: "",
+    hajj: "",
+    tin: "",
+    nid: ""
+});
 
 // Drag status for zones
 const isDragging = reactive({
@@ -76,6 +94,8 @@ const isDragging = reactive({
 
 // Modal state
 const isSuccessModalOpen = ref(false);
+const isTermsModalOpen = ref(false);
+const isPrivacyModalOpen = ref(false);
 
 // Validation errors (null = not validated, true = has error, false = valid)
 const errors = reactive({
@@ -101,15 +121,59 @@ const errors = reactive({
     agreeTerms: null
 });
 
+const countryOptions = [
+    { value: 'Bangladesh', label: 'Bangladesh' },
+    { value: 'India', label: 'India' },
+    { value: 'Pakistan', label: 'Pakistan' },
+    { value: 'Malaysia', label: 'Malaysia' },
+    { value: 'United Arab Emirates', label: 'United Arab Emirates' },
+    { value: 'Saudi Arabia', label: 'Saudi Arabia' },
+    { value: 'Singapore', label: 'Singapore' },
+    { value: 'United Kingdom', label: 'United Kingdom' },
+    { value: 'United States', label: 'United States' },
+];
+
+const cityOptions = [
+    { value: 'Dhaka', label: 'Dhaka' },
+    { value: 'Chittagong', label: 'Chittagong' },
+    { value: 'Sylhet', label: 'Sylhet' },
+    { value: 'Khulna', label: 'Khulna' },
+    { value: 'Rajshahi', label: 'Rajshahi' },
+    { value: 'Barisal', label: 'Barisal' },
+    { value: 'Rangpur', label: 'Rangpur' },
+    { value: 'Mymensingh', label: 'Mymensingh' },
+];
+
 // Helpers
 function validateEmail(e) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 }
 
+function parseDisplayDate(str) {
+    if (!str || typeof str !== "string") return null;
+    const parts = str.trim().split("-");
+    if (parts.length !== 3) return null;
+    const [dStr, monStr, yStr] = parts;
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const day = parseInt(dStr, 10);
+    const month = months.indexOf(monStr);
+    const year = parseInt(yStr, 10);
+    if (Number.isNaN(day) || Number.isNaN(year) || month < 0) return null;
+    const d = new Date(year, month, day);
+    d.setHours(0, 0, 0, 0);
+    return Number.isNaN(d.getTime()) ? null : d;
+}
+
+const todayMaxDate = computed(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+});
+
 // Flags
 const agencyFlag = computed(() => {
     const options = {
-        '+880': 'bd',
+        '+88': 'bd',
         '+1': 'us',
         '+44': 'gb',
         '+91': 'in',
@@ -123,7 +187,7 @@ const agencyFlag = computed(() => {
 
 const userFlag = computed(() => {
     const options = {
-        '+880': 'bd'
+        '+88': 'bd'
     };
     return options[form.userCountryDial] || 'bd';
 });
@@ -136,13 +200,16 @@ const iataPlaceholder = computed(() => {
 
 // Methods
 function validateStep1() {
+    const establishedDateObj = parseDisplayDate(form.establishedDate);
+    const hasFutureEstablishedDate = !!establishedDateObj && establishedDateObj > todayMaxDate.value;
+
     errors.agencyName = !form.agencyName.trim();
-    errors.establishedDate = !form.establishedDate;
+    errors.establishedDate = !form.establishedDate || !establishedDateObj || hasFutureEstablishedDate;
     errors.agencyEmail = !validateEmail(form.agencyEmail);
     errors.country = !form.country;
     errors.city = !form.city;
     errors.address = !form.address.trim();
-    errors.agencyPhone = form.agencyPhone.trim().length < 6;
+    errors.agencyPhone = form.agencyPhone.trim().length < 4;
 
     return (
         !errors.agencyName &&
@@ -173,12 +240,15 @@ function validateStep2() {
 }
 
 function validateStep3() {
+    const birthDateObj = parseDisplayDate(form.birthDate);
+    const hasFutureBirthDate = !!birthDateObj && birthDateObj > todayMaxDate.value;
+
     errors.firstName = !form.firstName.trim();
-    errors.lastName = !form.lastName.trim();
+    errors.lastName = !form.designation.trim();
     errors.nidNumber = !form.nidNumber.trim();
-    errors.birthDate = !form.birthDate;
+    errors.birthDate = !form.birthDate || !birthDateObj || hasFutureBirthDate;
     errors.email = !validateEmail(form.email);
-    errors.userPhone = form.userPhone.trim().length < 6;
+    errors.userPhone = form.userPhone.trim().length < 4;
     errors.agreeTerms = !form.agreeTerms;
 
     return (
@@ -235,6 +305,7 @@ function handleFileChange(e, key) {
     if (file) {
         addFileItem(key, file);
     }
+    e.target.value = "";
 }
 
 function handleDrop(e, key) {
@@ -245,15 +316,37 @@ function handleDrop(e, key) {
     }
 }
 
+function isValidDocImage(file) {
+    const isAllowedType = DOC_IMAGE_TYPES.includes(file.type) || /\.(jpe?g|png)$/i.test(file.name || "");
+    if (!isAllowedType) {
+        alert("Only JPG and PNG images are allowed.");
+        return false;
+    }
+    if (file.size > DOC_IMAGE_MAX_BYTES) {
+        alert("Image size must be 2 MB or less.");
+        return false;
+    }
+    return true;
+}
+
 function addFileItem(key, file) {
+    if (!isValidDocImage(file)) return;
     const list = getFileList(key);
-    list.value.push(file);
+    if (docImagePreviews[key]?.startsWith("blob:")) {
+        URL.revokeObjectURL(docImagePreviews[key]);
+    }
+    list.value = [file];
+    docImagePreviews[key] = URL.createObjectURL(file);
     errors[key] = false;
 }
 
 function removeFile(index, key) {
     const list = getFileList(key);
     list.value.splice(index, 1);
+    if (docImagePreviews[key]?.startsWith("blob:")) {
+        URL.revokeObjectURL(docImagePreviews[key]);
+    }
+    docImagePreviews[key] = "";
 }
 
 function getFileList(key) {
@@ -267,6 +360,10 @@ function getFileList(key) {
 
 function hasFiles(key) {
     return getFileList(key).value.length > 0;
+}
+
+function getDocImagePreview(key) {
+    return docImagePreviews[key] || "";
 }
 
 function getZoneStyle(key) {
@@ -286,6 +383,24 @@ function openSuccessModal() {
 
 function closeSuccessModal() {
     isSuccessModalOpen.value = false;
+}
+
+function openTermsModal() {
+    isPrivacyModalOpen.value = false;
+    isTermsModalOpen.value = true;
+}
+
+function closeTermsModal() {
+    isTermsModalOpen.value = false;
+}
+
+function openPrivacyModal() {
+    isTermsModalOpen.value = false;
+    isPrivacyModalOpen.value = true;
+}
+
+function closePrivacyModal() {
+    isPrivacyModalOpen.value = false;
 }
 
 watch(isSuccessModalOpen, (isOpen) => {
@@ -350,7 +465,7 @@ async function submitForm() {
 
         // Primary User Info
         fd.append('firstName',       form.firstName);
-        fd.append('designation',     form.designation);
+        fd.append('designation',     form.designation || form.lastName || '');
         fd.append('nidNumber',       form.nidNumber);
         fd.append('birthDate',       form.birthDate);
         fd.append('email',           form.email);
@@ -393,7 +508,7 @@ function resetForm() {
     form.agencyName = "";
     form.establishedDate = "";
     form.agencyEmail = "";
-    form.agencyCountryDial = "+880";
+    form.agencyCountryDial = "+88";
     form.agencyPhone = "";
     form.country = "";
     form.city = "";
@@ -409,10 +524,11 @@ function resetForm() {
     form.logoName = "";
     form.firstName = "";
     form.lastName = "";
+    form.designation = "";
     form.nidNumber = "";
     form.birthDate = "";
     form.email = "";
-    form.userCountryDial = "+880";
+    form.userCountryDial = "+88";
     form.userPhone = "";
     form.agreeTerms = false;
 
@@ -422,6 +538,12 @@ function resetForm() {
     hajjFiles.value = [];
     tinFiles.value = [];
     nidFiles.value = [];
+    Object.keys(docImagePreviews).forEach((key) => {
+        if (docImagePreviews[key]?.startsWith("blob:")) {
+            URL.revokeObjectURL(docImagePreviews[key]);
+        }
+        docImagePreviews[key] = "";
+    });
 
     Object.keys(errors).forEach(key => {
         errors[key] = null;
@@ -431,6 +553,22 @@ function resetForm() {
     showPane(1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+
+// Clear field error as soon as user provides a value
+watch(() => form.agencyName,     v => { if (v?.trim()) errors.agencyName = false; });
+watch(() => form.establishedDate,v => { if (v) errors.establishedDate = false; });
+watch(() => form.agencyEmail,    v => { if (v) errors.agencyEmail = false; });
+watch(() => form.agencyPhone,    v => { if (v?.trim()) errors.agencyPhone = false; });
+watch(() => form.country,        v => { if (v) errors.country = false; });
+watch(() => form.city,           v => { if (v) errors.city = false; });
+watch(() => form.address,        v => { if (v?.trim()) errors.address = false; });
+watch(() => form.firstName,      v => { if (v?.trim()) errors.firstName = false; });
+watch(() => form.designation,    v => { if (v?.trim()) errors.lastName = false; });
+watch(() => form.nidNumber,      v => { if (v?.trim()) errors.nidNumber = false; });
+watch(() => form.birthDate,      v => { if (v) errors.birthDate = false; });
+watch(() => form.email,          v => { if (v) errors.email = false; });
+watch(() => form.userPhone,      v => { if (v?.trim()) errors.userPhone = false; });
+watch(() => form.agreeTerms,     v => { if (v) errors.agreeTerms = false; });
 
 function init() {
     const saved = parseInt(sessionStorage.getItem(STEP_KEY), 10);
@@ -444,7 +582,10 @@ function init() {
 }
 
 const handleKeyDown = (e) => {
-    if (e.key === 'Escape') closeSuccessModal();
+    if (e.key !== 'Escape') return;
+    if (isTermsModalOpen.value) closeTermsModal();
+    else if (isPrivacyModalOpen.value) closePrivacyModal();
+    else closeSuccessModal();
 };
 
 onMounted(() => {
@@ -453,6 +594,11 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+    Object.keys(docImagePreviews).forEach((key) => {
+        if (docImagePreviews[key]?.startsWith("blob:")) {
+            URL.revokeObjectURL(docImagePreviews[key]);
+        }
+    });
     window.removeEventListener('keydown', handleKeyDown);
 });
 </script>
@@ -534,76 +680,62 @@ onUnmounted(() => {
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Established Date <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control" v-model="form.establishedDate"
-                                    :class="{ 'is-invalid': errors.establishedDate === true, 'is-valid': errors.establishedDate === false }"
-                                    required>
-                                <div class="invalid-feedback">Please select the established date.</div>
+                                <AppDatePicker
+                                    v-model="form.establishedDate"
+                                    :max-date="todayMaxDate"
+                                    placeholder="Select established date"
+                                    :input-class="errors.establishedDate === true ? 'form-control is-invalid' : errors.establishedDate === false ? 'form-control is-valid' : 'form-control'"
+                                    input-style="border-radius: 10px; padding: 10px 14px 10px 2.25rem; font-size: .9rem; color: #3F4754; border: 1.5px solid #E2E8F0; cursor: pointer;"
+                                />
+                                <div class="invalid-feedback" v-show="errors.establishedDate === true">Please select a valid established date (today or earlier).</div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Email <span class="text-danger">*</span></label>
-                                <input type="email" class="form-control" placeholder="agency@email.com"
+                                <EmailInput
                                     v-model="form.agencyEmail"
-                                    :class="{ 'is-invalid': errors.agencyEmail === true, 'is-valid': errors.agencyEmail === false }"
-                                    required>
-                                <div class="invalid-feedback">Please enter a valid email address.</div>
+                                    label="Email"
+                                    :required="true"
+                                    placeholder="agency@email.com"
+                                    input-class="form-control"
+                                    input-style="border-radius: 10px; padding: 10px 14px; font-size: .9rem; color: #3F4754; border: 1.5px solid #E2E8F0;"
+                                    :error="errors.agencyEmail === true ? 'Please enter a valid email address.' : ''"
+                                />
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Phone <span class="text-danger">*</span></label>
-                                <div class="phone-group" id="phoneGroup"
-                                    :class="{ 'is-invalid': errors.agencyPhone === true, 'is-valid': errors.agencyPhone === false }">
-                                    <div class="phone-flag">
-                                        <img :src="`https://flagcdn.com/w40/${agencyFlag}.png`" alt="BD" id="flagImg">
-                                        <select id="countryDialSelect" v-model="form.agencyCountryDial">
-                                            <option value="+880">+880 🇧🇩</option>
-                                            <option value="+1">+1 🇺🇸</option>
-                                            <option value="+44">+44 🇬🇧</option>
-                                            <option value="+91">+91 🇮🇳</option>
-                                            <option value="+971">+971 🇦🇪</option>
-                                            <option value="+966">+966 🇸🇦</option>
-                                            <option value="+65">+65 🇸🇬</option>
-                                            <option value="+60">+60 🇲🇾</option>
-                                        </select>
-                                    </div>
-                                    <input class="phone-input" type="tel" placeholder="Phone number"
-                                        v-model="form.agencyPhone" required>
-                                </div>
-                                <div class="invalid-feedback" id="phoneFeedback" v-show="errors.agencyPhone === true">
-                                    Please enter a phone number.</div>
+                                <PhoneInput
+                                    v-model="form.agencyPhone"
+                                    v-model:dial-code="form.agencyCountryDial"
+                                    label="Phone"
+                                    :required="true"
+                                    :error="errors.agencyPhone === true ? 'Please enter a valid phone number.' : ''"
+                                />
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Country <span class="text-danger">*</span></label>
-                                <select class="form-select" v-model="form.country"
-                                    :class="{ 'is-invalid': errors.country === true, 'is-valid': errors.country === false }"
-                                    required>
-                                    <option value="" disabled selected>Select country</option>
-                                    <option>Bangladesh</option>
-                                    <option>India</option>
-                                    <option>Pakistan</option>
-                                    <option>Malaysia</option>
-                                    <option>United Arab Emirates</option>
-                                    <option>Saudi Arabia</option>
-                                    <option>Singapore</option>
-                                    <option>United Kingdom</option>
-                                    <option>United States</option>
-                                </select>
-                                <div class="invalid-feedback">Please select a country.</div>
+                                <div :class="{ 'select2-error': errors.country === true }">
+                                    <Select2
+                                        v-model="form.country"
+                                        :options="countryOptions"
+                                        :clearable="false"
+                                        control-class="form-control"
+                                        control-style="border-radius: 10px; padding: 10px 14px; font-size: .9rem; color: #3F4754; border: 1.5px solid #E2E8F0;"
+                                        @update:modelValue="v => { if (v) errors.country = false }"
+                                    />
+                                </div>
+                                <div v-if="errors.country === true" class="invalid-feedback d-block">Please select a country.</div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">City <span class="text-danger">*</span></label>
-                                <select class="form-select" v-model="form.city"
-                                    :class="{ 'is-invalid': errors.city === true, 'is-valid': errors.city === false }"
-                                    required>
-                                    <option value="" disabled selected>Select city</option>
-                                    <option>Dhaka</option>
-                                    <option>Chittagong</option>
-                                    <option>Sylhet</option>
-                                    <option>Khulna</option>
-                                    <option>Rajshahi</option>
-                                    <option>Barisal</option>
-                                    <option>Rangpur</option>
-                                    <option>Mymensingh</option>
-                                </select>
-                                <div class="invalid-feedback">Please select a city.</div>
+                                <div :class="{ 'select2-error': errors.city === true }">
+                                    <Select2
+                                        v-model="form.city"
+                                        :options="cityOptions"
+                                        :clearable="false"
+                                        control-class="form-control"
+                                        control-style="border-radius: 10px; padding: 10px 14px; font-size: .9rem; color: #3F4754; border: 1.5px solid #E2E8F0;"
+                                        @update:modelValue="v => { if (v) errors.city = false }"
+                                    />
+                                </div>
+                                <div v-if="errors.city === true" class="invalid-feedback d-block">Please select a city.</div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Address <span class="text-danger">*</span></label>
@@ -670,14 +802,19 @@ onUnmounted(() => {
                                 </div>
                             </div>
                             <div class="col-12">
-                                <label class="form-label">Company Logo <small class="text-muted fw-normal">(Max 2 MB —
-                                        JPEG or PNG)</small></label>
-                                <label class="logo-upload-btn" for="logoFile">
-                                    <span>{{ form.logoName || 'Upload Logo (Jpeg or Png)' }}</span>
-                                    <div class="up-btn"><i class="fa fa-cloud-upload fs-5"></i></div>
-                                </label>
-                                <input type="file" id="logoFile" ref="logoInput" accept="image/jpeg,image/png"
-                                    class="d-none" @change="handleLogo">
+                                <label class="form-label">Company Logo <small class="text-muted fw-normal">(Max 2 MB — JPEG or PNG)</small></label>
+                                <div class="d-flex align-items-center gap-3">
+                                    <ImageCropUpload
+                                        v-model="form.logoFile"
+                                        :max-file-size-mb="2"
+                                        accept="image/jpeg,image/png"
+                                        crop-modal-title="Crop Company Logo"
+                                        shape="square"
+                                    />
+                                    <span class="text-muted small">
+                                        {{ form.logoFile ? form.logoFile.name : 'Click box to upload logo (JPEG or PNG)' }}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                         <div class="d-flex justify-content-end mt-4">
@@ -695,126 +832,122 @@ onUnmounted(() => {
                             <div class="col-md-6 tdl">
                                 <label class="form-label">Trade License <span class="text-danger">*</span></label>
                                 <div class="upload-zone" id="zone-trade" :style="getZoneStyle('trade')"
-                                    :class="{ 'drag-over': isDragging.trade }" @click="triggerFile('trade')"
+                                    :class="{ 'drag-over': isDragging.trade, 'has-preview': hasFiles('trade') }" @click="triggerFile('trade')"
                                     @drop.prevent="handleDrop($event, 'trade')"
                                     @dragover.prevent="isDragging.trade = true"
                                     @dragleave.prevent="isDragging.trade = false">
-                                    <div class="up-icon"><i class="bi bi-file-earmark-text"></i></div>
-                                    <p>Drag & drop or <strong>Choose File</strong></p>
-                                    <p class="mt-1" style="font-size:.78rem;">PDF, JPG, PNG — max 5 MB</p>
-                                    <div class="file-list" id="list-trade">
-                                        <div v-for="(file, index) in tradeFiles" :key="index" class="file-item">
-                                            <i class="bi bi-file-earmark-check"></i>
-                                            <span>{{ file.name }}</span>
-                                            <i class="bi bi-x-circle rm" @click.stop="removeFile(index, 'trade')"></i>
-                                        </div>
-                                    </div>
+                                    <template v-if="hasFiles('trade')">
+                                        <img :src="getDocImagePreview('trade')" alt="Trade License" class="upload-preview-image" />
+                                        <button type="button" class="upload-remove-btn" @click.stop="removeFile(0, 'trade')">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </template>
+                                    <template v-else>
+                                        <div class="up-icon"><i class="bi bi-image"></i></div>
+                                        <p class="upload-choose"><strong>Choose File</strong></p>
+                                    </template>
+                                    <div class="upload-hint upload-hint-bottom">Choose File<br>JPG, PNG — max 2 MB</div>
                                 </div>
                                 <input type="file" id="file-trade" ref="fileTradeInput" class="d-none"
-                                    accept=".pdf,.jpg,.jpeg,.png" @change="handleFileChange($event, 'trade')">
+                                    accept=".jpg,.jpeg,.png" @change="handleFileChange($event, 'trade')">
                             </div>
                             <div class="col-md-6 ca">
                                 <label class="form-label">Civil Aviation Certificate <span
                                         class="text-danger">*</span></label>
                                 <div class="upload-zone" id="zone-cac" :style="getZoneStyle('cac')"
-                                    :class="{ 'drag-over': isDragging.cac }" @click="triggerFile('cac')"
+                                    :class="{ 'drag-over': isDragging.cac, 'has-preview': hasFiles('cac') }" @click="triggerFile('cac')"
                                     @drop.prevent="handleDrop($event, 'cac')" @dragover.prevent="isDragging.cac = true"
                                     @dragleave.prevent="isDragging.cac = false">
-                                    <div class="up-icon"><i class="bi bi-award"></i></div>
-                                    <p>Drag & drop or <strong>Choose File</strong></p>
-                                    <p class="mt-1" style="font-size:.78rem;">PDF, JPG, PNG — max 5 MB</p>
-                                    <div class="file-list" id="list-cac">
-                                        <div v-for="(file, index) in cacFiles" :key="index" class="file-item">
-                                            <i class="bi bi-file-earmark-check"></i>
-                                            <span>{{ file.name }}</span>
-                                            <i class="bi bi-x-circle rm" @click.stop="removeFile(index, 'cac')"></i>
-                                        </div>
-                                    </div>
+                                    <template v-if="hasFiles('cac')">
+                                        <img :src="getDocImagePreview('cac')" alt="Civil Aviation Certificate" class="upload-preview-image" />
+                                        <button type="button" class="upload-remove-btn" @click.stop="removeFile(0, 'cac')"><span aria-hidden="true">&times;</span></button>
+                                    </template>
+                                    <template v-else>
+                                        <div class="up-icon"><i class="bi bi-image"></i></div>
+                                        <p class="upload-choose"><strong>Choose File</strong></p>
+                                    </template>
+                                    <div class="upload-hint upload-hint-bottom">Choose File<br>JPG, PNG — max 2 MB</div>
                                 </div>
                                 <input type="file" id="file-cac" ref="fileCacInput" class="d-none"
-                                    accept=".pdf,.jpg,.jpeg,.png" @change="handleFileChange($event, 'cac')">
+                                    accept=".jpg,.jpeg,.png" @change="handleFileChange($event, 'cac')">
                             </div>
                             <div class="col-md-6 Iac">
                                 <label class="form-label">IATA Certificate <span class="text-danger">*</span></label>
                                 <div class="upload-zone" id="zone-iata" :style="getZoneStyle('iata')"
-                                    :class="{ 'drag-over': isDragging.iata }" @click="triggerFile('iata')"
+                                    :class="{ 'drag-over': isDragging.iata, 'has-preview': hasFiles('iata') }" @click="triggerFile('iata')"
                                     @drop.prevent="handleDrop($event, 'iata')"
                                     @dragover.prevent="isDragging.iata = true"
                                     @dragleave.prevent="isDragging.iata = false">
-                                    <div class="up-icon"><i class="bi bi-person-vcard"></i></div>
-                                    <p>Drag & drop or <strong>Choose File</strong></p>
-                                    <p class="mt-1" style="font-size:.78rem;">PDF, JPG, PNG — max 5 MB</p>
-                                    <div class="file-list" id="list-iata">
-                                        <div v-for="(file, index) in iataFiles" :key="index" class="file-item">
-                                            <i class="bi bi-file-earmark-check"></i>
-                                            <span>{{ file.name }}</span>
-                                            <i class="bi bi-x-circle rm" @click.stop="removeFile(index, 'iata')"></i>
-                                        </div>
-                                    </div>
+                                    <template v-if="hasFiles('iata')">
+                                        <img :src="getDocImagePreview('iata')" alt="IATA Certificate" class="upload-preview-image" />
+                                        <button type="button" class="upload-remove-btn" @click.stop="removeFile(0, 'iata')"><span aria-hidden="true">&times;</span></button>
+                                    </template>
+                                    <template v-else>
+                                        <div class="up-icon"><i class="bi bi-image"></i></div>
+                                        <p class="upload-choose"><strong>Choose File</strong></p>
+                                    </template>
+                                    <div class="upload-hint upload-hint-bottom">Choose File<br>JPG, PNG — max 2 MB</div>
                                 </div>
                                 <input type="file" id="file-iata" ref="fileIataInput" class="d-none"
-                                    accept=".pdf,.jpg,.jpeg,.png" @change="handleFileChange($event, 'iata')">
+                                    accept=".jpg,.jpeg,.png" @change="handleFileChange($event, 'iata')">
                             </div>
                             <div class="col-md-6 Hj">
                                 <label class="form-label">Hajj License <span class="text-danger">*</span></label>
                                 <div class="upload-zone" id="zone-hajj" :style="getZoneStyle('hajj')"
-                                    :class="{ 'drag-over': isDragging.hajj }" @click="triggerFile('hajj')"
+                                    :class="{ 'drag-over': isDragging.hajj, 'has-preview': hasFiles('hajj') }" @click="triggerFile('hajj')"
                                     @drop.prevent="handleDrop($event, 'hajj')"
                                     @dragover.prevent="isDragging.hajj = true"
                                     @dragleave.prevent="isDragging.hajj = false">
-                                    <div class="up-icon"><i class="bi bi-bank"></i></div>
-                                    <p>Drag & drop or <strong>Choose File</strong></p>
-                                    <p class="mt-1" style="font-size:.78rem;">PDF, JPG, PNG — max 5 MB</p>
-                                    <div class="file-list" id="list-hajj">
-                                        <div v-for="(file, index) in hajjFiles" :key="index" class="file-item">
-                                            <i class="bi bi-file-earmark-check"></i>
-                                            <span>{{ file.name }}</span>
-                                            <i class="bi bi-x-circle rm" @click.stop="removeFile(index, 'hajj')"></i>
-                                        </div>
-                                    </div>
+                                    <template v-if="hasFiles('hajj')">
+                                        <img :src="getDocImagePreview('hajj')" alt="Hajj License" class="upload-preview-image" />
+                                        <button type="button" class="upload-remove-btn" @click.stop="removeFile(0, 'hajj')"><span aria-hidden="true">&times;</span></button>
+                                    </template>
+                                    <template v-else>
+                                        <div class="up-icon"><i class="bi bi-image"></i></div>
+                                        <p class="upload-choose"><strong>Choose File</strong></p>
+                                    </template>
+                                    <div class="upload-hint upload-hint-bottom">Choose File<br>JPG, PNG — max 2 MB</div>
                                 </div>
                                 <input type="file" id="file-hajj" ref="fileHajjInput" class="d-none"
-                                    accept=".pdf,.jpg,.jpeg,.png" @change="handleFileChange($event, 'hajj')">
+                                    accept=".jpg,.jpeg,.png" @change="handleFileChange($event, 'hajj')">
                             </div>
                             <div class="col-md-6 tn">
                                 <label class="form-label">TIN <span class="text-danger">*</span></label>
                                 <div class="upload-zone" id="zone-tin" :style="getZoneStyle('tin')"
-                                    :class="{ 'drag-over': isDragging.tin }" @click="triggerFile('tin')"
+                                    :class="{ 'drag-over': isDragging.tin, 'has-preview': hasFiles('tin') }" @click="triggerFile('tin')"
                                     @drop.prevent="handleDrop($event, 'tin')" @dragover.prevent="isDragging.tin = true"
                                     @dragleave.prevent="isDragging.tin = false">
-                                    <div class="up-icon"><i class="bi bi-bank"></i></div>
-                                    <p>Drag & drop or <strong>Choose File</strong></p>
-                                    <p class="mt-1" style="font-size:.78rem;">PDF, JPG, PNG — max 5 MB</p>
-                                    <div class="file-list" id="list-tin">
-                                        <div v-for="(file, index) in tinFiles" :key="index" class="file-item">
-                                            <i class="bi bi-file-earmark-check"></i>
-                                            <span>{{ file.name }}</span>
-                                            <i class="bi bi-x-circle rm" @click.stop="removeFile(index, 'tin')"></i>
-                                        </div>
-                                    </div>
+                                    <template v-if="hasFiles('tin')">
+                                        <img :src="getDocImagePreview('tin')" alt="TIN Document" class="upload-preview-image" />
+                                        <button type="button" class="upload-remove-btn" @click.stop="removeFile(0, 'tin')"><span aria-hidden="true">&times;</span></button>
+                                    </template>
+                                    <template v-else>
+                                        <div class="up-icon"><i class="bi bi-image"></i></div>
+                                        <p class="upload-choose"><strong>Choose File</strong></p>
+                                    </template>
+                                    <div class="upload-hint upload-hint-bottom">Choose File<br>JPG, PNG — max 2 MB</div>
                                 </div>
                                 <input type="file" id="file-tin" ref="fileTinInput" class="d-none"
-                                    accept=".pdf,.jpg,.jpeg,.png" @change="handleFileChange($event, 'tin')">
+                                    accept=".jpg,.jpeg,.png" @change="handleFileChange($event, 'tin')">
                             </div>
                             <div class="col-md-6 nid">
                                 <label class="form-label">NID <span class="text-danger">*</span></label>
                                 <div class="upload-zone" id="zone-nid" :style="getZoneStyle('nid')"
-                                    :class="{ 'drag-over': isDragging.nid }" @click="triggerFile('nid')"
+                                    :class="{ 'drag-over': isDragging.nid, 'has-preview': hasFiles('nid') }" @click="triggerFile('nid')"
                                     @drop.prevent="handleDrop($event, 'nid')" @dragover.prevent="isDragging.nid = true"
                                     @dragleave.prevent="isDragging.nid = false">
-                                    <div class="up-icon"><i class="bi bi-person-vcard"></i></div>
-                                    <p>Drag & drop or <strong>Choose File</strong></p>
-                                    <p class="mt-1" style="font-size:.78rem;">PDF, JPG, PNG — max 5 MB</p>
-                                    <div class="file-list" id="list-nid">
-                                        <div v-for="(file, index) in nidFiles" :key="index" class="file-item">
-                                            <i class="bi bi-file-earmark-check"></i>
-                                            <span>{{ file.name }}</span>
-                                            <i class="bi bi-x-circle rm" @click.stop="removeFile(index, 'nid')"></i>
-                                        </div>
-                                    </div>
+                                    <template v-if="hasFiles('nid')">
+                                        <img :src="getDocImagePreview('nid')" alt="NID Document" class="upload-preview-image" />
+                                        <button type="button" class="upload-remove-btn" @click.stop="removeFile(0, 'nid')"><span aria-hidden="true">&times;</span></button>
+                                    </template>
+                                    <template v-else>
+                                        <div class="up-icon"><i class="bi bi-image"></i></div>
+                                        <p class="upload-choose"><strong>Choose File</strong></p>
+                                    </template>
+                                    <div class="upload-hint upload-hint-bottom">Choose File<br>JPG, PNG — max 2 MB</div>
                                 </div>
                                 <input type="file" id="file-nid" ref="fileNidInput" class="d-none"
-                                    accept=".pdf,.jpg,.jpeg,.png" @change="handleFileChange($event, 'nid')">
+                                    accept=".jpg,.jpeg,.png" @change="handleFileChange($event, 'nid')">
                             </div>
                         </div>
                         <div class="d-flex justify-content-between mt-4">
@@ -843,7 +976,7 @@ onUnmounted(() => {
                             <div class="col-md-6">
                                 <label class="form-label">Designation <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" placeholder="Designation"
-                                    v-model="form.lastName"
+                                    v-model="form.designation"
                                     :class="{ 'is-invalid': errors.lastName === true, 'is-valid': errors.lastName === false }"
                                     required>
                                 <div class="invalid-feedback">Please enter designation.</div>
@@ -858,10 +991,14 @@ onUnmounted(() => {
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Birth Date <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control" v-model="form.birthDate"
-                                    :class="{ 'is-invalid': errors.birthDate === true, 'is-valid': errors.birthDate === false }"
-                                    required>
-                                <div class="invalid-feedback">Please select the birth date.</div>
+                                <AppDatePicker
+                                    v-model="form.birthDate"
+                                    :max-date="todayMaxDate"
+                                    placeholder="Select birth date"
+                                    :input-class="errors.birthDate === true ? 'form-control is-invalid' : errors.birthDate === false ? 'form-control is-valid' : 'form-control'"
+                                    input-style="border-radius: 10px; padding: 10px 14px 10px 2.25rem; font-size: .9rem; color: #3F4754; border: 1.5px solid #E2E8F0; cursor: pointer;"
+                                />
+                                <div class="invalid-feedback" v-show="errors.birthDate === true">Please select a valid birth date (today or earlier).</div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Email <span class="text-danger">*</span></label>
@@ -873,20 +1010,13 @@ onUnmounted(() => {
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Phone <span class="text-danger">*</span></label>
-                                <div class="phone-group" id="phoneGroup2"
-                                    :class="{ 'is-invalid': errors.userPhone === true, 'is-valid': errors.userPhone === false }">
-                                    <div class="phone-flag">
-                                        <img :src="`https://flagcdn.com/w40/${userFlag}.png`" alt="BD" id="flagImg2">
-                                        <select id="countryDialSelect2" v-model="form.userCountryDial">
-                                            <option value="+880">+880 🇧🇩</option>
-                                        </select>
-                                    </div>
-                                    <input class="phone-input" type="tel" placeholder="Phone number"
-                                        v-model="form.userPhone" required>
-                                </div>
-                                <div class="invalid-feedback" id="phoneFeedback2" v-show="errors.userPhone === true">
-                                    Please enter a phone number.</div>
+                                <PhoneInput
+                                    v-model="form.userPhone"
+                                    v-model:dial-code="form.userCountryDial"
+                                    label="Phone"
+                                    :required="true"
+                                    :error="errors.userPhone === true ? 'Please enter a valid phone number.' : ''"
+                                />
                             </div>
                             <div class="col-12">
                                 <div class="section-title">Agreements</div>
@@ -899,9 +1029,10 @@ onUnmounted(() => {
                                         required style="accent-color:#2563EB;">
                                     <label class="form-check-label" for="agreeTerms"
                                         style="font-size:.88rem;color:#475569;">
-                                        I agree to the <a href="#" style="color:#2563EB;font-weight:600;">Terms
-                                            of Service</a> and <a href="#"
-                                            style="color:#2563EB;font-weight:600;">Privacy Policy</a>
+                                        I agree to the <a href="#" class="legal-link" role="button"
+                                            @click.prevent="openTermsModal">Terms
+                                            of Service</a> and <a href="#" class="legal-link" role="button"
+                                            @click.prevent="openPrivacyModal">Privacy Policy</a>
                                     </label>
                                     <div class="invalid-feedback">You must agree to the terms before proceeding.</div>
                                 </div>
@@ -911,7 +1042,7 @@ onUnmounted(() => {
                             <button type="button" class="btn-back" @click="goPrev(3)"><i
                                     class="bi bi-arrow-left me-1"></i>
                                 Back</button>
-                            <button type="button" class="btn-submit" @click="submitForm">
+                            <button type="button" class="btn-submit" :disabled="!form.agreeTerms" @click="submitForm">
                                 <i class="bi bi-send-check me-1"></i> Submit Registration
                             </button>
                         </div>
@@ -921,6 +1052,24 @@ onUnmounted(() => {
 
             </main>
         </div>
+
+        <AgencyLegalModal
+            :is-open="isTermsModalOpen"
+            :title="AGENCY_TERMS_OF_SERVICE.title"
+            :effective-date="AGENCY_TERMS_OF_SERVICE.effectiveDate"
+            :intro="AGENCY_TERMS_OF_SERVICE.intro"
+            :sections="AGENCY_TERMS_OF_SERVICE.sections"
+            @close="closeTermsModal"
+        />
+
+        <AgencyLegalModal
+            :is-open="isPrivacyModalOpen"
+            :title="AGENCY_PRIVACY_POLICY.title"
+            :effective-date="AGENCY_PRIVACY_POLICY.effectiveDate"
+            :intro="AGENCY_PRIVACY_POLICY.intro"
+            :sections="AGENCY_PRIVACY_POLICY.sections"
+            @close="closePrivacyModal"
+        />
 
         <!-- ══════════════ SUCCESS MODAL ══════════════ -->
         <div class="success-modal-overlay" :class="{ show: isSuccessModalOpen }" role="dialog" aria-modal="true"
@@ -1290,6 +1439,12 @@ textarea.form-control {
     color: #CBD5E1;
 }
 
+/* select2 error state */
+.select2-error :deep(.app-select2-control) {
+    border-color: #EF4444 !important;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, .12) !important;
+}
+
 /* radio group */
 .radio-group {
     display: flex;
@@ -1319,6 +1474,8 @@ textarea.form-control {
 
 .radio-group .form-check-input:checked {
     border-color: #2563EB;
+    background-color: #2563EB;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='2' fill='%23fff'/%3e%3c/svg%3e");
 }
 
 .radio-group .form-check-label {
@@ -1333,10 +1490,18 @@ textarea.form-control {
     border: 2px dashed #CBD5E1;
     border-radius: 10px;
     background: #F8FAFC;
-    padding: 32px 20px;
+    padding: 14px;
     text-align: center;
     cursor: pointer;
     transition: border-color .25s cubic-bezier(.4, 0, .2, 1), background .25s cubic-bezier(.4, 0, .2, 1);
+    min-height: 230px;
+    height: 230px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
 }
 
 .upload-zone:hover,
@@ -1346,8 +1511,8 @@ textarea.form-control {
 }
 
 .upload-zone .up-icon {
-    width: 44px;
-    height: 44px;
+    width: 52px;
+    height: 52px;
     background: #DBEAFE;
     border-radius: 12px;
     display: inline-flex;
@@ -1358,47 +1523,67 @@ textarea.form-control {
     font-size: 1.2rem;
 }
 
-.upload-zone p {
-    margin: 0;
-    font-size: .85rem;
+.upload-choose {
+    margin: 8px 0 0;
+    font-size: .9rem;
     color: #64748B;
 }
 
-.upload-zone p strong {
+.upload-choose strong {
     color: #2563EB;
 }
 
-.file-list {
-    margin-top: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.file-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: #EFF6FF;
-    border-radius: 8px;
-    padding: 6px 12px;
-    font-size: .82rem;
-    color: #334155;
-}
-
-.file-item i {
-    color: #2563EB;
-}
-
-.file-item .rm {
-    margin-left: auto;
-    cursor: pointer;
+.upload-hint {
+    font-size: .78rem;
     color: #94A3B8;
-    font-size: .85rem;
+    line-height: 1.35;
 }
 
-.file-item .rm:hover {
-    color: #EF4444;
+.upload-hint-bottom {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    right: 12px;
+}
+
+.upload-preview-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.upload-zone.has-preview {
+    padding: 0;
+    background: #fff;
+}
+
+.upload-remove-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    color: #dc2626;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+    padding: 0;
+}
+
+.upload-remove-btn span {
+    font-size: 24px;
+    line-height: 1;
+    font-weight: 700;
+}
+
+.upload-remove-btn:hover {
+    background: transparent;
+    color: #b91c1c;
 }
 
 /* logo upload */
@@ -1450,10 +1635,29 @@ textarea.form-control {
 }
 
 .btn-next:hover,
-.btn-submit:hover {
+.btn-submit:hover:not(:disabled) {
     background: #1D4ED8;
     box-shadow: 0 6px 20px rgba(37, 99, 235, .35);
     transform: translateY(-1px);
+}
+
+.btn-submit:disabled {
+    background: #94A3B8;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+    opacity: 0.85;
+}
+
+.legal-link {
+    color: #2563EB;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.legal-link:hover {
+    color: #1D4ED8;
+    text-decoration: underline;
 }
 
 .btn-back {

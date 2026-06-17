@@ -75,6 +75,44 @@ jobs:
             php artisan view:cache
             chmod -R 775 storage bootstrap/cache
             chmod -R 775 public/uploads
+
+            # Shared upload path setup (single source for both domains)
+            SHARED_UPLOAD_BASE="/home/devblues/public_html/uploads/agents"
+            UPLOADS_ROOT="/home/devblues/public_html/uploads"
+            APP_PUBLIC_UPLOADS="/home/dev2blue/public_html/uploads"
+            APP_AGENT_UPLOAD_LINK="$APP_PUBLIC_UPLOADS/agents"
+            PHP_USER="dev2blue"
+
+            mkdir -p "$UPLOADS_ROOT" "$SHARED_UPLOAD_BASE"/{agency_img,trade_licence_img,ca_img,iata_img,hajj_licence_img,tin_img,nid_img,misc}
+
+            # Prefer shared group write + setgid so new files stay group-writable.
+            if command -v sudo >/dev/null 2>&1; then
+              sudo chown -R devblues:"$PHP_USER" "$UPLOADS_ROOT" 2>/dev/null || \
+              sudo chown -R "$PHP_USER":"$PHP_USER" "$UPLOADS_ROOT" 2>/dev/null || true
+              sudo chmod -R 2775 "$UPLOADS_ROOT" 2>/dev/null || true
+            else
+              chmod -R 2775 "$UPLOADS_ROOT" 2>/dev/null || true
+            fi
+
+            if command -v sudo >/dev/null 2>&1 && command -v setfacl >/dev/null 2>&1; then
+              sudo setfacl -R -m u:"$PHP_USER":rwx "$UPLOADS_ROOT" 2>/dev/null || true
+              sudo setfacl -R -d -m u:"$PHP_USER":rwx "$UPLOADS_ROOT" 2>/dev/null || true
+            fi
+
+            php artisan agent-uploads:ensure || {
+              echo "ERROR: PHP cannot write to agent upload path. Fix server permissions before continuing."
+              exit 1
+            }
+
+            # Link second domain uploads/agents -> shared agents folder (non-destructive).
+            if [ -L "$APP_AGENT_UPLOAD_LINK" ]; then
+              ln -sfn "$SHARED_UPLOAD_BASE" "$APP_AGENT_UPLOAD_LINK"
+            elif [ -e "$APP_AGENT_UPLOAD_LINK" ]; then
+              echo "WARN: $APP_AGENT_UPLOAD_LINK exists and is not symlink. Skipping link creation."
+            else
+              ln -s "$SHARED_UPLOAD_BASE" "$APP_AGENT_UPLOAD_LINK" || true
+            fi
+
             if command -v rsync >/dev/null 2>&1; then
               rsync -av \
                 --exclude='.well-known/' \

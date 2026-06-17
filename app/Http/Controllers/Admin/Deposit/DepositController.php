@@ -42,8 +42,9 @@ class DepositController extends BaseController
     {
         // Get the authenticated user
         $user = auth()->user();
+        
         $agent = Agent::where('user_id', $user->id)->first();
-
+        
         if($request->payment_type =='Cash'){
 
             $depo = new Deposit;
