@@ -16,6 +16,40 @@ onMounted(() => {
         form.issued_bank = $(this).val();
     });
 });
+
+
+
+getPaymnetAccount();
+
+async function getPaymnetAccount() {
+    try {
+        const response = await axiosInstance.get('getAllPaymentAccount');
+        // console.log(response);
+        var options = [];
+        $.each(response.data, function (key, value) {
+
+            var obj = { id: value.id, text: value.name + " [" + value.acc_no + "," + value.branch + "]" };
+            options.push(obj);
+
+        });
+
+        let select = $(".payment_acc")
+        select.select2({
+            placeholder: '=Select=',
+            theme: 'bootstrap-5',
+            width: '100%',
+            allowClear: true,
+            height: '50',
+            data: options,
+        });
+
+
+    } catch (error) {
+        // console.log(error);
+
+    }
+}
+
 async function caseSave() {
     try {
         form.payment_type = "Cash";
@@ -182,8 +216,8 @@ async function creditReqSave() {
                                                         <select name="payment_acc"
                                                             class="payment_acc form-control form-control-sm">
                                                             <option selected="" value="">Choose...</option>
-                                                            <option value="Bank">Bank</option>
-                                                            <option value="MFS">MFS</option>
+                                                            <!-- <option value="Bank">Bank</option>
+                                                            <option value="MFS">MFS</option> -->
                                                         </select>
                                                     </div>
 
@@ -308,10 +342,10 @@ async function creditReqSave() {
                                                         <select name="payment_acc"
                                                             class="payment_acc form-control form-control-sm">
                                                             <option selected="" value="">Choose...</option>
-                                                            <option value="Bkash">Bkash</option>
+                                                            <!-- <option value="Bkash">Bkash</option>
                                                             <option value="Nagad">Nagad</option>
                                                             <option value="Rocket">Rocket</option>
-                                                            <option value="Upay">Upay</option>
+                                                            <option value="Upay">Upay</option> -->
                                                         </select>
                                                     </div>
 
@@ -439,10 +473,10 @@ async function creditReqSave() {
                                                         <select name="payment_acc"
                                                             class="form-control form-control-sm payment_acc">
                                                             <option selected="" value="">Choose...</option>
-                                                            <option value="Bkash">Bkash</option>
+                                                            <!-- <option value="Bkash">Bkash</option>
                                                             <option value="Nagad">Nagad</option>
                                                             <option value="Rocket">Rocket</option>
-                                                            <option value="Upay">Upay</option>
+                                                            <option value="Upay">Upay</option> -->
                                                         </select>
                                                     </div>
 
@@ -575,8 +609,8 @@ async function creditReqSave() {
                                                         <select name="payment_acc"
                                                             class="payment_acc form-control form-control-sm">
                                                             <option selected="" value="">Choose...</option>
-                                                            <option value="Bank">Bank</option>
-                                                            <option value="MFS">MFS</option>
+                                                            <!-- <option value="Bank">Bank</option>
+                                                            <option value="MFS">MFS</option> -->
                                                         </select>
                                                     </div>
 
