@@ -64,14 +64,14 @@ watchEffect(async () => {
 
 onBeforeMount(async () => {
 
-    if (authStore.hasToken() && authStore.decryptWithAES(authStore.isLogged) == '1') {
+    if (authStore.hasToken() && authStore.isLogged) {
         authStore.after30sRun = 0;
         if (authStore.after30sRun == 0) {
             const authStore = useAuthStore();
             const accessToken = authStore.decryptWithAES(authStore.token);
             const sToken = accessToken.split(".")[1];
             const ReminTime = Math.round((JSON.parse(window.atob(sToken)).exp * 1000 - Date.now()) / 1000);
-            authStore.refreshToken1(ReminTime)
+            authStore.refreshToken(ReminTime, false)
         }
 
     } else {

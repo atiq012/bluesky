@@ -1,13 +1,24 @@
 <script setup>
-import axios from "axios";
-import { reactive, ref, watch } from "vue";
+import { computed } from "vue";
+import { storeToRefs } from "pinia";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "../../stores/authStore";
+
 const router = useRouter();
 const authStore = useAuthStore();
+const { getgoogle2fa_secret, getgoogle2fa_qr, email } = storeToRefs(authStore);
 
-const QrVal = ref(authStore.getgoogle2fa_qr)
+const qrValue = computed(() => {
+    const stored = (getgoogle2fa_qr.value || "").trim();
+    if (stored.startsWith("otpauth://")) return stored;
 
+    const secret = (getgoogle2fa_secret.value || "").trim();
+    const holder = (email.value || "").trim();
+    if (!secret || !holder) return "";
+
+    const issuer = "BlueSky";
+    return `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(holder)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
+});
 
 function BackLogin() {
     authStore.logout();
@@ -44,13 +55,15 @@ function goOTP() {
 
         <!-- QR section -->
         <div class="d-flex justify-content-center">
-
-            <figure class="qrcode">
-                <vue-qrcode :value="QrVal" tag="svg" :options="{ errorCorrectionLevel: 'Q', width: 180, }">
-                </vue-qrcode>
-                <img class="qrcode__image" src="../../../../public/theme/appimages/bird.jpg" alt="bluesky logo" />
-            </figure>
-            <img src="../../../../public/theme/appimages/rqf.png" class="img-flui" alt="qrfream">
+            <div class="qr-box">
+                <vue-qrcode
+                    v-if="qrValue"
+                    :value="qrValue"
+                    tag="svg"
+                    :options="{ errorCorrectionLevel: 'H', width: 180 }"
+                />
+                <img src="../../../../public/theme/appimages/rqf.png" class="qr-frame" alt="qrfream">
+            </div>
         </div>
         <!--End QR section -->
 
@@ -71,23 +84,6 @@ function goOTP() {
             </div>
         </div>
 
-        <!-- Buttons -->
-        <!-- <div style="margin-top: 60px;" class="d-flex">
-            <div class="col-6 text-right">
-                <button @click="goOTP" style="width: 150px; margin-right: 30px; padding: 10px;"
-                    class="btn btn-primary rounded-2">
-                    Enable 2FA
-                </button>
-            </div>
-            <div class="col-6 text-left">
-                <button @click="BackLogin" style="width: 150px; color: black; margin-left: 20px;padding: 10px;"
-                    class="btn btn-outline-secondary rounded-2">
-                    Back To Login
-                </button>
-            </div>
-        </div> -->
-
-
         <p class="it">Information Technology | Galaxy Bangladesh</p>
 
         <!-- below city -->
@@ -102,25 +98,28 @@ function goOTP() {
     src: url('../../fonts/BeVietnamPro/BeVietnamPro-Regular.ttf');
 }
 
-.qrcode {
-    display: inline-block;
-    font-size: 0;
-    margin-bottom: 0;
-    margin-top: 0;
+.qr-box {
     position: relative;
+    width: 180px;
+    height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.qrcode__image {
-    background-color: #fff;
-    border: 1px solid red;
-    border-radius: 0.25rem;
-    width: 15%;
-    height: 13%;
-    left: 50%;
-    top: 45%;
-    overflow: hidden;
+.qr-box :deep(svg) {
+    width: 180px !important;
+    height: 180px !important;
+    display: block;
+}
+
+.qr-frame {
     position: absolute;
-    transform: translate(-50%, -50%);
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 2;
 }
 
 .it {
@@ -131,14 +130,6 @@ function goOTP() {
     color: #5e6878;
     text-align: center;
     margin-top: 100px;
-}
-
-.img-flui {
-    position: absolute;
-    height: 180px;
-    width: 180px;
-    left: 50%;
-    transform: translateX(-50%);
 }
 
 .p1 {

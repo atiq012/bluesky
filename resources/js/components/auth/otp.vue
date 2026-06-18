@@ -49,7 +49,7 @@ function otpCheck(otp) {
                     authStore.getotpChecked = 1
                     authStore.getgoogle2fa_secret = ''
                     authStore.getgoogle2fa_qr = ''
-                    authStore.isLogged = authStore.encryptWithAES('1');
+                    authStore.isLogged = true;
                     router.push({ name: "Home" });
                     Notification.showToast("s", 'Authorized User Login.');
                 } else {
@@ -59,7 +59,7 @@ function otpCheck(otp) {
                     authStore.getotpChecked = 1
                     authStore.getgoogle2fa_secret = ''
                     authStore.getgoogle2fa_qr = ''
-                    authStore.isLogged = authStore.encryptWithAES('1');
+                    authStore.isLogged = true;
                     router.push({ name: "Home" });
                     Notification.showToast("s", 'Authorized User Login.');
                 }

@@ -13,17 +13,16 @@ export const useAuthStore = defineStore(
         const getotp_regisered = ref(0);
         const loginAttapms = ref(0);
         const getotpChecked = ref(0);
-        const forcePassChange = ref("");
+        const forcePassChange = ref(false);
         const getgoogle2fa_secret = ref("");
         const getgoogle2fa_qr = ref("");
         const email = ref("");
         const name = ref("");
         const GlobalLoading = ref(false);
 
-
         const showExpireWarrning = ref(false);
         const isDarkMode = ref(false);
-        const isLogged = ref("0");
+        const isLogged = ref(false);
         let intervalId = 0;
 
         const sInfo = ref([]);
@@ -45,29 +44,14 @@ export const useAuthStore = defineStore(
         };
 
         function hasToken() {
-
-            if (this.token !== "") {
-                const dToken = decryptWithAES(this.token);
-
-                const sToken = dToken.split(".")[1];
-                const sURL = JSON.parse(atob(sToken)).iss;
-
-                const isExpired = Date.now() >= JSON.parse(window.atob(sToken)).exp * 1000;
-                const isFrmRealURL =
-                    sURL == "http://127.0.0.1:8000/api/login" ||
-                    "http://127.0.0.1:8000/api/refresh"
-                        ? true
-                        : false;
-
-                /********** Multi Verification of Token *************/
-                if (isFrmRealURL && !isExpired) {
-                    return true;
-                }
+            if (!token.value) return false;
+            try {
+                const dToken = decryptWithAES(token.value);
+                const payload = JSON.parse(atob(dToken.split('.')[1]));
+                return Date.now() < payload.exp * 1000;
+            } catch {
                 return false;
             }
-
-            /********** if Token Blank *************/
-            return false;
         }
 
         function logout() {
@@ -81,9 +65,9 @@ export const useAuthStore = defineStore(
             getotpChecked.value = 0;
             getgoogle2fa_qr.value = "";
             showExpireWarrning.value = false;
-            isLogged.value = encryptWithAES("0");
+            isLogged.value = false;
             getgoogle2fa_secret.value = "";
-            forcePassChange.value = "";
+            forcePassChange.value = false;
             loginAttapms.value = 0;
             after30sRun.value = 0;
         }
@@ -110,21 +94,16 @@ export const useAuthStore = defineStore(
                     abc_timer.value = 0;
                     ExpireInSec.value = 0;
                     showExpireWarrning.value = false;
-                    isLogged.value = encryptWithAES("1");
+                    isLogged.value = false;
                     clearInterval(intervalId);
                 }
             }, 1000);
         }
 
-        function refreshToken(ePireINSec) {
+        function refreshToken(ePireINSec, setExpire = true) {
             killRunningTask();
-            ExpireInSec.value = ePireINSec;
-            isLogged.value = encryptWithAES("1");
-            runTaskWithTimer(ePireINSec);
-        }
-        function refreshToken1(ePireINSec) {
-            killRunningTask();
-            isLogged.value = encryptWithAES("1");
+            if (setExpire) ExpireInSec.value = ePireINSec;
+            isLogged.value = true;
             runTaskWithTimer(ePireINSec);
         }
 
@@ -135,7 +114,6 @@ export const useAuthStore = defineStore(
             isLogged,
             after30sRun,
             refreshToken,
-            refreshToken1,
             killRunningTask,
             ExpireInSec,
             runTaskWithTimer,

@@ -23,186 +23,205 @@ class AuthController extends BaseController {
 
     // Login
 
-    public function login( Request $request ) {
+    public function login(Request $request)
+    {
+        $request->validate(['email' => 'required|email', 'password' => 'required|min:8']);
 
-        // dd( $request->all() );
-
-        $request->validate( [ 'email' => 'required|email', 'password' => 'required|min:8' ] );
+        $ipinfo = $this->normalizeIpInfo($request);
 
         try {
+            $user = User::where('email', $request->email)->first();
 
-            // $credentials = request( [ 'email', 'password' ] );
-            // $token =  auth()->attempt( $credentials );
-
-            // $success = $this->respondWithToken( $token );
-            // return $this->SuccessResponse( $success, 'Authorized User Login.' );
-
-            $credentials = request( [ 'email', 'password' ] );
-            $UserExist = User::where( 'email', $request->email )->get();
-            $token =  auth()->attempt( $credentials );
-
-            if ( $UserExist->count() == 0 ) {
-                return $this->ErrorResponse( 'User not found !' );
-            } else if ( $UserExist->value( 'is_active' ) == 0 ) {
-                return $this->ErrorResponse( 'User not active !' );
-            } else if ( $UserExist->value( 'login_attamp' ) >= 3 ) {
-                return $this->ErrorResponse( 'Locked Account. Use forget Password.' );
-            } else if ( !$token ) {
-
-                DB::table( 'login_histories' )->insert( [
-                    [
-                        'user_id' => $UserExist->value( 'id' ),
-                        'ip' => $request->IPinfo[ 'IPv4' ],
-                        'contry_code' => $request->IPinfo[ 'country_code' ],
-                        'city' => $request->IPinfo[ 'city' ],
-                        'login_attamp' => 'Failed',
-                        'device_type' => $request->IPinfo[ 'devicetype' ],
-                        'os' => $request->IPinfo[ 'os' ],
-                    ],
-                ] );
-
-                $la = User::where( 'email', $request->email )->first();
-                $la->login_attamp = $la->login_attamp+1;
-                $la->save();
-
-                if ( $la->login_attamp == 3 ) {
-                    return $this->ErrorResponse( 'Locked Account. Use forget Password.', [ 'RA'=>$la->login_attamp ] );
-                } else {
-                    return $this->ErrorResponse( 'Wrong Password !', [ 'RA'=>$la->login_attamp ] );
-                }
-            } else {
-
-                $toDate = Carbon::parse( $UserExist->value( 'password_updated_at' ) )->addDays( $UserExist->value( 'password_max_expired' ) );
-                $result = now()->lt( $toDate );
-
-                if ( $result ) {
-
-                    // check maximum attapms
-                    if ( $UserExist->value( 'login_attamp' ) >= 0 && $UserExist->value( 'login_attamp' )<4 ) {
-
-                        DB::table( 'login_histories' )->insert( [
-                            [
-                                'user_id' => $UserExist->value( 'id' ),
-                                'ip' => $request->IPinfo[ 'IPv4' ],
-                                'contry_code' => $request->IPinfo[ 'country_code' ],
-                                'city' => $request->IPinfo[ 'city' ],
-                                'login_attamp' => 'Success',
-                                'device_type' => $request->IPinfo[ 'devicetype' ],
-                                'os' => $request->IPinfo[ 'os' ],
-                            ],
-                        ] );
-
-                        $laa = User::where( 'email', $request->email )->first();
-                        $laa->login_attamp = 0;
-                        $laa->save();
-
-                        DB::table( 'login_histories' )->insert( [
-                            [
-                                'user_id' => $UserExist->value( 'id' ),
-                                'ip' => $request->IPinfo[ 'IPv4' ],
-                                'contry_code' => $request->IPinfo[ 'country_code' ],
-                                'city' => $request->IPinfo[ 'city' ],
-                                'login_attamp' => 'Success',
-                                'device_type' => $request->IPinfo[ 'devicetype' ],
-                                'os' => $request->IPinfo[ 'os' ],
-                            ],
-                        ] );
-
-                        $success = $this->respondWithToken( $token );
-                        return $this->SuccessResponse( $success, 'Authorized User Login.' );
-                    }
-
-                    // end check maximum attapms
-                } else {
-                    $laas = User::where( 'email', $request->email )->first();
-                    $laas->login_attamp = 0;
-                    $laas->save();
-                    $success = $this->respondWithToken( $token );
-                    return $this->SuccessResponse( $success, 'Your password must be change.' );
-                }
-
+            if (!$user) {
+                return $this->ErrorResponse('User not found !');
             }
 
-        } catch ( Exception $e ) {
-            return $this->ErrorResponse( $e->getMessage() );
+            if ($user->is_active == 0) {
+                return $this->ErrorResponse('User not active !');
+            }
 
+            if ($user->login_attamp >= 3) {
+                return $this->ErrorResponse('Locked Account. Use forget Password.');
+            }
+
+            $token = auth()->attempt($request->only('email', 'password'));
+
+            if (!$token) {
+                DB::table('login_histories')->insert([
+                    'user_id'      => $user->id,
+                    'ip'           => $ipinfo['IPv4'],
+                    'contry_code'  => $ipinfo['country_code'],
+                    'city'         => $ipinfo['city'],
+                    'login_attamp' => 'Failed',
+                    'device_type'  => $ipinfo['devicetype'],
+                    'os'           => $ipinfo['os'],
+                ]);
+
+                $user->login_attamp++;
+                $user->save();
+
+                if ($user->login_attamp >= 3) {
+                    return $this->ErrorResponse('Locked Account. Use forget Password.', ['RA' => $user->login_attamp]);
+                }
+
+                return $this->ErrorResponse('Wrong Password !', ['RA' => $user->login_attamp]);
+            }
+
+            $toDate = Carbon::parse($user->password_updated_at)->addDays($user->password_max_expired);
+            $passwordValid = now()->lt($toDate);
+
+            $user->login_attamp = 0;
+            $user->save();
+
+            DB::table('login_histories')->insert([
+                'user_id'      => $user->id,
+                'ip'           => $ipinfo['IPv4'],
+                'contry_code'  => $ipinfo['country_code'],
+                'city'         => $ipinfo['city'],
+                'login_attamp' => 'Success',
+                'device_type'  => $ipinfo['devicetype'],
+                'os'           => $ipinfo['os'],
+            ]);
+
+            $authenticated = auth()->user();
+            $this->ensureGoogle2faSecretForUser($authenticated);
+
+            $success = $this->respondWithToken($token);
+
+            if (!$passwordValid) {
+                return $this->SuccessResponse($success, 'Your password must be change.');
+            }
+
+            return $this->SuccessResponse($success, 'Authorized User Login.');
+        } catch (Exception $e) {
+            return $this->ErrorResponse($e->getMessage());
         }
     }
 
 
     // Register
 
-    public function register( Request $request ) {
+    public function register(Request $request)
+    {
 
-        $request->validate( [
+        $request->validate([
             'email' => 'required|unique:users|max:35',
             'name' => 'required|max:35',
             'password' => 'required|min:4',
             // 'password' => [ 'required', Password::min( 8 )->mixedCase()->numbers()->symbols()->uncompromised() ],
-        ] );
+        ]);
 
         try {
 
-            $google2fa = app( Google2FA::class );
+            $creds = $this->createGoogle2faCredentials($request->email);
 
-            $rSecretkey = $google2fa->generateSecretKey();
-
-            $g2faUrl = $google2fa->getQRCodeUrl(
-                'BlueSky',
-                $request->email,
-                $rSecretkey
-            );
-
-            $user = User::create( [
+            $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
-                'password' => Hash::make( $request->password ),
-                'google2fa_secret' => $rSecretkey,
-                'google2fa_qr' => $g2faUrl,
-            ] );
+                'password' => Hash::make($request->password),
+                'google2fa_secret' => $creds['secret'],
+                'google2fa_qr' => $creds['qr'],
+            ]);
 
-            $token = auth()->login( $user );
-            return $this->respondWithToken( $token );
-        } catch ( Exception $e ) {
-            return response()->json( [ 'error' => $e->getMessage() ], 401 );
+            $token = auth()->login($user);
+            return $this->respondWithToken($token);
+        } catch (Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 401);
         }
     }
 
     // me
 
-    public function me() {
-        $user = User::get();
-        return response()->json( $user );
+    public function me()
+    {
+        return response()->json(auth()->user());
     }
 
     // Logout
 
-    public function logout( Request $request ) {
+    public function logout(Request $request)
+    {
         // dd( $request->all() );
         auth()->logout();
         $success = [];
-        return $this->SuccessResponse( $success, 'Successfully logged out.' );
+        return $this->SuccessResponse($success, 'Successfully logged out.');
     }
 
     // Token Refresh
 
-    public function refresh() {
+    public function refresh()
+    {
         $TTLTIME = Auth::factory()->getTTL() * 60;
-        $tokenJson[ 'access_token' ] = auth()->refresh();
-        $tokenJson[ 'expires_in_sec' ] = $TTLTIME;
-        return $this->SuccessResponse( $tokenJson, 'Token Refreshed.' );
+        $tokenJson['access_token'] = auth()->refresh();
+        $tokenJson['expires_in_sec'] = $TTLTIME;
+        return $this->SuccessResponse($tokenJson, 'Token Refreshed.');
+    }
+
+    protected function createGoogle2faCredentials(string $email): array
+    {
+        $google2fa = app(Google2FA::class);
+        $secret = $google2fa->generateSecretKey();
+        $qr = $google2fa->getQRCodeUrl('BlueSky', $email, $secret);
+
+        return ['secret' => $secret, 'qr' => $qr];
+    }
+
+    // Only when 2FA required, not yet registered, and no existing secret — never overwrite.
+    protected function ensureGoogle2faSecretForUser(User $user): void
+    {
+        if ((int) $user->require_2fa !== 1) {
+            return;
+        }
+
+        if ((int) $user->registered_2fa === 1) {
+            return;
+        }
+
+        if (!empty($user->google2fa_secret)) {
+            return;
+        }
+
+        $creds = $this->createGoogle2faCredentials($user->email);
+        $user->google2fa_secret = $creds['secret'];
+        $user->google2fa_qr = $creds['qr'];
+        $user->save();
+    }
+
+    protected function normalizeIpInfo(Request $request): array
+    {
+        $raw = $request->input('IPinfo', []);
+        if (!is_array($raw)) {
+            $raw = [];
+        }
+
+        return array_merge([
+            'IPv4' => $request->ip(),
+            'country_code' => '',
+            'city' => '',
+            'devicetype' => 'Desktop',
+            'os' => 'Unknown',
+        ], $raw);
     }
 
     // loginDetails
-    protected function respondWithToken( $token ) {
+    protected function respondWithToken($token)
+    {
         $TTLTIME = Auth::factory()->getTTL() * 60;
+        $user = auth()->user();
 
-        $userTable = auth()->user();
-        $userTable[ 'access_token' ] = $token;
-        $userTable[ 'token_type' ] = 'bearer';
-        $userTable[ 'expires_in_sec' ] = $TTLTIME;
-
-        return $userTable;
+        return [
+            'id'               => $user->id,
+            'name'             => $user->name,
+            'email'            => $user->email,
+            'is_active'        => $user->is_active,
+            'require_2fa'      => $user->require_2fa,
+            'registered_2fa'   => $user->registered_2fa,
+            'google2fa_secret' => $user->registered_2fa ? null : $user->google2fa_secret,
+            'google2fa_qr'     => $user->registered_2fa ? null : $user->google2fa_qr,
+            'access_token'     => $token,
+            'token_type'       => 'bearer',
+            'expires_in_sec'   => $TTLTIME,
+        ];
     }
 
     // Sent Mail for reset password
