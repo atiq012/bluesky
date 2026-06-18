@@ -1,13 +1,13 @@
 <?php
 namespace App\Http\Controllers\Admin\PaymentAccount;
 
-use App\Models\User;
-use Illuminate\Http\Request;
-use Yajra\DataTables\DataTables;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\BaseController;
 use App\Models\PaymentAccount\PaymentAccount;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Yajra\DataTables\DataTables;
 
 class PaymentAccountSController extends BaseController
 {
@@ -150,5 +150,15 @@ class PaymentAccountSController extends BaseController
             return $this->ErrorResponse($error);
 
         }
+    }
+
+    public function getAllPaymentAccount()
+    {
+        $data = DB::table('payment_accounts as pa')
+            ->where('status', 1)
+            ->select('pa.id', 'pa.bank_name as name', 'pa.acc_no', 'pa.branch')
+            ->get();
+
+        return response()->json($data);
     }
 }

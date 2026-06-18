@@ -36,6 +36,106 @@ class AuthController extends BaseController {
                 return $this->ErrorResponse('User not found !');
             }
 
+            // Do not allow users of type 1 to login via this endpoint
+            if ((int) $user->type === 1) {
+                return $this->ErrorResponse('User not allowed to login here.');
+            }
+            // $credentials = request( [ 'email', 'password' ] );
+            // $token =  auth()->attempt( $credentials );
+
+            // $success = $this->respondWithToken( $token );
+            // return $this->SuccessResponse( $success, 'Authorized User Login.' );
+
+            $credentials = request( [ 'email', 'password' ] );
+            $UserExist = User::where( 'email', $request->email )->get();
+            $token =  auth()->attempt( $credentials );
+
+            if ( $UserExist->count() == 0 ) {
+                return $this->ErrorResponse( 'User not found !' );
+            } else if ( $UserExist->value( 'is_active' ) == 0 ) {
+                return $this->ErrorResponse( 'User not active !' );
+            } else if ( $UserExist->value( 'login_attamp' ) >= 3 ) {
+                return $this->ErrorResponse( 'Locked Account. Use forget Password.' );
+            } else if ( !$token ) {
+
+                DB::table( 'login_histories' )->insert( [
+                    [
+                        'user_id' => $UserExist->value( 'id' ),
+                        'ip' => $request->IPinfo[ 'IPv4' ],
+                        'contry_code' => $request->IPinfo[ 'country_code' ],
+                        'city' => $request->IPinfo[ 'city' ],
+                        'login_attamp' => 'Failed',
+                        'device_type' => $request->IPinfo[ 'devicetype' ],
+                        'os' => $request->IPinfo[ 'os' ],
+                    ],
+                ] );
+
+                $la = User::where( 'email', $request->email )->first();
+                if($la->type ==1){
+                return $this->ErrorResponse( 'User not found !' );
+
+                }
+                $la->login_attamp = $la->login_attamp+1;
+                $la->save();
+
+                if ( $la->login_attamp == 3 ) {
+                    return $this->ErrorResponse( 'Locked Account. Use forget Password.', [ 'RA'=>$la->login_attamp ] );
+                } else {
+                    return $this->ErrorResponse( 'Wrong Password !', [ 'RA'=>$la->login_attamp ] );
+                }
+            } else {
+
+                $toDate = Carbon::parse( $UserExist->value( 'password_updated_at' ) )->addDays( $UserExist->value( 'password_max_expired' ) );
+                $result = now()->lt( $toDate );
+
+                if ( $result ) {
+
+                    // check maximum attapms
+                    if ( $UserExist->value( 'login_attamp' ) >= 0 && $UserExist->value( 'login_attamp' )<4 ) {
+
+                        DB::table( 'login_histories' )->insert( [
+                            [
+                                'user_id' => $UserExist->value( 'id' ),
+                                'ip' => $request->IPinfo[ 'IPv4' ],
+                                'contry_code' => $request->IPinfo[ 'country_code' ],
+                                'city' => $request->IPinfo[ 'city' ],
+                                'login_attamp' => 'Success',
+                                'device_type' => $request->IPinfo[ 'devicetype' ],
+                                'os' => $request->IPinfo[ 'os' ],
+                            ],
+                        ] );
+
+                        $laa = User::where( 'email', $request->email )->first();
+                        $laa->login_attamp = 0;
+                        $laa->save();
+
+                        DB::table( 'login_histories' )->insert( [
+                            [
+                                'user_id' => $UserExist->value( 'id' ),
+                                'ip' => $request->IPinfo[ 'IPv4' ],
+                                'contry_code' => $request->IPinfo[ 'country_code' ],
+                                'city' => $request->IPinfo[ 'city' ],
+                                'login_attamp' => 'Success',
+                                'device_type' => $request->IPinfo[ 'devicetype' ],
+                                'os' => $request->IPinfo[ 'os' ],
+                            ],
+                        ] );
+
+                        $success = $this->respondWithToken( $token );
+                        return $this->SuccessResponse( $success, 'Authorized User Login.' );
+                    }
+
+                    // end check maximum attapms
+                } else {
+                    $laas = User::where( 'email', $request->email )->first();
+                    $laas->login_attamp = 0;
+                    $laas->save();
+                    $success = $this->respondWithToken( $token );
+                    return $this->SuccessResponse( $success, 'Your password must be change.' );
+                }
+
+            }
+
             if ($user->is_active == 0) {
                 return $this->ErrorResponse('User not active !');
             }

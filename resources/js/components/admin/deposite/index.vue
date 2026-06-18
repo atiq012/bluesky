@@ -46,7 +46,11 @@ const options = {
             title: "Payment Account",
             render: function (data, type, row) {
                 var html = "";
-                html += row.paid_account_no;
+                html += row.bank;
+                html += "<br>";
+                html += '<small class="text-primary"> Acount No: ';
+                html += row.acct_no + "</small>";
+                // html += row.paid_account_no;
                 return html;
             },
         },
@@ -123,8 +127,17 @@ const options = {
             render: function (data, type, row) {
                 var html = "";
                 var status = row.status;
+                if(status == 'Requested'){
 
-                html += '<div class="badge rounded-pill text-danger bg-light-danger p-2 text-uppercase px-3"><i class="bx bxs-circle me-1"></i>' + status + '</div>';
+                    html += '<div class="badge rounded-pill text-warning bg-light-warning p-2 text-uppercase px-3"><i class="bx bxs-circle me-1"></i>' + status + '</div>';
+                }
+                else if(status == 'Rejected'){
+
+                    html += '<div class="badge rounded-pill text-danger bg-light-danger p-2 text-uppercase px-3"><i class="bx bxs-circle me-1"></i>' + status + '</div>';
+                }
+                else{
+                    html += '<div class="badge rounded-pill text-success bg-light-success p-2 text-uppercase px-3"><i class="bx bxs-circle me-1"></i>' + status + '</div>';
+                }
 
 
                 return html;
@@ -138,23 +151,26 @@ const options = {
                 var status = row.status;
 
 
-                // if (status == 'Requested') {
+                if (status == 'Requested') {
+                    html +="<div class='d-flex'>";
+                    html += '<button type="button" style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-success rounded-circle status-change" data-item-id=' + idd + ' > <i class="fa-solid fa-check" style="margin: 2px 0px 10px -5px; font-size: 14px;"></i> </button>';
 
-                //     html += '<button type="button" style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-success rounded-circle status-change" data-item-id=' + idd + ' > <i class="fa-solid fa-check" style="margin: 2px 0px 10px -5px; font-size: 14px;"></i> </button>';
-                // }
+                    html += '<button style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-danger rounded-circle delete-item" data-item-id=' + idd + '> <i class="fa-solid fa-ban" style="margin: 2px 0px 10px  -4px; font-size: 14px;"></i> </button>';
+                    html +="</div>";
+                }
 
-                html += '<button style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-danger rounded-circle delete-item" data-item-id=' + idd + '> <i class="fa-solid fa-trash" style="margin: 2px 0px 10px  -4px; font-size: 14px;"></i> </button>';
 
                 return html;
             },
         }
     ],
     "drawCallback": function (settings) {
-        // delete function
-        $(".delete-item").on('click', function (e) {
+
+        // change status
+        $(".status-change").on('click', function (e) {
+            // var idd = e.target.dataset.itemId;
             var idd = $(this).attr('data-item-id');
 
-            // delete pop up message
             iziToast.question({
                 timeout: 100000,
                 pauseOnHover: false,
@@ -163,7 +179,7 @@ const options = {
                 displayMode: 'once',
                 id: 'question',
                 zindex: 999,
-                message: 'Want to delete this?',
+                message: 'Want to change status this deposit?',
                 position: 'center',
                 buttons: [
                     ['<button><b>No</b></button>', function (instance, toast) {
@@ -180,61 +196,58 @@ const options = {
                 onClosed: async function (instance, toast, closedBy) {
 
                     if (closedBy == 'yes') {
-                        const response = axiosInstance.post("deleteDept", { 'id': idd });
+                        const response = axiosInstance.post("changeDepositeStatus", { 'id': idd });
                         getListValues();
-                        Notification.showToast('s', 'Successfully  Deleted.');
+                        Notification.showToast('s', 'Successfully Deposite status Changed.');
                     } else {
-                        console.log('no');
+
                     }
 
                 }
             });
-            // delete pop up message end
-
 
         });
 
-        // change status
-        // $(".status-change").on('click', function (e) {
-        //     // var idd = e.target.dataset.itemId;
-        //     var idd = $(this).attr('data-item-id');
+        $(".delete-item").on('click', function (e) {
+            // var idd = e.target.dataset.itemId;
+            var idd = $(this).attr('data-item-id');
 
-        //     iziToast.question({
-        //         timeout: 100000,
-        //         pauseOnHover: false,
-        //         close: false,
-        //         overlay: true,
-        //         displayMode: 'once',
-        //         id: 'question',
-        //         zindex: 999,
-        //         message: 'Want to change status this?',
-        //         position: 'center',
-        //         buttons: [
-        //             ['<button><b>No</b></button>', function (instance, toast) {
+            iziToast.question({
+                timeout: 100000,
+                pauseOnHover: false,
+                close: false,
+                overlay: true,
+                displayMode: 'once',
+                id: 'question',
+                zindex: 999,
+                message: 'Want to reject this deposit?',
+                position: 'center',
+                buttons: [
+                    ['<button><b>No</b></button>', function (instance, toast) {
 
-        //                 instance.hide({ transitionOut: 'fadeOut' }, toast, 'no');
+                        instance.hide({ transitionOut: 'fadeOut' }, toast, 'no');
 
-        //             }, true],
-        //             ['<button><b>Yes</b></button>', function (instance, toast) {
+                    }, true],
+                    ['<button><b>Yes</b></button>', function (instance, toast) {
 
-        //                 instance.hide({ transitionOut: 'fadeOut' }, toast, 'yes');
+                        instance.hide({ transitionOut: 'fadeOut' }, toast, 'yes');
 
-        //             }, true]
-        //         ],
-        //         onClosed: async function (instance, toast, closedBy) {
+                    }, true]
+                ],
+                onClosed: async function (instance, toast, closedBy) {
 
-        //             if (closedBy == 'yes') {
-        //                 const response = axiosInstance.post("changeDepartmentStatus", { 'id': idd });
-        //                 getListValues();
-        //                 Notification.showToast('s', 'Successfully Department status Changed.');
-        //             } else {
+                    if (closedBy == 'yes') {
+                        const response = axiosInstance.post("banDeposite", { 'id': idd });
+                        getListValues();
+                        Notification.showToast('s', 'Successfully Deposite status Changed.');
+                    } else {
 
-        //             }
+                    }
 
-        //         }
-        //     });
+                }
+            });
 
-        // });
+        });
     }
 };
 
@@ -246,6 +259,7 @@ async function getListValues() {
         rData.value = response.data.data;
         authStore.GlobalLoading = false;
     } catch (error) {
+        // console.log(error);
         authStore.GlobalLoading = false;
     }
 }

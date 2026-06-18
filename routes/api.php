@@ -117,6 +117,7 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('/deletePaymentAcct', [PaymentAccountSController::class, 'destroy'])->name('settings.deposit.destroy');
     Route::post('/editPaymentAcct', [PaymentAccountSController::class, 'edit'])->name('settings.deposit.editPaymentAcct');
     Route::post('/payment-acct/update', [PaymentAccountSController::class, 'update'])->name('settings.deposit.updatePaymentAcct');
+    Route::get('getAllPaymentAccount', [PaymentAccountSController::class, 'getAllPaymentAccount'])->name('settings.deposit.getAllPaymentAccount');
 
     // AircraftTypeDesignator
     Route::get('getAircraftTypeDesignator', [AircraftTypeDesignatorController::class, 'index'])->name('settings.aircraft.getAircraftTypeDesignator');
@@ -157,7 +158,7 @@ Route::middleware(['auth:api'])->group(function () {
     // deposit section
     Route::get('getDeposit', [DepositController::class, 'index'])->name('deposit.getDeposit');
     Route::post('/deposit/save', [DepositController::class, 'store'])->name('deposit.store');
-
+    Route::post('/deleteDeposite', [DepositController::class, 'destroy'])->name('deposit.deleteDeposite');
     //Internal API
     Route::post('/Lowfaresearch', [APIController::class, 'Lowfaresearch']);
     Route::post('/farerules', [APIController::class, 'getFareRules']);
