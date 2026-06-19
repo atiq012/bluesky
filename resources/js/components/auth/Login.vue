@@ -59,18 +59,21 @@ function handleSubmit() {
             if (res.data.data.require_2fa == 0) {
                 authStore.getotp_regisered = 1;
                 authStore.getotpChecked = 1;
-                authStore.isLogged = authStore.encryptWithAES('1');
+                authStore.isLogged = true;
             }
 
             if (res.data.message == 'Your password must be change.') {
-                authStore.forcePassChange = authStore.encryptWithAES('1');
+                authStore.forcePassChange = true;
                 Notification.showToast("i", res.data.message);
             }
 
             authStore.runTaskWithTimer(res.data.data.expires_in_sec);
 
-            router.push({ name: "register2fa" });
-            // router.push({ name: "Home" });
+            if (res.data.data.require_2fa == 0) {
+                router.push({ name: "Home" });
+            } else {
+                router.push({ name: "register2fa" });
+            }
         })
         .catch((eEes) => {
             loading.value = false;
@@ -127,13 +130,20 @@ watch(form, (newValue, oldValue) => {
 });
 
 function getIPinfo() {
-    fetch('https://geolocation-db.com/json/')
-        .then((resp) => resp.text())
-        .then(function (data) {
-            const xVal = JSON.parse(data);
-            xVal['devicetype'] = MF.initCap(deviceType());
-            xVal['os'] = osName() + ' ' + osVersion();
-            authStore.sInfo = xVal;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    fetch('https://geolocation-db.com/json/', { signal: controller.signal })
+        .then(resp => resp.json())
+        .then(data => {
+            clearTimeout(timeout);
+            data.devicetype = MF.initCap(deviceType());
+            data.os = osName() + ' ' + osVersion();
+            authStore.sInfo = data;
+        })
+        .catch(() => {
+            clearTimeout(timeout);
+            authStore.sInfo = {};
         });
 }
 
@@ -170,7 +180,7 @@ onMounted(() => {
                                     class="card-logo-icon" />
                             </div>
 
-                            <p class="brand-tagline">BLUESKY NDC TRAVEL LTD.Hello World</p>
+                            <p class="brand-tagline">BLUESKY NDC TRAVEL LTD.</p>
                             <h2 class="welcome-heading">Welcome to BlueSky</h2>
                             <p class="subtitle">Easy and hassle-free flight booking portal</p>
 

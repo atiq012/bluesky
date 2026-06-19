@@ -68,6 +68,9 @@ router.beforeEach(async (to, from) => {
         return { name: "Home" };
     }
 
+    if (!authStore.hasToken() && to.meta.auth) {
+        return { name: "Login" };
+    }
     if (!authStore.hasToken() && to.meta.RE) {
         return { name: "Login" };
     }
@@ -92,7 +95,7 @@ router.beforeEach(async (to, from) => {
     }
 
     if (authStore.hasToken() && to.meta.RE) {
-        if (authStore.forcePassChange == "") {
+        if (!authStore.forcePassChange) {
             if (
                 authStore.getRequire_2fa == 1 &&
                 authStore.getotp_regisered == 1
@@ -116,7 +119,7 @@ router.beforeEach(async (to, from) => {
     }
 
     if (authStore.hasToken() && to.meta.OTP) {
-        if (authStore.forcePassChange == 0) {
+        if (!authStore.forcePassChange) {
             if (
                 authStore.getRequire_2fa == 1 &&
                 authStore.getotp_regisered == 0
