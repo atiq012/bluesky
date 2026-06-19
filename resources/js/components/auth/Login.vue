@@ -180,7 +180,7 @@ onMounted(() => {
                                     class="card-logo-icon" />
                             </div>
 
-                            <p class="brand-tagline">BLUESKY NDC TRAVEL LTD.Hello World</p>
+                            <p class="brand-tagline">BLUESKY NDC TRAVEL LTD.</p>
                             <h2 class="welcome-heading">Welcome to BlueSky</h2>
                             <p class="subtitle">Easy and hassle-free flight booking portal</p>
 
