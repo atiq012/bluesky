@@ -3,6 +3,7 @@ import { useRouter } from 'vue-router';
 const router = useRouter();
 import { useAuthStore } from '../../../stores/authStore';
 import SimpleBar from "simplebar-vue";
+import AppDatePicker from "../../common/AppDatePicker.vue";
 
 const authStore = useAuthStore();
 import axiosInstance from "../../../axiosInstance";
@@ -285,8 +286,9 @@ function selectTraveler(travl) {
 
                                             <div class="col-6 col-sm-6 col-md-6 mt-2">
                                                 <label for="name" class="form-label">Date of Birth</label>
-                                                <input type="date" class="form-control" id="dob" name="dob"
-                                                    placeholder="Enter Date of Birth" v-model="form.dob">
+                                                <!-- <input type="date" class="form-control" id="dob" name="dob"
+                                                    placeholder="Enter Date of Birth" v-model="form.dob"> -->
+                                                <AppDatePicker v-model="form.dob" :config="config" :inline="false" :full-width="true" :clear-button="true" :enable-time="false" />
                                             </div>
 
                                             <div class="col-6 col-sm-6 col-md-6 mt-2">
@@ -334,9 +336,10 @@ function selectTraveler(travl) {
 
                                             <div class="col-12 col-sm-12 col-md-12 mt-2">
                                                 <label for="p_expiry_date" class="form-label">Expiry Date</label>
-                                                <input type="date" class="form-control" id="p_expiry_date"
+                                                <!-- <input type="date" class="form-control" id="p_expiry_date"
                                                     name="p_expiry_date" placeholder="Enter Date of Birth"
-                                                    v-model="form.p_expiry_date">
+                                                    v-model="form.p_expiry_date"> -->
+                                            <AppDatePicker v-model="form.p_expiry_date" :config="config" :inline="false" :full-width="true" :clear-button="true" :enable-time="false" />
                                             </div>
 
                                             <div class="col-12 col-sm-12 col-md-12 mt-2">

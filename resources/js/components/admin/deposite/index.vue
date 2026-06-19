@@ -153,7 +153,7 @@ const options = {
 
                 if (status == 'Requested') {
                     html +="<div class='d-flex'>";
-                    html += '<button type="button" style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-success rounded-circle status-change" data-item-id=' + idd + ' > <i class="fa-solid fa-check" style="margin: 2px 0px 10px -5px; font-size: 14px;"></i> </button>';
+                    // html += '<button type="button" style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-success rounded-circle status-change" data-item-id=' + idd + ' > <i class="fa-solid fa-check" style="margin: 2px 0px 10px -5px; font-size: 14px;"></i> </button>';
 
                     html += '<button style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-danger rounded-circle delete-item" data-item-id=' + idd + '> <i class="fa-solid fa-ban" style="margin: 2px 0px 10px  -4px; font-size: 14px;"></i> </button>';
                     html +="</div>";
@@ -167,46 +167,46 @@ const options = {
     "drawCallback": function (settings) {
 
         // change status
-        $(".status-change").on('click', function (e) {
-            // var idd = e.target.dataset.itemId;
-            var idd = $(this).attr('data-item-id');
+        // $(".status-change").on('click', function (e) {
+        //     // var idd = e.target.dataset.itemId;
+        //     var idd = $(this).attr('data-item-id');
 
-            iziToast.question({
-                timeout: 100000,
-                pauseOnHover: false,
-                close: false,
-                overlay: true,
-                displayMode: 'once',
-                id: 'question',
-                zindex: 999,
-                message: 'Want to change status this deposit?',
-                position: 'center',
-                buttons: [
-                    ['<button><b>No</b></button>', function (instance, toast) {
+        //     iziToast.question({
+        //         timeout: 100000,
+        //         pauseOnHover: false,
+        //         close: false,
+        //         overlay: true,
+        //         displayMode: 'once',
+        //         id: 'question',
+        //         zindex: 999,
+        //         message: 'Want to change status this deposit?',
+        //         position: 'center',
+        //         buttons: [
+        //             ['<button><b>No</b></button>', function (instance, toast) {
 
-                        instance.hide({ transitionOut: 'fadeOut' }, toast, 'no');
+        //                 instance.hide({ transitionOut: 'fadeOut' }, toast, 'no');
 
-                    }, true],
-                    ['<button><b>Yes</b></button>', function (instance, toast) {
+        //             }, true],
+        //             ['<button><b>Yes</b></button>', function (instance, toast) {
 
-                        instance.hide({ transitionOut: 'fadeOut' }, toast, 'yes');
+        //                 instance.hide({ transitionOut: 'fadeOut' }, toast, 'yes');
 
-                    }, true]
-                ],
-                onClosed: async function (instance, toast, closedBy) {
+        //             }, true]
+        //         ],
+        //         onClosed: async function (instance, toast, closedBy) {
 
-                    if (closedBy == 'yes') {
-                        const response = axiosInstance.post("changeDepositeStatus", { 'id': idd });
-                        getListValues();
-                        Notification.showToast('s', 'Successfully Deposite status Changed.');
-                    } else {
+        //             if (closedBy == 'yes') {
+        //                 const response = axiosInstance.post("changeDepositeStatus", { 'id': idd });
+        //                 getListValues();
+        //                 Notification.showToast('s', 'Successfully Deposite status Changed.');
+        //             } else {
 
-                    }
+        //             }
 
-                }
-            });
+        //         }
+        //     });
 
-        });
+        // });
 
         $(".delete-item").on('click', function (e) {
             // var idd = e.target.dataset.itemId;

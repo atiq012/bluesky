@@ -42,7 +42,7 @@ class DepositController extends BaseController
         $user = auth()->user();
 
         $agent = Agent::where('user_id', $user->id)->first();
-
+        // dd($request->all());
         if ($request->payment_type == 'Cash') {
 
             $depo                  = new Deposit;
@@ -53,7 +53,7 @@ class DepositController extends BaseController
             $depo->charge          = $request->service_charge;
             $depo->total           = $request->total_amount;
             $depo->reference_no    = $request->reference_number;
-            $depo->reference_date  = $request->reference_date;
+            $depo->reference_date  = date('Y-m-d', strtotime($request->reference_date));
             $depo->reference_file  = $request->reference_file;
             $depo->remarks         = $request->remarks;
             $depo->status          = 'Requested';
@@ -70,7 +70,7 @@ class DepositController extends BaseController
             $depo->issued_bank     = $request->issued_bank;
             $depo->total           = $request->total_amount;
             // $depo->reference_no =  $request->reference_number;
-            $depo->reference_date = $request->reference_date;
+            $depo->reference_date = date('Y-m-d', strtotime($request->reference_date));
             $depo->reference_file = $request->reference_file;
             $depo->remarks        = $request->remarks;
             $depo->status         = 'Requested';
@@ -87,7 +87,7 @@ class DepositController extends BaseController
             $depo->total           = $request->total_amount;
             $depo->issued_bank     = $request->issued_bank;
             // $depo->reference_no =  $request->reference_number;
-            $depo->reference_date = $request->reference_date;
+            $depo->reference_date = date('Y-m-d', strtotime($request->reference_date));
             $depo->reference_file = $request->reference_file;
             $depo->remarks        = $request->remarks;
             $depo->status         = 'Requested';
@@ -104,7 +104,7 @@ class DepositController extends BaseController
             $depo->total           = $request->total_amount;
             $depo->issued_bank     = $request->issued_bank;
             // $depo->reference_no =  $request->reference_number;
-            $depo->reference_date = $request->reference_date;
+            $depo->reference_date = date('Y-m-d', strtotime($request->reference_date));
             $depo->reference_file = $request->reference_file;
             $depo->remarks        = $request->remarks;
             $depo->status         = 'Requested';
@@ -120,7 +120,7 @@ class DepositController extends BaseController
             $depo->charge          = $request->service_charge;
             $depo->total           = $request->total_amount;
             // $depo->reference_no =  $request->reference_number;
-            $depo->reference_date = $request->reference_date;
+            $depo->reference_date = date('Y-m-d', strtotime($request->reference_date));
             $depo->reference_file = $request->reference_file;
             $depo->remarks        = $request->remarks;
             $depo->status         = 'Requested';
