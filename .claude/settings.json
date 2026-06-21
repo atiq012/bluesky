@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//home/gb053/Projects/BlueSky/app/Http/Controllers/Admin/Agent/**)"
+    ]
+  }
+}

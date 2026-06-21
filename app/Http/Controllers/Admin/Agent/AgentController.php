@@ -331,8 +331,6 @@ class AgentController extends BaseController
 
     private function processRegistration(Request $request)
     {
-        // dd($request->all());
-
         $nullIfEmpty = static function ($value) {
             if (is_string($value)) {
                 $value = trim($value);
@@ -340,102 +338,100 @@ class AgentController extends BaseController
             return $value === '' ? null : $value;
         };
 
-        $agent = new Agent;
+        return DB::transaction(function () use ($request, $nullIfEmpty) {
+            $year   = date('y');
+            $prefix = 'BS-' . $year . '-';
+            $last   = Agent::where('agent_code', 'like', $prefix . '%')
+                ->orderByRaw('CAST(SUBSTRING(agent_code, ?) AS UNSIGNED) DESC', [strlen($prefix) + 1])
+                ->lockForUpdate()
+                ->first();
+            $seq       = $last ? ((int) substr($last->agent_code, strlen($prefix))) + 1 : 1;
+            $agentCode = $prefix . str_pad($seq, 4, '0', STR_PAD_LEFT);
 
-        $agent->name             = $request->agencyName;        // done
-        $agent->agent_code       = "BS-" . mt_rand(1000, 9999); // done
-        $agent->email            = $request->agencyEmail;       // done
-        $agent->phone            = $request->agencyPhone;       // done
-        $agent->country          = $request->country;           // done
-        $agent->city             = $request->city;              // done
-        // $agent->zone             = 1;
-        $agent->address          = $request->address;         // done
-        $agent->established_date = null;
-        if (!empty($request->establishedDate)) {
-            try {
-                $agent->established_date = Carbon::parse($request->establishedDate)->format('Y-m-d');
-            } catch (\Throwable $e) {
-                // keep null if parsing fails; validation layer can enforce format if needed
-                $agent->established_date = null;
+            $agent                     = new Agent;
+            $agent->name               = $request->agencyName;
+            $agent->agent_code         = $agentCode;
+            $agent->email              = $request->agencyEmail;
+            $agent->phone              = $request->agencyPhone;
+            $agent->country            = $request->country;
+            $agent->city               = $request->city;
+            $agent->address            = $request->address;
+            $agent->established_date   = null;
+            if (!empty($request->establishedDate)) {
+                try {
+                    $agent->established_date = Carbon::parse($request->establishedDate)->format('Y-m-d');
+                } catch (\Throwable $e) {
+                    $agent->established_date = null;
+                }
             }
-        }
-        $agent->postal_code      = $nullIfEmpty($request->postalCode);   // done
-        $agent->ca_number        = $nullIfEmpty($request->cacNumber);    // done
-        $agent->iata_number      = $nullIfEmpty($request->iataNumber);   // done
-        // $agent->reg_number         = $request->reg_number;
-        // $agent->fax                = $request->fax;
-        $agent->trade_licence      = $nullIfEmpty($request->tradeLicense); // done
-        $agent->hajj_agency_number = $nullIfEmpty($request->hajjNumber);   // done
-        // $agent->kam                = $request->kam_id;
-        // $agent->remarks            = $request->remarks;
-        $agent->status = 'Pending';
-        $agent->account_ledger_id  = 1;
-        // $agent->designation        = $request->designation;
-        $agent->created_by = 1;
+            $agent->postal_code        = $nullIfEmpty($request->postalCode);
+            $agent->ca_number          = $nullIfEmpty($request->cacNumber);
+            $agent->iata_number        = $nullIfEmpty($request->iataNumber);
+            $agent->trade_licence      = $nullIfEmpty($request->tradeLicense);
+            $agent->hajj_agency_number = $nullIfEmpty($request->hajjNumber);
+            $agent->status             = 'Pending';
+            $agent->account_ledger_id  = 1;
+            $agent->created_by         = 1;
 
-        /** @var ImageService $imageService */
-        $imageService = app(ImageService::class);
-        if ($request->hasFile('logo')) {
-            $agent->logo_path = $imageService->uploadAgentImage($request->file('logo'), 'logo');
-        }
-
-        $agent->save();
-
-        $agent_user              = new AgentUser;
-        $agent_user->name        = $request->firstName;
-        $agent_user->nid         = $request->nidNumber;
-        $agent_user->email       = $request->email;
-        $agent_user->designation = $request->designation;
-        $agent_user->dob         = null;
-        if (!empty($request->birthDate)) {
-            try {
-                $agent_user->dob = Carbon::parse($request->birthDate)->format('Y-m-d');
-            } catch (\Throwable $e) {
-                $agent_user->dob = null;
-            }
-        }
-        $agent_user->phone       = $request->userPhone;
-        $agent_user->agent_id    = $agent->id;
-        $agent_user->created_by  = 1;
-
-        $agent_user->save();
-
-        // $agent->user_id = $agent_user->id;
-        // $agent->save();
-
-        $fileFields = ['nidFiles', 'tradeFiles', 'cacFiles', 'iataFiles', 'hajjFiles', 'tinFiles'];
-        foreach ($fileFields as $field) {
-            if (! $request->hasFile($field)) {
-                continue;
+            /** @var ImageService $imageService */
+            $imageService = app(ImageService::class);
+            if ($request->hasFile('logo')) {
+                $agent->logo_path = $imageService->uploadAgentImage($request->file('logo'), 'logo');
             }
 
-            $requestFiles = $request->file($field);
-            $files = is_array($requestFiles) ? $requestFiles : [$requestFiles];
+            $agent->save();
 
-            foreach ($files as $singleImage) {
-                if (! $singleImage) {
+            $agent_user              = new AgentUser;
+            $agent_user->name        = $request->firstName;
+            $agent_user->nid         = $request->nidNumber;
+            $agent_user->email       = $request->email;
+            $agent_user->designation = $request->designation;
+            $agent_user->dob         = null;
+            if (!empty($request->birthDate)) {
+                try {
+                    $agent_user->dob = Carbon::parse($request->birthDate)->format('Y-m-d');
+                } catch (\Throwable $e) {
+                    $agent_user->dob = null;
+                }
+            }
+            $agent_user->phone      = $request->userPhone;
+            $agent_user->agent_id   = $agent->id;
+            $agent_user->created_by = 1;
+
+            $agent_user->save();
+
+            $fileFields = ['nidFiles', 'tradeFiles', 'cacFiles', 'iataFiles', 'hajjFiles', 'tinFiles'];
+            foreach ($fileFields as $field) {
+                if (! $request->hasFile($field)) {
                     continue;
                 }
 
-                $agentImg = new AgentImage;
-                $agentImg->agent_id = $agent->id;
-                $agentImg->attachment_type = $imageService->resolveAttachmentTypeByField($field);
-                $agentImg->attachment_path = $imageService->uploadAgentImage($singleImage, $field);
-                $agentImg->save();
+                $requestFiles = $request->file($field);
+                $files = is_array($requestFiles) ? $requestFiles : [$requestFiles];
+
+                foreach ($files as $singleImage) {
+                    if (! $singleImage) {
+                        continue;
+                    }
+
+                    $agentImg                  = new AgentImage;
+                    $agentImg->agent_id        = $agent->id;
+                    $agentImg->attachment_type = $imageService->resolveAttachmentTypeByField($field);
+                    $agentImg->attachment_path = $imageService->uploadAgentImage($singleImage, $field);
+                    $agentImg->save();
+                }
             }
-        }
 
-        $this->logAgentApprovalStatus(
-            $agent,
-            $agent->status,
-            'Agency registration submitted via online registration form.',
-            null,
-            (int) $agent->created_by
-        );
+            $this->logAgentApprovalStatus(
+                $agent,
+                $agent->status,
+                'Agency registration submitted via online registration form.',
+                null,
+                (int) $agent->created_by
+            );
 
-        $success = '';
-
-        return $this->SuccessResponse($success, 'Successfully Agent Saved.');
+            return $this->SuccessResponse('', 'Successfully Agent Saved.');
+        });
     }
 
     private function logAgentApprovalStatus(
