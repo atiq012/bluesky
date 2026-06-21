@@ -5,6 +5,7 @@ import { useAuthStore } from '../../../stores/authStore';
 const authStore = useAuthStore();
 import axiosInstance from "../../../axiosInstance";
 import { ref, reactive, onMounted, render } from "vue";
+import AppDatePicker from '../../common/AppDatePicker.vue';
 
 const form = reactive({ payment_acc: "", requested_amount: "", service_charge: "", total_amount: "", reference_number: "", reference_date: "", reference_file: "", remarks: "", payment_type: "", issued_bank: "" });
 
@@ -268,9 +269,10 @@ async function creditReqSave() {
                                                     <div class="col-md-6 ">
                                                         <label for="input1" class="form-label">
                                                             Referece Date</label>
-                                                        <input type="date" v-model="form.reference_date"
+                                                        <!-- <input type="date" v-model="form.reference_date"
                                                             class="form-control form-control-sm" id="reference_date"
-                                                            name="reference_date" placeholder="Enter Service Charge">
+                                                            name="reference_date" placeholder="Enter Service Charge"> -->
+                                                            <AppDatePicker v-model="form.reference_date" :config="config" :inline="false" :full-width="true" :clear-button="true" :enable-time="false" />
                                                     </div>
                                                     <div class="col-md-6 mt-2">
                                                         <label for="input1" class="form-label">
@@ -390,20 +392,18 @@ async function creditReqSave() {
                                                         <label for="input1" class="form-label">
                                                             Referece Number</label>
                                                         <select name="issued_bank"
-                                                            class="issued_bank form-control form-control-sm">
+                                                            class="payment_acc form-control form-control-sm">
                                                             <option value="">Select Issued Bank</option>
-                                                            <option value="1">AB Bank</option>
-                                                            <option value="2">DBBL</option>
-                                                            <option value="3">BRAC Bank</option>
-                                                            <option value="4">City Bank</option>
+
                                                         </select>
                                                     </div>
                                                     <div class="col-md-6 ">
                                                         <label for="input1" class="form-label">
                                                             Referece Date</label>
-                                                        <input type="date" v-model="form.reference_date"
+                                                        <!-- <input type="date" v-model="form.reference_date"
                                                             class="form-control form-control-sm" id="reference_date"
-                                                            name="reference_date" placeholder="Enter Service Charge">
+                                                            name="reference_date" placeholder="Enter Service Charge"> -->
+                                                            <AppDatePicker v-model="form.reference_date" :config="config" :inline="false" :full-width="true" :clear-button="true" :enable-time="false" />
                                                     </div>
                                                     <div class="col-md-6 mt-2">
                                                         <label for="input1" class="form-label">
@@ -521,12 +521,8 @@ async function creditReqSave() {
                                                         <label for="input1" class="form-label">
                                                             Issued Bank</label>
                                                         <select name="issued_bank"
-                                                            class="issued_bank form-control form-control-sm">
+                                                            class="payment_acc form-control form-control-sm">
                                                             <option value="">Select Issued Bank</option>
-                                                            <option value="1">AB Bank</option>
-                                                            <option value="2">DBBL</option>
-                                                            <option value="3">BRAC Bank</option>
-                                                            <option value="4">City Bank</option>
                                                         </select>
                                                     </div>
                                                     <div class="col-md-6 ">
@@ -539,9 +535,10 @@ async function creditReqSave() {
                                                     <div class="col-md-6 mt-2">
                                                         <label for="input1" class="form-label">
                                                             Referece Date</label>
-                                                        <input type="date" v-model="form.reference_date"
+                                                        <!-- <input type="date" v-model="form.reference_date"
                                                             class="form-control form-control-sm" id="reference_date"
-                                                            name="reference_date" placeholder="Enter Service Charge">
+                                                            name="reference_date" placeholder="Enter Service Charge"> -->
+                                                            <AppDatePicker v-model="form.reference_date" :config="config" :inline="false" :full-width="true" :clear-button="true" :enable-time="false" />
                                                     </div>
                                                     <div class="col-md-6 mt-2">
                                                         <label for="input1" class="form-label">
@@ -653,9 +650,9 @@ async function creditReqSave() {
                                                         <label for="input1" class="form-label">
                                                             Issued Bank & MFS</label>
                                                         <select name="issued_bank"
-                                                            class="form-control form-control-sm issued_bank">
+                                                            class="form-control form-control-sm payment_acc">
                                                             <option value="">Select Issued Bank</option>
-                                                            <option value="1">AB Bank</option>
+                                                            <!-- <option value="1">AB Bank</option> -->
                                                         </select>
                                                     </div>
                                                     <div class="col-md-6">
@@ -676,9 +673,10 @@ async function creditReqSave() {
                                                     <div class="col-md-6 mt-2">
                                                         <label for="input1" class="form-label">
                                                             Referece Date</label>
-                                                        <input type="date" class="form-control form-control-sm"
+                                                        <!-- <input type="date" class="form-control form-control-sm"
                                                             id="reference_date" v-model="form.reference_date"
-                                                            name="reference_date" placeholder="Enter Service Charge">
+                                                            name="reference_date" placeholder="Enter Service Charge"> -->
+                                                        <AppDatePicker v-model="form.reference_date" :config="config" :inline="false" :full-width="true" :clear-button="true" :enable-time="false" />
                                                     </div>
 
                                                     <div class="col-md-6 mt-2">
@@ -773,7 +771,7 @@ async function creditReqSave() {
                                                         <label for="input1" class="form-label">
                                                             Issued Bank</label>
                                                         <select name="issued_bank" id=""
-                                                            class="form-control form-control-sm issued_bank">
+                                                            class="form-control form-control-sm payment_acc">
                                                             <option value="">Select Issued Bank</option>
                                                             <option value="1">AB Bank</option>
                                                         </select>
@@ -796,9 +794,11 @@ async function creditReqSave() {
                                                     <div class="col-md-6 mt-2">
                                                         <label for="input1" class="form-label">
                                                             Referece Date</label>
-                                                        <input type="date" class="form-control form-control-sm"
+                                                        <!-- <input type="date" class="form-control form-control-sm"
                                                             id="reference_date" v-model="form.reference_date" name="reference_date"
-                                                            placeholder="Enter Service Charge">
+                                                            placeholder="Enter Service Charge"> -->
+
+                                                        <AppDatePicker v-model="form.reference_date" :config="config" :inline="false" :full-width="true" :clear-button="true" :enable-time="false" />
                                                     </div>
 
                                                     <div class="col-md-6 mt-2">
@@ -832,6 +832,17 @@ async function creditReqSave() {
 
                                 <div class="row">
                                     <div class="col-md-9">
+                                        <div class="d-flex ">
+                                            <button
+                                                class="btn btn-sm btn-info px-4 ms-2 justify-content-start">Cancel</button>
+                                            <button type="button" @click="creditReqSave()"
+                                                class="btn btn-sm btn-info px-4 ms-2 justify-content-end">Submit</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- <div class="row">
+                                    <div class="col-md-9">
                                         <div class="d-flex align-content-start">
                                             <button class="btn btn-sm btn-danger px-4 ms-2">Cancel</button>
                                         </div>
@@ -840,7 +851,7 @@ async function creditReqSave() {
                                             <button type="button" @click="creditReqSave()" class="btn btn-sm btn-info px-4 ms-2">Submit</button>
                                         </div>
                                     </div>
-                                </div>
+                                </div> -->
                             </form>
                         </div>
                     </div>

@@ -159,6 +159,8 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('getDeposit', [DepositController::class, 'index'])->name('deposit.getDeposit');
     Route::post('/deposit/save', [DepositController::class, 'store'])->name('deposit.store');
     Route::post('/deleteDeposite', [DepositController::class, 'destroy'])->name('deposit.deleteDeposite');
+    Route::post('banDeposite', [DepositController::class, 'destroy']);
+
     //Internal API
     Route::post('/Lowfaresearch', [APIController::class, 'Lowfaresearch']);
     Route::post('/farerules', [APIController::class, 'getFareRules']);

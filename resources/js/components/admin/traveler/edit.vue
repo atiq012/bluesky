@@ -5,10 +5,11 @@ import { useAuthStore } from '../../../stores/authStore';
 const authStore = useAuthStore();
 import axiosInstance from "../../../axiosInstance";
 import { ref, reactive, onMounted, render } from "vue";
+import AppDatePicker from '../../common/AppDatePicker.vue';
 import moment from "moment";
 const props = defineProps(['ids']);
 
-const form = reactive({pax_id:"", pax_type: "", title_val: "", first_name: "", last_name: "", dob: "", gender: "", email: "", phone: "", passport_no: "", p_expiry_date: "", nationality: "", passport_picture: "", useEmail: authStore.email });
+const form = reactive({ pax_id: "", pax_type: "", title_val: "", first_name: "", last_name: "", dob: "", gender: "", email: "", phone: "", passport_no: "", p_expiry_date: "", nationality: "", passport_picture: "", useEmail: authStore.email });
 
 const previewImage = ref('');
 
@@ -80,7 +81,10 @@ async function getTravelerData(props) {
         form.email = response.data.email;
         form.phone = response.data.phone;
         form.passport_no = response.data.passport_number;
-        form.p_expiry_date = moment(response.data.expiry_date).format('YYYY-MM-DD');
+
+
+        form.p_expiry_date = moment(response.data.passport_expiry_date
+        ).format('YYYY-MM-DD');
         form.nationality = response.data.nationality;
         $('#nationality').val(response.data.nationality);
 
@@ -153,7 +157,7 @@ async function getTravelerData(props) {
                                                     <div class="form-check pt-1">
                                                         <input class="form-check-input" type="radio"
                                                             name="flexRadioDefault" @click="paxTypeChange(1)"
-                                                            id="adult" >
+                                                            id="adult">
                                                         <label class="form-check-label" for="adult">
                                                             <b>Adult</b> </label>
                                                     </div>
@@ -202,8 +206,10 @@ async function getTravelerData(props) {
 
                                             <div class="col-6 col-sm-6 col-md-6 mt-2">
                                                 <label for="name" class="form-label">Date of Birth</label>
-                                                <input type="date" class="form-control" id="dob" name="dob"
-                                                    placeholder="Enter Date of Birth" v-model="form.dob">
+                                                <!-- <input type="date" class="form-control" id="dob" name="dob"
+                                                    placeholder="Enter Date of Birth" v-model="form.dob"> -->
+                                                <AppDatePicker v-model="form.dob" :config="config" :inline="false"
+                                                    :full-width="true" :clear-button="true" :enable-time="false" />
                                             </div>
 
                                             <div class="col-6 col-sm-6 col-md-6 mt-2">
@@ -243,9 +249,12 @@ async function getTravelerData(props) {
                                         <div class="row">
                                             <div class="col-12 col-sm-12 col-md-12">
                                                 <label for="passport_no" class="form-label">Passport Number</label>
-                                                <input type="text" class="form-control" id="passport_no"
+                                                <!-- <input type="text" class="form-control" id="passport_no"
                                                     name="passport_no" placeholder="Enter Passport Number"
-                                                    v-model="form.passport_no">
+                                                    v-model="form.passport_no"> -->
+                                                <AppDatePicker v-model="form.passport_no" :config="config"
+                                                    :inline="false" :full-width="true" :clear-button="true"
+                                                    :enable-time="false" />
                                             </div>
 
                                             <div class="col-12 col-sm-12 col-md-12 mt-2">

@@ -76,12 +76,12 @@ class TravelerController extends Controller
         $traveler->first_name           = $request->first_name;
         $traveler->last_name            = $request->last_name;
         $traveler->full_name            = $request->title_val . ' ' . $request->first_name . ' ' . $request->last_name;
-        $traveler->dob                  = $request->dob;
+        $traveler->dob                  = date('Y-m-d', strtotime($request->dob));
         $traveler->email                = $request->email;
         $traveler->gender               = $request->gender;
         $traveler->phone                = $request->phone;
         $traveler->passport_number      = $request->passport_no;
-        $traveler->passport_expiry_date = $request->p_expiry_date;
+        $traveler->passport_expiry_date = date('Y-m-d', strtotime($request->p_expiry_date));
         $traveler->nationality          = $request->nationality;
         $traveler->created_by           = $user->id;
 
@@ -144,12 +144,12 @@ class TravelerController extends Controller
         $traveler->first_name           = $request->first_name;
         $traveler->last_name            = $request->last_name;
         $traveler->full_name            = $request->title_val . ' ' . $request->first_name . ' ' . $request->last_name;
-        $traveler->dob                  = $request->dob;
+        $traveler->dob                  = $request->dob ? date('Y-m-d', strtotime($request->dob)) : $traveler->dob;
         $traveler->email                = $request->email;
         $traveler->gender               = $request->gender;
         $traveler->phone                = $request->phone;
         $traveler->passport_number      = $request->passport_no;
-        $traveler->passport_expiry_date = $request->p_expiry_date;
+        $traveler->passport_expiry_date = $request->p_expiry_date ? date('Y-m-d', strtotime($request->p_expiry_date)) : $traveler->passport_expiry_date;
         $traveler->nationality          = $request->nationality;
         $traveler->updated_by           = $user->id;
 
