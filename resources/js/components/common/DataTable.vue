@@ -357,7 +357,10 @@ onBeforeUnmount(() => {
                 :skin="tableSkin"
             >
                 <template v-for="(_, name) in $slots" #[name]="slotData">
-                    <slot :name="name" v-bind="slotData" />
+                    <div v-if="name === 'action' || name === 'actions'" class="d-flex justify-content-center align-items-center w-100">
+                        <slot :name="name" v-bind="slotData" />
+                    </div>
+                    <slot v-else :name="name" v-bind="slotData" />
                 </template>
             </vue3-datatable>
         </div>
@@ -648,12 +651,27 @@ onBeforeUnmount(() => {
     white-space: nowrap;
 }
 
+.app-data-table .bh-table-responsive table thead tr th:last-child,
+.app-data-table .bh-table-responsive table tbody tr td:last-child {
+    position: sticky;
+    right: 0;
+    z-index: 2;
+    box-shadow: -2px 0 6px rgba(0, 0, 0, 0.06);
+}
+
 .app-data-table .bh-table-responsive table thead tr th:last-child {
+    background-color: #f6f8fa;
+    z-index: 3;
     text-align: center !important;
 }
 
 .app-data-table .bh-table-responsive table thead tr th:last-child > div {
     justify-content: center !important;
+}
+
+.app-data-table .bh-table-responsive table tbody tr td:last-child {
+    background-color: #ffffff;
+    text-align: center !important;
 }
 
 .app-data-table .bh-datatable .bh-pagination {
@@ -691,6 +709,18 @@ onBeforeUnmount(() => {
 
 [data-bs-theme="dark"] .app-data-table .bh-table-responsive table tbody tr td {
     color: #dee2e6;
+}
+
+[data-bs-theme="dark"] .app-data-table .bh-table-responsive table thead tr th:last-child {
+    background-color: #343a40;
+}
+
+[data-bs-theme="dark"] .app-data-table .bh-table-responsive table tbody tr td:last-child {
+    background-color: #212529;
+}
+
+[data-bs-theme="dark"] .app-data-table .bh-table-responsive table tbody tr {
+    border-color: #495057 !important;
 }
 
 [data-bs-theme="dark"] .app-data-table .bh-datatable {

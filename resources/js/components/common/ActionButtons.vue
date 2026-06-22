@@ -31,6 +31,10 @@ const props = defineProps({
     returnLabel: { type: String, default: '' },
     showIssueTicket: { type: Boolean, default: false },
     issueTicketDisabled: { type: Boolean, default: false },
+    showCancelBooking: { type: Boolean, default: false },
+    cancelBookingDisabled: { type: Boolean, default: false },
+    showHistory: { type: Boolean, default: false },
+    showVoidTicket: { type: Boolean, default: false },
     showDownloadRequest: { type: Boolean, default: false },
     showDownloadResponse: { type: Boolean, default: false },
     downloadRequestLabel: { type: String, default: 'Request' },
@@ -66,7 +70,7 @@ const props = defineProps({
 const emit = defineEmits([
     'more', 'view', 'edit', 'delete', 'print', 'logs', 'showStatusModal', 'statusChange', 'reverse', 'coming',
     'fund-request', 'place-order', 'receive', 'fund-processing', 'funds-ready', 'give-advance', 'authorize',
-    'payment-history', 'return', 'download-request', 'download-response', 'issue-ticket',
+    'payment-history', 'return', 'download-request', 'download-response', 'issue-ticket', 'cancel-booking', 'history', 'void-ticket',
 ]);
 
 const itemId = computed(() => (props.item?.id != null ? String(props.item.id) : ''));
@@ -91,6 +95,25 @@ const filteredStatusChangeOptions = computed(() => {
 
 const hasStatusChangeOptions = computed(() => filteredStatusChangeOptions.value.length > 0);
 
+const visibleCount = computed(() => [
+    props.showMore, props.showView, props.showEdit, props.showDelete,
+    props.showPrint, props.showLogs, props.showStatusModal,
+    props.showStatusChange && hasStatusChangeOptions.value,
+    props.showReverse, props.showComing, props.showFundRequest,
+    props.showPlaceOrder, props.showReceive, props.showFundProcessing,
+    props.showFundsReady, props.showGiveAdvance, props.showAuthorize,
+    props.showPaymentHistory, props.showReturn, props.showDownloadRequest,
+    props.showDownloadResponse, props.showIssueTicket, props.showCancelBooking,
+    props.showHistory, props.showVoidTicket,
+].filter(Boolean).length);
+
+const colsPerRow = computed(() => {
+    const n = visibleCount.value;
+    if (n <= 3) return n;
+    if (n === 4) return 2;
+    return 3;
+});
+
 const simpleActions = computed(() => {
     const defs = [
         { key: 'more', show: props.showMore, label: props.moreLabel || 'More Actions', icon: 'fa-solid fa-ellipsis-vertical', btnClass: 'action-btn-more' },
@@ -113,6 +136,9 @@ const simpleActions = computed(() => {
         { key: 'download-request', show: props.showDownloadRequest, label: props.downloadRequestLabel, icon: 'fa-solid fa-file-arrow-up', btnClass: 'action-btn-download-request' },
         { key: 'download-response', show: props.showDownloadResponse, label: props.downloadResponseLabel, icon: 'fa-solid fa-file-arrow-down', btnClass: 'action-btn-download-response' },
         { key: 'issue-ticket', show: props.showIssueTicket, label: 'Issue Ticket', icon: 'fa-solid fa-ticket', btnClass: 'action-btn-issue-ticket', disabled: props.issueTicketDisabled },
+        { key: 'cancel-booking', show: props.showCancelBooking, label: 'Cancel Booking', icon: 'fa-solid fa-ban', btnClass: 'action-btn-cancel-booking', disabled: props.cancelBookingDisabled },
+        { key: 'history', show: props.showHistory, label: 'History', icon: 'fa-solid fa-clock-rotate-left', btnClass: 'action-btn-history' },
+        { key: 'void-ticket', show: props.showVoidTicket, label: 'Void Ticket', icon: 'fa-solid fa-file-circle-xmark', btnClass: 'action-btn-void-ticket' },
     ];
     return defs.filter((action) => action.show);
 });
@@ -123,7 +149,7 @@ function emitAction(action) {
 </script>
 
 <template>
-    <div class="action-buttons-grid">
+    <div :style="`display:grid; grid-template-columns:repeat(${colsPerRow},2rem); gap:0.25rem; margin:0 auto;`">
         <ActionIconButton
             v-for="action in simpleActions"
             :key="action.key"
@@ -181,15 +207,6 @@ function emitAction(action) {
 </template>
 
 <style scoped>
-.action-buttons-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.35rem;
-    justify-items: center;
-    width: max-content;
-    min-width: 7rem;
-}
-
 .action-buttons-cell {
     display: contents;
 }
@@ -216,4 +233,7 @@ function emitAction(action) {
 :deep(.action-btn-download-request) { --action-btn-color: #6366f1; --action-btn-bg: #eef2ff; }
 :deep(.action-btn-download-response) { --action-btn-color: #027de2; --action-btn-bg: #e8f4fd; }
 :deep(.action-btn-issue-ticket) { --action-btn-color: #7c3aed; --action-btn-bg: #ede9fe; }
+:deep(.action-btn-cancel-booking) { --action-btn-color: #dc2626; --action-btn-bg: #fef2f2; }
+:deep(.action-btn-history) { --action-btn-color: #4338ca; --action-btn-bg: #eef2ff; }
+:deep(.action-btn-void-ticket) { --action-btn-color: #9f1239; --action-btn-bg: #fff1f2; }
 </style>

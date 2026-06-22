@@ -4,6 +4,19 @@ use App\Http\Controllers\Admin\Agent\AgentController;
 use App\Http\Controllers\Admin\AircraftType\AircraftTypeDesignatorController;
 use App\Http\Controllers\Admin\AirlineLogo\AirlineLogoController;
 use App\Http\Controllers\Admin\API\APIController;
+use App\Http\Controllers\Admin\API\SearchV2Controller;
+use App\Http\Controllers\Admin\API\PriceV2Controller;
+use App\Http\Controllers\Admin\API\TravelportFareRulesController;
+use App\Http\Controllers\Admin\API\TpV2ReservationController;
+use App\Http\Controllers\Admin\API\TpV2AncillaryController;
+use App\Http\Controllers\Admin\API\ReservationPaxController;
+use App\Http\Controllers\Admin\API\BookingAttemptController;
+use App\Http\Controllers\Admin\API\BookingAttemptAdminController;
+use App\Http\Controllers\Admin\API\TpV2PreCommitController;
+use App\Http\Controllers\Admin\API\TpV2TicketController;
+use App\Http\Controllers\Admin\API\TpV2CancelController;
+use App\Http\Controllers\Admin\API\TpV2VoidController;
+use App\Http\Controllers\Admin\API\BookingActivityLogController;
 use App\Http\Controllers\Admin\ApiManagement\APIManagementController;
 use App\Http\Controllers\Admin\Area\AreaController;
 use App\Http\Controllers\Admin\Department\DepartmentController;
@@ -165,6 +178,49 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('/Lowfaresearch', [APIController::class, 'Lowfaresearch']);
     Route::post('/farerules', [APIController::class, 'getFareRules']);
     Route::post('/PricingRequestBody', [APIController::class, 'PricingRequestBody'])->name('PricingRequestBody');
+
+    // Search V2
+    Route::post('/v2/search', [SearchV2Controller::class, 'search'])->middleware('throttle:search-v2')->name('search.v2');
+    Route::get('/v2/search/latest-snapshot', [SearchV2Controller::class, 'latestSnapshot'])->name('search.v2.latestSnapshot');
+    Route::get('/flight-search-logs', [SearchV2Controller::class, 'getFlightSearchLogs'])->name('search.v2.logs');
+    Route::post('/flight-search-log/view', [SearchV2Controller::class, 'viewFlightSearchLog'])->name('search.v2.logs.view');
+    Route::get('/v2/fare-rules', [TravelportFareRulesController::class, 'index'])->name('fareRules.index');
+    Route::get('/v2/fare-rules/download', [TravelportFareRulesController::class, 'download'])->name('fareRules.download');
+
+    // Price V2
+    Route::post('/v2/price', [PriceV2Controller::class, 'price'])->name('price.v2');
+    Route::post('/flight-price-log/view', [PriceV2Controller::class, 'viewPriceLog'])->name('price.v2.log.view');
+
+    // Reservation V2
+    Route::post('/v2/reservation/workbench/initiate', [TpV2ReservationController::class, 'initiateWorkbench'])->name('reservation.v2.workbench.initiate');
+    Route::post('/v2/reservation/workbench/addoffer', [TpV2ReservationController::class, 'addOffer'])->name('reservation.v2.workbench.addoffer');
+    Route::post('/v2/reservation/ancillary/shop', [TpV2AncillaryController::class, 'shop'])->name('reservation.v2.ancillary.shop');
+    Route::post('/v2/reservation/ancillary/book', [TpV2AncillaryController::class, 'book'])->name('reservation.v2.ancillary.book');
+    Route::post('/v2/reservation/pax', [ReservationPaxController::class, 'store'])->name('reservation.v2.pax.store');
+    Route::post('/v2/reservation/pax/sync-preferences', [ReservationPaxController::class, 'syncPreferences'])->name('reservation.v2.pax.sync-preferences');
+    Route::post('/v2/reservation/pax/{id}/files', [ReservationPaxController::class, 'uploadFiles'])->name('reservation.v2.pax.files');
+    Route::post('/v2/reservation/ssr/apply', [TpV2PreCommitController::class, 'applySsr'])->name('reservation.v2.ssr.apply');
+    Route::post('/v2/reservation/travel-agency/save', [TpV2PreCommitController::class, 'saveTravelAgency'])->name('reservation.v2.travel-agency.save');
+
+    // Booking Attempts V2
+    Route::post('/v2/booking-attempts/{id}/complete-on-search', [BookingAttemptController::class, 'completeOnSearch'])->name('booking.v2.attempt.complete-on-search');
+    Route::post('/v2/booking-attempts/{id}/complete-on-price', [BookingAttemptController::class, 'completeOnPrice'])->name('booking.v2.attempt.complete-on-price');
+    Route::post('/v2/booking-attempts/{id}/prepare-review', [BookingAttemptController::class, 'prepareReview'])->name('booking.v2.attempt.prepare-review');
+    Route::get('/v2/booking-attempts/{id}/summary', [BookingAttemptController::class, 'summary'])->name('booking.v2.attempt.summary');
+    Route::post('/v2/booking-attempts/{id}/confirm', [BookingAttemptController::class, 'confirm'])->name('booking.v2.attempt.confirm');
+    Route::post('/v2/booking-attempts/{id}/retry-commit', [BookingAttemptController::class, 'retryCommit'])->name('booking.v2.attempt.retry-commit');
+    Route::post('/v2/booking-attempts/{id}/issue-ticket', [TpV2TicketController::class, 'issueTicket'])->name('booking.v2.attempt.issue-ticket');
+    Route::post('/v2/booking-attempts/{id}/cancel', [TpV2CancelController::class, 'cancelBooking'])->name('booking.v2.attempt.cancel');
+    Route::post('/v2/booking-attempts/{id}/void-ticket', [TpV2VoidController::class, 'voidTicket'])->name('booking.v2.attempt.void-ticket');
+    Route::get('/v2/booking-attempts/{id}/activity-log', [BookingActivityLogController::class, 'index'])->name('booking.v2.attempt.activity-log');
+    Route::get('/v2/booking-attempts', [BookingAttemptAdminController::class, 'index'])->name('booking.v2.attempts.index');
+    Route::get('/v2/booking-attempts/{id}', [BookingAttemptAdminController::class, 'show'])->name('booking.v2.attempts.show');
+    Route::get('/v2/booking/search-logs/{id}/request-download', [BookingAttemptAdminController::class, 'downloadSearchLogRequest'])->name('booking.v2.search-logs.request-download');
+    Route::get('/v2/booking/search-logs/{id}/response-download', [BookingAttemptAdminController::class, 'downloadSearchLogResponse'])->name('booking.v2.search-logs.response-download');
+    Route::get('/v2/booking/price-logs/{id}/request-download', [BookingAttemptAdminController::class, 'downloadPriceLogRequest'])->name('booking.v2.price-logs.request-download');
+    Route::get('/v2/booking/price-logs/{id}/response-download', [BookingAttemptAdminController::class, 'downloadPriceLogResponse'])->name('booking.v2.price-logs.response-download');
+    Route::get('/v2/booking/sessions/{id}/request-download', [BookingAttemptAdminController::class, 'downloadSessionRequest'])->name('booking.v2.sessions.request-download');
+    Route::get('/v2/booking/sessions/{id}/response-download', [BookingAttemptAdminController::class, 'downloadSessionResponse'])->name('booking.v2.sessions.response-download');
 
 });
 Route::get('airports', [AreaController::class, 'airports']);

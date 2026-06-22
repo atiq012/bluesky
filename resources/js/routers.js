@@ -16,6 +16,7 @@ const ForcePassChange = () => import('./components/auth/forcePasswordChange.vue'
 const registration = () => import('./components/auth/registration.vue')
 
 const flightSearch = () => import('./components/search/flightSearch.vue')
+const searchResultV2 = () => import('./components/search/searchResultCalling.vue')
 const searchResult = () => import('./components/search/searchResult.vue')
 // const backupsearchResult = () => import('./components/search/searchResult_copy.vue')
 const noFlightFound = () => import('./components/search/noSearchResult.vue')
@@ -23,9 +24,15 @@ const noFlightFound = () => import('./components/search/noSearchResult.vue')
 // booking
 const bookingList = () => import('./components/admin/booking/index.vue')
 const bookingCreate = () => import('./components/admin/booking/create.vue')
+const bookingAttemptList = () => import('./components/admin/booking/attemptList.vue')
+const bookingAttemptDetail = () => import('./components/admin/booking/attemptDetail.vue')
 
 // ticketing
 const manualticketing = () => import('./components/admin/ticketing/manual_ticketing.vue')
+
+// PNR
+const flightPNR = () => import('./components/admin/PNR/searchFlightByPNR.vue')
+const checkFlightPNR = () => import('./components/admin/PNR/checkFlightByPNR.vue')
 
 // agent
 const AgentList = () => import('./components/admin/agent/index.vue')
@@ -127,17 +134,24 @@ const routes = [
 
 
     //flight search
-    { path: '/flight-search', component: flightSearch, name: 'flightSearch', meta: { auth: true } },
-    { path: '/flight-search-way', component: searchResult, name: 'searchResult', meta: { auth: true } },
+    { path: '/flight-search', component: searchResultV2, name: 'searchResult', meta: { auth: true } },
+    { path: '/flight-search', component: searchResultV2, name: 'flightSearch', meta: { auth: true } },
+    { path: '/flight-search-way', component: searchResult, name: 'searchResultWay', meta: { auth: true } },
     // { path: '/flight-search-result', component: backupsearchResult, name: 'backupsearchResult', meta: { auth: true } },
     { path: '/no-flight-result', component: noFlightFound, name: 'noFlightFound', meta: { auth: true } },
 
     //booking
     { path: '/flight-booking-list', component: bookingList, name: 'bookingList', meta: { auth: true } },
     { path: '/flight-booking', component: bookingCreate, name: 'bookingCreate', meta: { auth: true } },
+    { path: '/flight-booking-attempts', component: bookingAttemptList, name: 'bookingAttemptList', meta: { auth: true } },
+    { path: '/flight-booking-attempts/:id', component: bookingAttemptDetail, name: 'bookingAttemptDetail', meta: { auth: true }, props: true },
 
     //ticketing
     { path: '/manual-ticketing', component: manualticketing, name: 'manualticketing', meta: { auth: true } },
+
+    //flightPNR
+    { path: '/search-flight-by-pnr', component: flightPNR, name: 'flightPNR', meta: { auth: true } },
+    { path: '/check-flight-pnr', component: checkFlightPNR, name: 'checkFlightPNR', meta: { auth: true } },
 
     // agent
     { path: '/agent-list', component: AgentList, name: 'AgentList', meta: { auth: true } },

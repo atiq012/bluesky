@@ -1,5 +1,6 @@
 <script setup>
-import { ref, inject, onMounted } from 'vue';
+import { ref, inject, computed, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 import { MetisMenu } from "metismenujs";
 import axiosInstance from "../../axiosInstance"
 import ability from '../../services/ability';
@@ -7,6 +8,11 @@ import { AbilityBuilder, createMongoAbility } from '@casl/ability';
 import { useAbility } from '@casl/vue';
 
 // const can  = useAbility();
+
+const route = useRoute();
+
+const flightManagementRoutes = ['searchResult', 'bookingList', 'bookingCreate', 'bookingAttemptList', 'bookingAttemptDetail'];
+const isFlightRoute = computed(() => flightManagementRoutes.includes(route.name));
 
 function menuTaggle() {
     $(".wrapper").toggleClass("toggled");
@@ -64,30 +70,31 @@ onMounted(() => {
 
                 <li class="menu-label">OPERATIONS</li>
 
-                <li>
+                <li :class="{ 'mm-active': isFlightRoute }">
                     <a v-wave class="has-arrow" href="javascript:;">
                         <div class="parent-icon">
-
                             <img src="../../../../public/theme/Sidebar_icons/Flight.svg" alt="">
                         </div>
                         <div class="menu-title">Flight Management</div>
                     </a>
-                    <ul>
-
-                        <li>
+                    <ul :class="{ 'mm-show': isFlightRoute }">
+                        <li :class="{ 'mm-active': ['searchResult', 'bookingCreate'].includes(route.name) }">
                             <router-link v-wave :to="{ name: 'searchResult' }">
                                 <i class='bx bx-radio-circle'></i> Search
                             </router-link>
                         </li>
-
-                        <li>
+                        <li :class="{ 'mm-active': route.name === 'bookingList' }">
                             <router-link v-wave :to="{ name: 'bookingList' }">
-
                                 <i class='bx bx-radio-circle'></i> Booking & Ticketing
                             </router-link>
                         </li>
+                        <li :class="{ 'mm-active': ['bookingAttemptList', 'bookingAttemptDetail'].includes(route.name) }">
+                            <router-link v-wave :to="{ name: 'bookingAttemptList' }">
+                                <i class='bx bx-radio-circle'></i> Booking Attempts
+                            </router-link>
+                        </li>
                         <li>
-                            <router-link v-wave :to="{ name: 'searchResult' }">
+                            <router-link v-wave :to="{ name: 'flightPNR' }">
                                 <i class='bx bx-radio-circle'></i> Flight PNR
                             </router-link>
                         </li>

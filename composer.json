@@ -11,6 +11,7 @@
         "php": "^8.1",
         "devfaysal/laravel-bangladesh-geocode": "^2.2",
         "guzzlehttp/guzzle": "^7.7",
+        "hashids/hashids": "^5.0",
         "intervention/image": "^3.0",
         "laravel/framework": "^10.24",
         "laravel/sanctum": "^3.3",
@@ -39,7 +40,8 @@
             "Database\\Seeders\\": "database/seeders/"
         },
         "files": [
-            "app/Helpers/Helpers.php"
+            "app/Helpers/Helpers.php",
+            "app/Helpers/hashids.php"
         ]
     },
     "autoload-dev": {

@@ -1,0 +1,457 @@
+/* ============================================================
+   Search page — dark mode overrides
+   Selector prefix: [data-bs-theme="dark"]
+   All rules use !important to beat scoped-component specificity
+   ============================================================ */
+
+/* ── Page content wrapper (search page) ───────────────────── */
+[data-bs-theme="dark"] .page-content:has(.search-page-layout) {
+    background: #1a1d23 !important;
+}
+
+/* ── Search panel card ─────────────────────────────────────── */
+[data-bs-theme="dark"] .search-layout-card {
+    background: var(--bs-card-bg) !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
+}
+
+[data-bs-theme="dark"] .search-panel-top {
+    border-bottom-color: var(--bs-border-color) !important;
+}
+
+[data-bs-theme="dark"] .search-panel-bottom {
+    border-top-color: var(--bs-border-color) !important;
+}
+
+/* ── Trip type tabs ────────────────────────────────────────── */
+[data-bs-theme="dark"] .search-trip-types {
+    background: rgba(255, 255, 255, 0.07) !important;
+}
+
+[data-bs-theme="dark"] .search-trip-types .form-check-label-box {
+    color: var(--bs-body-color) !important;
+}
+
+/* ── PAX trigger button ────────────────────────────────────── */
+[data-bs-theme="dark"] .search-pax-trigger {
+    background: var(--bs-body-bg) !important;
+    border-color: var(--bs-border-color) !important;
+    color: var(--bs-body-color) !important;
+}
+
+/* ── PAX popup ─────────────────────────────────────────────── */
+[data-bs-theme="dark"] .search-pax-popup {
+    background: var(--bs-body-bg) !important;
+    border-color: var(--bs-border-color) !important;
+    box-shadow: 0 18px 36px rgba(0, 0, 0, 0.5) !important;
+}
+
+[data-bs-theme="dark"] .popup-title {
+    color: var(--bs-secondary-color) !important;
+}
+
+[data-bs-theme="dark"] .popup-row {
+    border-bottom-color: var(--bs-border-color) !important;
+}
+
+[data-bs-theme="dark"] .row-name {
+    color: var(--bs-body-color) !important;
+}
+
+[data-bs-theme="dark"] .row-sub {
+    color: var(--bs-secondary-color) !important;
+}
+
+[data-bs-theme="dark"] .search-pax-popup .product-qty {
+    border-color: var(--bs-border-color) !important;
+}
+
+[data-bs-theme="dark"] .search-pax-popup .btn-number {
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: var(--bs-body-color) !important;
+}
+
+[data-bs-theme="dark"] .search-pax-popup .input-number {
+    color: var(--bs-body-color) !important;
+    background: transparent !important;
+}
+
+[data-bs-theme="dark"] .cabin-switcher button {
+    background: rgba(255, 255, 255, 0.07) !important;
+    color: var(--bs-body-color) !important;
+}
+
+/* ── Date cards ────────────────────────────────────────────── */
+[data-bs-theme="dark"] .date-card {
+    background: var(--bs-body-bg) !important;
+    border-color: var(--bs-border-color) !important;
+}
+
+[data-bs-theme="dark"] .date-number {
+    color: var(--bs-body-color) !important;
+}
+
+[data-bs-theme="dark"] .date-info {
+    border-left-color: var(--bs-border-color) !important;
+}
+
+[data-bs-theme="dark"] .day {
+    color: var(--bs-body-color) !important;
+}
+
+[data-bs-theme="dark"] .month-year {
+    color: var(--bs-secondary-color) !important;
+}
+
+/* ── Airport suggestion dropdowns ──────────────────────────── */
+[data-bs-theme="dark"] #origin_results,
+[data-bs-theme="dark"] #destination_results {
+    background: var(--bs-body-bg) !important;
+    border-color: var(--bs-border-color) !important;
+}
+
+[data-bs-theme="dark"] .search-results-simplebar {
+    background: var(--bs-body-bg) !important;
+}
+
+[data-bs-theme="dark"] .search-results-simplebar .hstack:hover {
+    background: rgba(135, 90, 233, 0.14) !important;
+}
+
+[data-bs-theme="dark"] .search-results-simplebar .simplebar-track.simplebar-vertical {
+    background: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* ── Inline location display (airport code + city overlay) ── */
+[data-bs-theme="dark"] .fcolor {
+    color: var(--bs-body-color) !important;
+}
+
+[data-bs-theme="dark"] .selected-location .location-code {
+    color: var(--bs-body-color) !important;
+}
+
+/* ── Stats / meta text ─────────────────────────────────────── */
+[data-bs-theme="dark"] .stat-item {
+    color: var(--bs-secondary-color) !important;
+}
+
+[data-bs-theme="dark"] .search-result-meta {
+    color: var(--bs-secondary-color) !important;
+}
+
+/* ── Download icon button ──────────────────────────────────── */
+[data-bs-theme="dark"] .icon-download {
+    background: rgba(15, 157, 88, 0.12) !important;
+    border-color: rgba(15, 157, 88, 0.3) !important;
+}
+
+/* ── Accordion filter title ────────────────────────────────── */
+[data-bs-theme="dark"] .accorion-item-title-color {
+    background: linear-gradient(249deg, rgba(20, 35, 55, 0.7) 0%, rgba(35, 20, 55, 0.7) 100%) !important;
+    color: var(--bs-body-color) !important;
+}
+
+[data-bs-theme="dark"] .accorion-item-title-color:not(.collapsed) {
+    color: var(--bs-body-color) !important;
+}
+
+/* ── Stop filter cards ─────────────────────────────────────── */
+[data-bs-theme="dark"] .stop-card {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border-color: var(--bs-border-color) !important;
+}
+
+[data-bs-theme="dark"] .stop-card:hover {
+    background: rgba(74, 144, 226, 0.12) !important;
+    border-color: #4a90e2 !important;
+}
+
+[data-bs-theme="dark"] .stop-card--active {
+    background: rgba(74, 144, 226, 0.18) !important;
+    border-color: #4a90e2 !important;
+}
+
+[data-bs-theme="dark"] .stop-card__label {
+    color: var(--bs-body-color) !important;
+}
+
+[data-bs-theme="dark"] .stop-card__count {
+    background: rgba(74, 144, 226, 0.2) !important;
+}
+
+/* ── Refund filter cards ───────────────────────────────────── */
+[data-bs-theme="dark"] .refund-card {
+    background: rgba(255, 255, 255, 0.04) !important;
+}
+
+[data-bs-theme="dark"] .refund-card--refundable .refund-card__label { color: #12ce69 !important; }
+[data-bs-theme="dark"] .refund-card--refundable .refund-card__count { background: rgba(18, 206, 105, 0.15) !important; }
+[data-bs-theme="dark"] .refund-card--refundable:hover,
+[data-bs-theme="dark"] .refund-card--refundable.refund-card--active { background: rgba(18, 206, 105, 0.12) !important; }
+
+[data-bs-theme="dark"] .refund-card--partial .refund-card__label { color: #d4a017 !important; }
+[data-bs-theme="dark"] .refund-card--partial .refund-card__count { background: rgba(212, 160, 23, 0.15) !important; }
+[data-bs-theme="dark"] .refund-card--partial:hover,
+[data-bs-theme="dark"] .refund-card--partial.refund-card--active { background: rgba(212, 160, 23, 0.12) !important; }
+
+[data-bs-theme="dark"] .refund-card--non_refundable .refund-card__label { color: #f56565 !important; }
+[data-bs-theme="dark"] .refund-card--non_refundable .refund-card__count { background: rgba(206, 18, 18, 0.15) !important; }
+[data-bs-theme="dark"] .refund-card--non_refundable:hover,
+[data-bs-theme="dark"] .refund-card--non_refundable.refund-card--active { background: rgba(206, 18, 18, 0.12) !important; }
+
+/* ── Layover filter rows ───────────────────────────────────── */
+[data-bs-theme="dark"] .layover-row:hover {
+    background: rgba(74, 144, 226, 0.12) !important;
+    border-color: #4a90e2 !important;
+}
+
+[data-bs-theme="dark"] .layover-row--active {
+    background: rgba(74, 144, 226, 0.18) !important;
+    border-color: #4a90e2 !important;
+}
+
+[data-bs-theme="dark"] .layover-airport-name {
+    color: var(--bs-body-color) !important;
+}
+
+[data-bs-theme="dark"] .layover-flight-count {
+    color: var(--bs-secondary-color) !important;
+}
+
+/* ── Airline filter rows ───────────────────────────────────── */
+[data-bs-theme="dark"] .airline-filter-row:hover {
+    background: rgba(74, 144, 226, 0.12) !important;
+    border-color: #4a90e2 !important;
+}
+
+[data-bs-theme="dark"] .airline-filter-row--active {
+    background: rgba(74, 144, 226, 0.18) !important;
+}
+
+[data-bs-theme="dark"] .airline-filter-logo {
+    background: rgba(255, 255, 255, 0.07) !important;
+    border-color: var(--bs-border-color) !important;
+}
+
+[data-bs-theme="dark"] .airline-filter-name {
+    color: var(--bs-body-color) !important;
+}
+
+[data-bs-theme="dark"] .airline-filter-count {
+    background: rgba(74, 144, 226, 0.2) !important;
+}
+
+/* ── Skeleton shimmer ──────────────────────────────────────── */
+[data-bs-theme="dark"] .skeleton-box {
+    background: linear-gradient(90deg, #252836 25%, #2e3145 50%, #252836 75%) !important;
+    background-size: 200% 100% !important;
+}
+
+/* ── Fare tier cards (brand selection panel) ───────────────── */
+[data-bs-theme="dark"] .fare-card {
+    background: var(--bs-body-bg) !important;
+    border-color: var(--bs-border-color) !important;
+}
+
+[data-bs-theme="dark"] .fare-card__header {
+    background: rgba(255, 255, 255, 0.04) !important;
+}
+
+[data-bs-theme="dark"] .fare-card__label {
+    color: var(--bs-body-color) !important;
+}
+
+[data-bs-theme="dark"] .fare-card__class-badge {
+    color: var(--bs-secondary-color) !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-bs-theme="dark"] .fare-card__currency {
+    color: var(--bs-secondary-color) !important;
+}
+
+[data-bs-theme="dark"] .fare-card__amount {
+    color: var(--bs-body-color) !important;
+}
+
+[data-bs-theme="dark"] .fare-card__divider {
+    background: var(--bs-border-color) !important;
+}
+
+[data-bs-theme="dark"] .fare-card__feature {
+    border-bottom-color: rgba(255, 255, 255, 0.07) !important;
+}
+
+[data-bs-theme="dark"] .fare-card__status-dot--no {
+    background: rgba(255, 255, 255, 0.07) !important;
+}
+
+[data-bs-theme="dark"] .fare-card__cat-icon {
+    color: var(--bs-secondary-color) !important;
+}
+
+[data-bs-theme="dark"] .fare-card__feature-text {
+    color: var(--bs-body-color) !important;
+}
+
+[data-bs-theme="dark"] .brand-cards-scroll::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+
+[data-bs-theme="dark"] .brand-cards-scroll::-webkit-scrollbar-thumb {
+    background: rgba(147, 168, 235, 0.4) !important;
+}
+
+/* ── Fare rules panel ──────────────────────────────────────── */
+[data-bs-theme="dark"] .fare-rules-container {
+    background: var(--bs-body-bg) !important;
+}
+
+[data-bs-theme="dark"] .segment-title {
+    color: var(--bs-body-color) !important;
+}
+
+[data-bs-theme="dark"] .rule-item {
+    border-color: var(--bs-border-color) !important;
+}
+
+[data-bs-theme="dark"] .rule-header {
+    background: rgba(255, 255, 255, 0.04) !important;
+    color: var(--bs-body-color) !important;
+}
+
+[data-bs-theme="dark"] .rule-header:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-bs-theme="dark"] .rule-content.show {
+    background: var(--bs-body-bg) !important;
+}
+
+[data-bs-theme="dark"] .rule-category {
+    color: var(--bs-body-color) !important;
+}
+
+[data-bs-theme="dark"] .rules-accordion::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* ── Fare rules accordion (cancellation / changes) ─────────── */
+[data-bs-theme="dark"] .fare-danger-bg {
+    background: rgba(206, 18, 18, 0.1) !important;
+}
+
+/* ── Baggage allowance rows ────────────────────────────────── */
+[data-bs-theme="dark"] .baggage-row-bg {
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* ── Search cooking / loading modal ────────────────────────── */
+[data-bs-theme="dark"] .app-modal-dialog:has(.search-cooking-modal) .app-modal-content {
+    background: var(--bs-body-bg) !important;
+    border-color: var(--bs-border-color) !important;
+}
+
+[data-bs-theme="dark"] .search-cooking-modal {
+    background: var(--bs-body-bg) !important;
+}
+
+/* ── Location input wrapper (fd variant) ───────────────────── */
+[data-bs-theme="dark"] .location-input-wrapper.fd {
+    background: var(--bs-body-bg) !important;
+}
+
+/* ── Flight detail expanded section ─────────────────────────── */
+[data-bs-theme="dark"] .flight-detail-card-header {
+    background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+[data-bs-theme="dark"] .layover-dest-chip {
+    background-color: rgba(121, 68, 235, 0.15) !important;
+    border: 1px solid rgba(121, 68, 235, 0.3);
+}
+
+[data-bs-theme="dark"] .detail-badge-flight {
+    background-color: rgba(121, 68, 235, 0.15) !important;
+    color: #a78bfa !important;
+    border-color: rgba(121, 68, 235, 0.3) !important;
+}
+
+[data-bs-theme="dark"] .detail-badge-cabin {
+    background-color: rgba(18, 206, 105, 0.12) !important;
+    border-color: rgba(18, 206, 105, 0.3) !important;
+}
+
+[data-bs-theme="dark"] .detail-badge-ref {
+    background-color: rgba(133, 100, 4, 0.2) !important;
+    color: #fbbf24 !important;
+    border-color: rgba(212, 160, 23, 0.3) !important;
+}
+
+/* ── Fare Summary + Baggage side column ──────────────────────── */
+[data-bs-theme="dark"] .fare-summary-col {
+    background-color: var(--bs-card-bg) !important;
+}
+
+/* ── Fare Rules — Changes accordion button ───────────────────── */
+[data-bs-theme="dark"] .fare-changes-btn {
+    background: rgba(74, 144, 226, 0.1) !important;
+    color: var(--bs-body-color) !important;
+}
+
+/* ── Fare rules table header ─────────────────────────────────── */
+[data-bs-theme="dark"] .fare-table-head {
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: var(--bs-secondary-color) !important;
+}
+
+[data-bs-theme="dark"] .fare-table-head th {
+    background: transparent !important;
+    color: var(--bs-secondary-color) !important;
+    border-bottom-color: var(--bs-border-color) !important;
+}
+
+/* ── Flight result card footer ───────────────────────────────── */
+[data-bs-theme="dark"] .search-result-card-footer {
+    background-color: var(--bs-card-bg) !important;
+    border-top-color: var(--bs-border-color) !important;
+}
+
+/* ── Flight result info badges ───────────────────────────────── */
+[data-bs-theme="dark"] .flight-badge--refundable {
+    background-color: rgba(18, 206, 105, 0.12) !important;
+    border-color: rgba(18, 206, 105, 0.3) !important;
+}
+
+[data-bs-theme="dark"] .flight-badge--partial {
+    background-color: rgba(212, 160, 23, 0.12) !important;
+    border-color: rgba(212, 160, 23, 0.3) !important;
+}
+
+[data-bs-theme="dark"] .flight-badge--non-refundable {
+    background-color: rgba(206, 18, 18, 0.12) !important;
+    border-color: rgba(206, 18, 18, 0.3) !important;
+}
+
+[data-bs-theme="dark"] .flight-badge--seats {
+    background-color: rgba(121, 68, 235, 0.12) !important;
+    border-color: rgba(121, 68, 235, 0.3) !important;
+}
+
+/* ── VueDatePicker calendar popup overrides ────────────────── */
+[data-bs-theme="dark"] .dp__theme_light {
+    --dp-background-color: var(--bs-body-bg) !important;
+    --dp-text-color: var(--bs-body-color) !important;
+    --dp-hover-color: rgba(135, 90, 233, 0.15) !important;
+    --dp-hover-text-color: var(--bs-body-color) !important;
+    --dp-border-color: var(--bs-border-color) !important;
+    --dp-menu-border-color: var(--bs-border-color) !important;
+    --dp-disabled-color: rgba(255, 255, 255, 0.2) !important;
+    --dp-scroll-bar-background: rgba(255, 255, 255, 0.06) !important;
+    --dp-scroll-bar-color: rgba(147, 168, 235, 0.5) !important;
+    --dp-success-color: #12ce69 !important;
+    --dp-primary-color: #875ae9 !important;
+    --dp-primary-text-color: #fff !important;
+    --dp-secondary-color: rgba(255, 255, 255, 0.07) !important;
+}

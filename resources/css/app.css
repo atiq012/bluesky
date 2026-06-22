@@ -9,6 +9,7 @@
 @import '../../public/css/wickedcss.min.css';
 /* @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap"); */
 
+@import url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css");
 @import url("https://cdnjs.cloudflare.com/ajax/libs/izitoast/1.4.0/css/iziToast.min.css");
 @import url("https://cdnjs.cloudflare.com/ajax/libs/tippy.js/6.3.7/tippy.min.css");
 @import url("https://cdn.datatables.net/responsive/3.0.3/css/responsive.bootstrap5.css");
