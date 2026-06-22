@@ -259,10 +259,8 @@ watch(form, (newValue, oldValue) => {
                     <div class="row justify-content-center mt-4 mr-3 ml-3">
                         <div class="clearfix w-100 pl-1 pr-1">
 
-                            <button :disabled="loading" @click="resetPassword" class="btn btn-primary rounded-2 w-100">
-                                <img v-if="loading" src="../../../../public/theme/appimages/pp.gif" height="20"
-                                    width="20" alt="" />
-
+                            <button :disabled="loading" @click="resetPassword" class="btn btn-primary rounded-2 w-100 d-flex align-items-center justify-content-center gap-2">
+                                <LoadingSpinner v-if="loading" :inline="true" size="sm" class="text-white" />
                                 <span role="status">{{ ButtonName }}</span>
                             </button>
 

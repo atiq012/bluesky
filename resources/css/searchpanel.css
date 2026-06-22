@@ -539,3 +539,289 @@ li.menu-item {
     border-radius: 8px 8px 8px 8px;
 }
 
+/* ── Compact Search Summary Bar ────────────────────────────────────── */
+.search-compact-bar {
+    z-index: 100;
+    background: linear-gradient(120deg, #1a0557 0%, #6b3fd4 45%, #02b9af 100%);
+    border-radius: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 16px rgba(107, 63, 212, 0.25);
+    overflow: hidden;
+    animation: compactBarSlideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes compactBarSlideIn {
+    from { opacity: 0; transform: translateY(-14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.compact-bar-inner {
+    display: flex;
+    align-items: center;
+    padding: 10px 20px;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.compact-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.compact-trip-badge {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    white-space: nowrap;
+    backdrop-filter: blur(4px);
+}
+
+.compact-route-block {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.compact-airport-code {
+    font-size: 21px;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: 0.02em;
+    line-height: 1;
+}
+
+.compact-route-arrow {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 0 2px;
+}
+
+.compact-route-line {
+    display: inline-block;
+    width: 18px;
+    height: 1.5px;
+    background: rgba(255, 255, 255, 0.45);
+    border-radius: 1px;
+}
+
+.compact-plane-icon {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.compact-cities-text {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.65);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.compact-cities-sep {
+    opacity: 0.5;
+}
+
+.compact-divider-v {
+    width: 1px;
+    height: 32px;
+    background: rgba(255, 255, 255, 0.2);
+    flex-shrink: 0;
+}
+
+.compact-dates-block,
+.compact-pax-block {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.compact-meta-icon {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.55);
+    flex-shrink: 0;
+}
+
+.compact-dates-text {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.compact-date-val {
+    color: #fff;
+    font-weight: 600;
+    font-size: 12.5px;
+    white-space: nowrap;
+}
+
+.compact-date-sep {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 11px;
+}
+
+.compact-pax-block {
+    font-size: 12.5px;
+    font-weight: 500;
+    white-space: nowrap;
+    color: #fff;
+}
+
+.compact-spacer {
+    flex: 1;
+    min-width: 8px;
+}
+
+.compact-timer-block {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    padding: 4px 12px;
+    flex-shrink: 0;
+}
+
+.compact-timer-icon {
+    font-size: 15px;
+    color: rgba(255, 255, 255, 0.65);
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.compact-timer-digits {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    font-size: 19px;
+    color: #fff;
+    letter-spacing: -0.01em;
+    line-height: 1;
+}
+
+.digit-slot {
+    position: relative;
+    overflow: hidden;
+    height: 1.15em;
+    width: 0.62em;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.digit-val {
+    display: block;
+    line-height: 1.15em;
+    text-align: center;
+    width: 100%;
+}
+
+.digit-colon {
+    font-size: 17px;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.5);
+    margin: 0 2px;
+    line-height: 1;
+    position: relative;
+    top: -1px;
+}
+
+/* Slip animation: new digit drops in from top, old exits to bottom */
+.digit-slip-enter-active {
+    transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.32s ease;
+}
+.digit-slip-leave-active {
+    transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.32s ease;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+}
+.digit-slip-enter-from { transform: translateY(-100%); opacity: 0; }
+.digit-slip-enter-to   { transform: translateY(0);     opacity: 1; }
+.digit-slip-leave-from { transform: translateY(0);     opacity: 1; }
+.digit-slip-leave-to   { transform: translateY(100%);  opacity: 0; }
+
+.compact-modify-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.95);
+    color: #6b3fd4;
+    border: none;
+    border-radius: 10px;
+    padding: 8px 18px;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+    flex-shrink: 0;
+}
+
+.compact-modify-btn:hover {
+    background: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+}
+
+.compact-modify-btn i {
+    font-size: 13px;
+}
+
+.compact-stats-strip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 20px;
+    background: rgba(0, 0, 0, 0.18);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 500;
+    letter-spacing: 0.03em;
+}
+
+.compact-stats-strip i {
+    font-size: 11px;
+    margin-right: 3px;
+    opacity: 0.7;
+}
+
+.compact-stats-dot {
+    opacity: 0.35;
+}
+
+.compact-stats-spacer {
+    flex: 1;
+}
+
+.compact-clear-btn {
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 11px;
+    font-weight: 600;
+    transition: color 0.15s ease;
+    letter-spacing: 0.02em;
+}
+
+.compact-clear-btn:hover {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+[data-bs-theme="dark"] .search-compact-bar {
+    box-shadow: 0 8px 32px rgba(107, 63, 212, 0.55), 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+

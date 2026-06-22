@@ -226,15 +226,8 @@ onMounted(() => {
 
                                 <!-- Log In -->
                                 <button :disabled="loading" type="submit"
-                                    class="btn-login w-100 rounded-2 position-relative">
-                                    <div v-if="loading" class="center-body position-absolute" style="margin-top: -10px; margin-left: 50px;">
-                                        <div class="loader-circle-57">
-                                            <img class="position-absolute"
-                                                src="../../../../public/theme/appimages/blueskywings.png" height="16"
-                                                width="16" alt="">
-                                        </div>
-                                    </div>
-
+                                    class="btn-login w-100 rounded-2 d-flex align-items-center justify-content-center gap-2">
+                                    <LoadingSpinner v-if="loading" :inline="true" size="sm" class="text-white" />
                                     <span role="status">{{ ButtonName }}</span>
                                 </button>
                             </form>
@@ -580,35 +573,4 @@ onMounted(() => {
     }
 }
 
-.loader-circle-57 {
-    width: 40px;
-    height: 40px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.loader-circle-57:before {
-    content: "";
-    color: red;
-    height: 30px;
-    width: 30px;
-    background: #0000;
-    border-radius: 50%;
-    border: 5px solid #027de2d5;
-    animation: loader-circle-57-spin 1s infinite
-}
-
-
-@keyframes loader-circle-57-spin {
-    50% {
-        transform: rotatez(180deg);
-        border-style: dashed;
-        border-color: #ffffff #e23708 #ffffff;
-    }
-
-    100% {
-        transform: rotatez(360deg);
-    }
-}
 </style>

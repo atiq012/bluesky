@@ -42,11 +42,6 @@ const filteredOriginAirports = ref([]);
 const filteredDestinationAirports = ref([]);
 
 const loadging = ref(false);
-const ExecutionTime = ref([])
-const apiTime = ref(0)
-const uiTime = ref(0)
-
-const isDownloadingSearchFiles = ref(false)
 
 const fareRulesData           = ref({})
 const fareRulesLoading        = ref({})
@@ -55,6 +50,7 @@ const fareRulesDownloading    = ref({})
 const showPricePanel          = ref(false)
 const selectedFlightForPrice  = ref(null)
 const selectedBrandForPrice   = ref(null)
+const searchCollapsed         = ref(false)
 
 const isDark = ref(document.documentElement.getAttribute('data-bs-theme') === 'dark')
 const _themeObserver = new MutationObserver(() => {
@@ -71,6 +67,12 @@ function selectFare(flight, brand) {
 const bookingTimerMinutes = ref(30)
 const bookingTimerSeconds = ref(0)
 const bookingTimerInterval = ref(null)
+
+const timerDigits = computed(() => {
+    const m = String(bookingTimerMinutes.value).padStart(2, '0')
+    const s = String(bookingTimerSeconds.value).padStart(2, '0')
+    return [m[0], m[1], s[0], s[1]]
+})
 
 const distinctLayovers = computed(() => {
     const map = {}
@@ -452,6 +454,7 @@ onMounted(async () => {
     if (searchStore.isValid && searchStore.savedForm) {
         const saved = searchStore.savedForm
         Object.assign(form, saved)
+        if (flights.value.length) searchCollapsed.value = true
 
         // Restore date picker refs from saved form strings
         if (saved.dep_date) {
@@ -512,6 +515,7 @@ async function finalizeSearchSession() {
 async function clearAndReset() {
     await finalizeSearchSession();
     showPricePanel.value = false;
+    searchCollapsed.value = false;
     searchStore.clearSearch();
     // Reset form to defaults
     form.Way = '';
@@ -729,15 +733,9 @@ async function Lowfaresearch() {
         showPricePanel.value = false;
         flights.value = [];
         totalFlights.value = 0;
-        ExecutionTime.value = 0;
-        apiTime.value = 0;
-        uiTime.value = 0;
         loadging.value = true;
 
-        const t0 = performance.now();
         const response = await axiosInstance.post("v2/search", form);
-        const t1 = performance.now();
-        apiTime.value = ((t1 - t0) / 1000).toFixed(2);
 
         flights.value = response?.data?.flights ?? [];
         totalFlights.value = flights.value.length;
@@ -752,6 +750,7 @@ async function Lowfaresearch() {
         layoverSearch.value = '';
         selectedScheduleSegment.value = null;
         startBookingTimer();
+        if (flights.value.length) searchCollapsed.value = true;
 
         if (flights.value.length) {
             const prices = flights.value.map(f => calcOutboundPriceRaw(f))
@@ -780,9 +779,6 @@ async function Lowfaresearch() {
         })
 
         await nextTick();
-        const t2 = performance.now();
-        uiTime.value = ((t2 - t1) / 1000).toFixed(2);
-        ExecutionTime.value = ((t2 - t0) / 1000).toFixed(2);
     } catch (error) {
         console.log(error);
         Notification.showToast("e", error?.response?.data?.message ?? "Token generation failed.");
@@ -863,33 +859,6 @@ function formatTiming(timing) {
     return timing?.replace(/([A-Z])/g, ' $1').trim() ?? timing;
 }
 
-async function downloadSearchFiles() {
-    if (!searchLogId.value || isDownloadingSearchFiles.value) return
-    isDownloadingSearchFiles.value = true
-    try {
-        const res = await axiosInstance.post('flight-search-log/view', { id: searchLogId.value })
-        const data = res?.data?.data
-        if (!data) return
-
-        const triggerDownload = (content, filename) => {
-            const blob = new Blob([JSON.stringify(content, null, 2)], { type: 'application/json' })
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = filename
-            a.click()
-            URL.revokeObjectURL(url)
-        }
-
-        triggerDownload(data.search_payload, `payload-${searchLogId.value}.json`)
-        await new Promise(resolve => setTimeout(resolve, 300))
-        triggerDownload(data.response_json, `response-${searchLogId.value}.json`)
-    } catch (e) {
-        console.error(e)
-    } finally {
-        isDownloadingSearchFiles.value = false
-    }
-}
 
 function clearAllFilters() {
     selectedAirlines.value = []
@@ -962,6 +931,10 @@ function formatDate(dateString) {
     });
 };
 
+function formatCompactDate(dateStr) {
+    if (!dateStr) return ''
+    return new Date(dateStr).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+}
 
 function swapLocations() {
     [form.from, form.to] = [form.to, form.from];
@@ -988,8 +961,100 @@ const openReturnPicker = () => {
 </script>
 <template>
     <div class="search-page-layout">
+
+    <!-- Compact search summary bar (visible after successful search) -->
+    <div v-if="searchCollapsed" class="search-compact-bar">
+        <div class="compact-bar-inner">
+            <div class="compact-left">
+                <span class="compact-trip-badge">{{ form.Way === 1 ? 'One Way' : 'Round Trip' }}</span>
+                <div class="compact-route-block">
+                    <span class="compact-airport-code">{{ form.from }}</span>
+                    <div class="compact-route-arrow">
+                        <span class="compact-route-line"></span>
+                        <i class="bx bxs-plane compact-plane-icon"></i>
+                        <span v-if="form.Way === 2" class="compact-route-line compact-route-line--back"></span>
+                    </div>
+                    <span class="compact-airport-code">{{ form.to }}</span>
+                </div>
+                <div class="compact-cities-text">
+                    <span>{{ selectedOriginDetails?.city }}</span>
+                    <span class="compact-cities-sep">›</span>
+                    <span>{{ selectedDestinationDetails?.city }}</span>
+                </div>
+            </div>
+
+            <div class="compact-divider-v"></div>
+
+            <div class="compact-dates-block">
+                <i class="bx bx-calendar-alt compact-meta-icon"></i>
+                <div class="compact-dates-text">
+                    <span class="compact-date-val">{{ formatCompactDate(form.dep_date) }}</span>
+                    <template v-if="form.Way === 2 && form.arrival_date">
+                        <span class="compact-date-sep">→</span>
+                        <span class="compact-date-val">{{ formatCompactDate(form.arrival_date) }}</span>
+                    </template>
+                </div>
+            </div>
+
+            <div class="compact-divider-v"></div>
+
+            <div class="compact-pax-block">
+                <i class="fa-regular fa-user compact-meta-icon"></i>
+                <span>{{ totalTravellers }} Pax · {{ form.cabin_class }}</span>
+            </div>
+
+            <div class="compact-spacer"></div>
+
+            <div v-if="searchStore.isValid" class="compact-timer-block">
+                <i class="bx bx-time-five compact-timer-icon"></i>
+                <div class="compact-timer-digits">
+                    <div class="digit-slot">
+                        <Transition name="digit-slip">
+                            <span :key="timerDigits[0]" class="digit-val">{{ timerDigits[0] }}</span>
+                        </Transition>
+                    </div>
+                    <div class="digit-slot">
+                        <Transition name="digit-slip">
+                            <span :key="timerDigits[1]" class="digit-val">{{ timerDigits[1] }}</span>
+                        </Transition>
+                    </div>
+                    <span class="digit-colon">:</span>
+                    <div class="digit-slot">
+                        <Transition name="digit-slip">
+                            <span :key="timerDigits[2]" class="digit-val">{{ timerDigits[2] }}</span>
+                        </Transition>
+                    </div>
+                    <div class="digit-slot">
+                        <Transition name="digit-slip">
+                            <span :key="timerDigits[3]" class="digit-val">{{ timerDigits[3] }}</span>
+                        </Transition>
+                    </div>
+                </div>
+            </div>
+
+            <button class="compact-modify-btn" @click="searchCollapsed = false">
+                <i class="bx bx-pencil"></i>
+                <span>Modify</span>
+            </button>
+        </div>
+
+        <div class="compact-stats-strip">
+            <span><i class="bx bxs-plane"></i> {{ distinctAirlines.length }} Airlines</span>
+            <span class="compact-stats-dot">·</span>
+            <span><i class="bx bx-git-branch"></i> {{ totalFlights }} Routes</span>
+            <template v-if="flights.length > 0">
+                <span class="compact-stats-dot">·</span>
+                <span>Showing {{ filteredFlights.length }} of {{ totalFlights }} flights</span>
+            </template>
+            <div class="compact-stats-spacer"></div>
+            <span v-if="searchStore.isValid" class="compact-clear-btn" @click="clearAndReset">
+                Clear <span>✕</span>
+            </span>
+        </div>
+    </div>
+
     <!-- search Panel start -->
-    <div class="search-sticky-panel">
+    <div v-if="!searchCollapsed" class="search-sticky-panel">
     <div class="row search-sticky-row">
         <div class="col-md-12">
             <div class="card search-layout-card">
@@ -1318,26 +1383,20 @@ const openReturnPicker = () => {
                         <div class="bottom-stats">
                             <span class="stat-item"><i class="bx bxs-plane stat-icon stat-icon--airline"></i>{{ distinctAirlines.length }} AIRLINES</span>
                             <span class="stat-item"><i class="bx bx-git-branch stat-icon stat-icon--route"></i>{{ totalFlights }} ROUTES</span>
-                            <span v-show="flights.length > 0" class="search-result-meta d-flex align-items-center gap-2 flex-wrap">
-                                Showing {{ flights.length }} of {{ totalFlights }} Total Flights &nbsp;|&nbsp;
-                                API: {{ apiTime }}s &nbsp;|&nbsp; UI: {{ uiTime }}s &nbsp;|&nbsp; Total: {{ ExecutionTime }}s
-                                <button
-                                    v-if="flights.length > 0 && searchLogId"
-                                    class="icon-action-btn icon-download"
-                                    type="button"
-                                    title="Download payload & response"
-                                    :disabled="isDownloadingSearchFiles"
-                                    @click="downloadSearchFiles"
-                                >
-                                    <i :class="isDownloadingSearchFiles ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-download'"></i>
-                                </button>
+                            <span v-show="flights.length > 0" class="stat-item">Showing {{ flights.length }} of {{ totalFlights }} Total Flights</span>
+                        </div>
+                        <div v-if="searchStore.isValid" class="bottom-right-actions">
+                            <div class="inline-booking-timer">
+                                <img src="../../../../public/theme/animation/Session_Timer.gif" height="22" width="22" alt="">
+                                <span class="timer-label">Book Flight within</span>
+                                <div class="timer-block">{{ String(bookingTimerMinutes).padStart(2, '0') }}</div>
+                                <span class="timer-colon">:</span>
+                                <div class="timer-block">{{ String(bookingTimerSeconds).padStart(2, '0') }}</div>
+                            </div>
+                            <span class="clear-search-btn" @click="clearAndReset">
+                                <span class="clear-label">Clear</span> <span class="clear-x">✕</span>
                             </span>
                         </div>
-                        <span
-                            v-if="searchStore.isValid"
-                            class="clear-search-btn"
-                            @click="clearAndReset"
-                        ><span class="clear-label">Clear</span> <span class="clear-x">✕</span></span>
                     </div>
 
                 </div>
@@ -1357,32 +1416,6 @@ const openReturnPicker = () => {
                 @mouseleave="isFilterScrollHover = false"
             >
             <div class="row search-filter-inner-row">
-                <div class="col-md-12">
-                    <div class="card">
-                        <div class="card-body">
-                            <div class="d-flex">
-                                <img src="../../../../public/theme/animation/Session_Timer.gif" height="36" width="36"
-                                    alt="">
-                                &nbsp;&nbsp;
-                                <span class="pt-2" style="font-size: 12px; margin-top: 4px;"><b>Book Flight
-                                        within</b></span>
-                                &nbsp; &nbsp;
-                                <div class="dash-lable bg-light-primary custom-text-purple rounded-1"
-                                    style="padding-top: 8px;">
-                                    <p class="fcolor mb-0" style="font-weight: 600;">{{ String(bookingTimerMinutes).padStart(2, '0') }}</p>
-                                </div>
-                                &nbsp;
-                                <div class="ml-1 mr-1" style="margin-top: 9px;"><b>:</b></div>
-                                &nbsp;
-                                <div class="dash-lable bg-light-primary custom-text-purple rounded-1"
-                                    style="padding-top: 8px;">
-                                    <p class="fcolor mb-0" style="font-weight: 600;">{{ String(bookingTimerSeconds).padStart(2, '0') }}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <div class="col-md-12 search-filters">
                     <!-- price-range -->
 
@@ -2011,9 +2044,8 @@ const openReturnPicker = () => {
                                             <span class="price-cta-btn__number">
                                                 <template v-for="(char, ci) in calcOutboundPrice(flight).split('')" :key="ci">
                                                     <span v-if="!/[0-9]/.test(char)" class="price-rolling-sep">{{ char }}</span>
-                                                    <span v-else class="price-rolling-digit"
-                                                        :style="{ '--roll-target': `-${parseInt(char) * 1.2}em`, animationDelay: `${ci * 0.08}s` }">
-                                                        <span v-for="n in 10" :key="n">{{ n - 1 }}</span>
+                                                    <span v-else class="price-slip-wrap">
+                                                        <span class="price-slip-digit" :style="{ animationDelay: `${ci * 0.09}s` }">{{ char }}</span>
                                                     </span>
                                                 </template>
                                             </span>
@@ -3658,19 +3690,6 @@ const openReturnPicker = () => {
     color: #ffffff;
     letter-spacing: -0.8px;
 }
-.price-rolling-digit {
-    display: inline-flex;
-    flex-direction: column;
-    animation: priceSlotRoll 2.4s cubic-bezier(0.1, 0.45, 0.1, 1) both;
-    height: 12em;
-}
-.price-rolling-digit > span {
-    display: block;
-    height: 1.2em;
-    line-height: 1.2em;
-    text-align: center;
-    flex-shrink: 0;
-}
 .price-rolling-sep {
     display: inline-block;
     font-size: 15px;
@@ -3679,9 +3698,20 @@ const openReturnPicker = () => {
     align-self: flex-end;
     margin-bottom: 0.08em;
 }
-@keyframes priceSlotRoll {
-    from { transform: translateY(0); }
-    to   { transform: translateY(var(--roll-target)); }
+.price-slip-wrap {
+    display: inline-block;
+    overflow: hidden;
+    height: 1.2em;
+    vertical-align: bottom;
+}
+.price-slip-digit {
+    display: block;
+    line-height: 1.2em;
+    animation: priceSlipIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes priceSlipIn {
+    from { transform: translateY(-110%); opacity: 0; }
+    to   { transform: translateY(0);     opacity: 1; }
 }
 .price-cta-btn__divider {
     height: 1px;
@@ -4056,6 +4086,11 @@ const openReturnPicker = () => {
     overflow: hidden;
 }
 
+.search-compact-bar {
+    flex-shrink: 0;
+    z-index: 30;
+}
+
 .search-sticky-panel {
     position: sticky;
     top: 0;
@@ -4288,12 +4323,6 @@ const openReturnPicker = () => {
 .stat-icon--airline { color: #505fd6; transform: rotate(-45deg); display: inline-block; }
 .stat-icon--route   { color: #22b07d; }
 
-.search-result-meta {
-    font-size: 11px;
-    font-weight: 500;
-    color: #7f869e;
-    letter-spacing: 0.2px;
-}
 
 .clear-x {
     display: inline-block;
@@ -4321,6 +4350,49 @@ const openReturnPicker = () => {
     color: #e74c3c;
     cursor: pointer;
     user-select: none;
+}
+
+.bottom-right-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: fit-content;
+    flex-shrink: 0;
+}
+
+.inline-booking-timer {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Roboto', sans-serif;
+}
+
+.inline-booking-timer .timer-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #7f869e;
+    letter-spacing: 0.3px;
+}
+
+.inline-booking-timer .timer-block {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #f0f0ff;
+    color: #505fd6;
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 4px;
+    padding: 2px 7px;
+    min-width: 28px;
+    letter-spacing: 0.5px;
+}
+
+.inline-booking-timer .timer-colon {
+    font-size: 13px;
+    font-weight: 700;
+    color: #505fd6;
+    line-height: 1;
 }
 
 .clear-label {
@@ -4353,16 +4425,6 @@ const openReturnPicker = () => {
     margin: 0;
 }
 
-.icon-download {
-    background: #e8fff6;
-    color: #0f9d58;
-    border-color: #b8f0d8;
-}
-
-.icon-download:hover {
-    background: #0f9d58;
-    color: #fff;
-}
 
 .icon-action-btn:disabled {
     opacity: 0.5;
