@@ -5,6 +5,7 @@ use App\Http\Controllers\BaseController;
 use App\Models\Agent\Agent;
 use App\Models\Deposit\Deposit;
 use App\Models\User;
+use App\Services\ImageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -17,12 +18,27 @@ class DepositController extends BaseController
      */
     public function index()
     {
+        $agent = Agent::where('user_id', Auth::id())->first();
+
         $data = DB::table('deposits as dpt')
             ->leftJoin('agents as agt', 'dpt.agent_id', 'agt.id')
             ->leftJoin('payment_accounts as pa', 'dpt.paid_account_no', 'pa.id')
-            ->selectRaw('dpt.id as idd,dpt.type as name, dpt.paid_account_no, dpt.reference_no,dpt.reference_date,dpt.agent_id, dpt.total,dpt.status,dpt.issued_bank,dpt.remarks,dpt.updated_at,f_username(dpt.updated_by) updated_by,f_username(dpt.created_by) created_by,dpt.created_at,dpt.updated_at,agt.name as agent,pa.bank_name as bank,pa.acc_no as acct_no')->get();
+            ->selectRaw('dpt.id as idd,dpt.type as name, dpt.paid_account_no, dpt.reference_no,dpt.reference_date,dpt.agent_id, dpt.total,dpt.status,dpt.issued_bank,dpt.remarks,dpt.updated_at,f_username(dpt.updated_by) updated_by,f_username(dpt.created_by) created_by,dpt.created_at,dpt.updated_at,agt.name as agent,pa.bank_name as bank,pa.acc_no as acct_no')
+            ->where('dpt.agent_id', $agent?->id)
+            ->get();
 
         return DataTables::of($data)->addIndexColumn()->make(true);
+    }
+
+    public function uploadReferenceFile(Request $request, ImageService $imageService)
+    {
+        $request->validate([
+            'referenceFile' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+        ]);
+
+        $path = $imageService->uploadAgentImage($request->file('referenceFile'), 'referenceFile');
+
+        return response()->json(['path' => $path]);
     }
 
     /**
@@ -167,5 +183,15 @@ class DepositController extends BaseController
         $depo->delete();
 
         return $this->SuccessResponse('', 'Successfully Deposit Deleted.');
+    }
+
+    public function cancel(Request $request)
+    {
+        $depo = Deposit::find($request->id);
+        $depo->status = 'Cancelled';
+        $depo->updated_by = auth()->user()->id;
+        $depo->save();
+
+        return $this->SuccessResponse('', 'Deposit request cancelled successfully.');
     }
 }

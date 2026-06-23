@@ -141,6 +141,7 @@ class ImageService
             'hajjFiles' => 'hajj_licence_img',
             'tinFiles' => 'tin_img',
             'nidFiles' => 'nid_img',
+            'referenceFile' => 'deposit_reference_img',
             default => 'misc',
         };
     }

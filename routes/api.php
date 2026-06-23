@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\Agent\AgentBalanceController;
 use App\Http\Controllers\Admin\Agent\AgentController;
 use App\Http\Controllers\Admin\AircraftType\AircraftTypeDesignatorController;
 use App\Http\Controllers\Admin\AirlineLogo\AirlineLogoController;
@@ -41,7 +42,10 @@ Route::post('PassReset', [AuthController::class, 'resetPassword'])->name('passwo
 
 Route::get('airports', [AreaController::class, 'airports']);
 
-Route::get('/migrate', function () {Artisan::call('migrate:refresh');return Artisan::output();})->name('migrate');
+Route::get('/migrate', function () {
+    Artisan::call('migrate:refresh');
+    return Artisan::output();
+})->name('migrate');
 
 Route::middleware(['auth:api'])->group(function () {
     Route::get('logout', [AuthController::class, 'logout'])->name('logout');
@@ -170,9 +174,14 @@ Route::middleware(['auth:api'])->group(function () {
 
     // deposit section
     Route::get('getDeposit', [DepositController::class, 'index'])->name('deposit.getDeposit');
+    Route::post('/deposit/upload-reference', [DepositController::class, 'uploadReferenceFile'])->name('deposit.uploadReference');
     Route::post('/deposit/save', [DepositController::class, 'store'])->name('deposit.store');
     Route::post('/deleteDeposite', [DepositController::class, 'destroy'])->name('deposit.deleteDeposite');
     Route::post('banDeposite', [DepositController::class, 'destroy']);
+    Route::post('/deposit/cancel', [DepositController::class, 'cancel'])->name('deposit.cancel');
+
+    Route::get('agent/balance', [AgentBalanceController::class, 'balance'])->name('agent.balance');
+    Route::get('agent/statement', [AgentBalanceController::class, 'statement'])->name('agent.statement');
 
     //Internal API
     Route::post('/Lowfaresearch', [APIController::class, 'Lowfaresearch']);
@@ -221,7 +230,6 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('/v2/booking/price-logs/{id}/response-download', [BookingAttemptAdminController::class, 'downloadPriceLogResponse'])->name('booking.v2.price-logs.response-download');
     Route::get('/v2/booking/sessions/{id}/request-download', [BookingAttemptAdminController::class, 'downloadSessionRequest'])->name('booking.v2.sessions.request-download');
     Route::get('/v2/booking/sessions/{id}/response-download', [BookingAttemptAdminController::class, 'downloadSessionResponse'])->name('booking.v2.sessions.response-download');
-
 });
 Route::get('airports', [AreaController::class, 'airports']);
 

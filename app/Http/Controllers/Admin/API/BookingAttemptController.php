@@ -6,6 +6,7 @@ use Exception;
 use App\Models\BookingAttempt;
 use Illuminate\Http\Request;
 use App\Http\Controllers\BaseController;
+use App\Services\AgentBalanceService;
 use App\Services\HashIdService;
 use App\Services\SearchV2\TpV2CommitService;
 use App\Services\SearchV2\BookingAttemptService;
@@ -14,7 +15,8 @@ class BookingAttemptController extends BaseController
 {
     public function __construct(
         private readonly BookingAttemptService $attemptService,
-        private readonly TpV2CommitService $commitService
+        private readonly TpV2CommitService $commitService,
+        private readonly AgentBalanceService $balanceService,
     ) {}
 
     public function prepareReview(string $id)
@@ -61,7 +63,7 @@ class BookingAttemptController extends BaseController
             $attempt = $this->attemptService->confirm($attempt, optional(auth()->user())->id);
 
             try {
-                $commit = $this->commitService->commit($attempt->fresh(), optional(auth()->user())->id);
+                $commit = $this->commitWithBalance($attempt->fresh(), optional(auth()->user())->id);
 
                 return $this->SuccessResponse(
                     $this->commitSuccessPayload($attempt->fresh(), $commit),
@@ -126,7 +128,7 @@ class BookingAttemptController extends BaseController
         }
 
         try {
-            $commit = $this->commitService->commit($attempt, optional(auth()->user())->id);
+            $commit = $this->commitWithBalance($attempt, optional(auth()->user())->id);
 
             return $this->SuccessResponse(
                 $this->commitSuccessPayload($attempt->fresh(), $commit),
@@ -148,6 +150,25 @@ class BookingAttemptController extends BaseController
                 'GDS commit failed.'
             );
         }
+    }
+
+    private function commitWithBalance(BookingAttempt $attempt, ?int $userId): array
+    {
+        $agent = $this->balanceService->resolveAgentForUser($attempt->user_id);
+        $amount = $this->balanceService->resolveBookingAmount($attempt);
+
+        if ($agent) {
+            $this->balanceService->assertSufficientBalance($agent, $amount);
+        }
+
+        $commit = $this->commitService->commit($attempt, $userId);
+        $attempt->refresh();
+
+        if ($agent) {
+            $this->balanceService->debitForBooking($agent, $amount, $attempt, $userId);
+        }
+
+        return $commit;
     }
 
     private function commitSuccessPayload(BookingAttempt $attempt, array $commit): array

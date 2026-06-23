@@ -1,7 +1,11 @@
 <script setup>
-
+import { ref, onMounted } from 'vue';
+import axiosInstance from '../../axiosInstance';
 import { useAuthStore } from '../../stores/authStore';
+
 const authStore = useAuthStore();
+const creditBalance = ref(0);
+const netBalance = ref(0);
 
 function menuTaggle() {
     $(".wrapper").toggleClass("toggled");
@@ -20,6 +24,21 @@ function darkMode() {
         return v === 'dark' ? 'light' : 'dark';
     })
 }
+
+function formatMoney(v) {
+    return Number(v ?? 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
+}
+
+async function loadBalance() {
+    try {
+        const res = await axiosInstance.get('agent/balance');
+        const data = res.data?.data || {};
+        creditBalance.value = data.credit_balance ?? 0;
+        netBalance.value = data.net_balance ?? 0;
+    } catch {}
+}
+
+onMounted(loadBalance);
 </script>
 <template>
     <header>
@@ -30,6 +49,12 @@ function darkMode() {
 
                 <div class="top-menu ms-auto">
                     <ul class="navbar-nav align-items-center gap-1">
+
+                        <li class="nav-item agent-balance-strip d-none d-lg-flex align-items-center">
+                            <span class="balance-label text-danger">Credit : {{ formatMoney(creditBalance) }}</span>
+                            <span class="balance-sep">|</span>
+                            <span class="balance-label text-primary">Balance : {{ formatMoney(netBalance) }}</span>
+                        </li>
 
                         <li class="nav-item dark-mode d-none d-sm-flex" @click="darkMode">
                             <a v-wave class="nav-link dark-mode-icon" href="javascript:;"><i class='bx bx-moon'></i>
@@ -240,6 +265,25 @@ function darkMode() {
     </header>
 </template>
 <style>
+.agent-balance-strip {
+    gap: 0.45rem;
+    padding: 0.1rem 0.55rem;
+    margin-right: 0.15rem;
+    border-radius: 6px;
+    background: transparent;
+    border: none;
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    list-style: none;
+}
+
+.agent-balance-strip .balance-sep {
+    color: #9ca3af;
+    font-weight: 400;
+}
+
 .center-body1 {
     display: flex;
     justify-content: center;

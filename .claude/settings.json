@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Read(//home/gb053/Projects/BlueSky/app/Http/Controllers/Admin/Agent/**)"
+      "Read(//home/gb053/Projects/BlueSky/app/Http/Controllers/Admin/Agent/**)",
+      "mcp__mysql__mysql_query"
     ]
   }
 }
