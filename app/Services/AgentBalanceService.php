@@ -56,11 +56,11 @@ class AgentBalanceService
         } elseif ($adjustCredit === 'Yes') {
             $clear = min($total, $creditBefore);
             $agent->credit_balance = $creditBefore - $clear;
-            $agent->net_balance = $netBefore + $total - $clear - min($netBefore, $clear);
+            $agent->net_balance = $netBefore + $total - $clear;
             $eventType = self::EVENT_DEPOSIT_CREDIT_ADJUST;
             $description = ($depo->type ?? 'Deposit') . ' approved (credit adjusted)';
         } else {
-            $agent->net_balance = $this->computeNetAfterDepositNoAdjust($netBefore, $creditBefore, $total);
+            $agent->net_balance = $netBefore + $total;
             $eventType = self::EVENT_DEPOSIT_APPROVED;
             $description = ($depo->type ?? 'Deposit') . ' approved';
         }
@@ -175,15 +175,6 @@ class AgentBalanceService
             ->where('reference_id', $bookingAttemptId)
             ->where('event_type', self::EVENT_BOOKING_DEBIT)
             ->exists();
-    }
-
-    private function computeNetAfterDepositNoAdjust(float $net, float $credit, float $total): float
-    {
-        if ($credit > ($net * 2)) {
-            return $net + $total;
-        }
-
-        return ($net * 2) + $total;
     }
 
     private function isCreditRequest(?string $type): bool
