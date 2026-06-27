@@ -19,7 +19,8 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Password as Pass;
 
-class AuthController extends BaseController {
+class AuthController extends BaseController
+{
 
     // Login
 
@@ -46,94 +47,92 @@ class AuthController extends BaseController {
             // $success = $this->respondWithToken( $token );
             // return $this->SuccessResponse( $success, 'Authorized User Login.' );
 
-            $credentials = request( [ 'email', 'password' ] );
-            $UserExist = User::where( 'email', $request->email )->get();
-            $token =  auth()->attempt( $credentials );
+            $credentials = request(['email', 'password']);
+            $UserExist = User::where('email', $request->email)->get();
+            $token =  auth()->attempt($credentials);
 
-            if ( $UserExist->count() == 0 ) {
-                return $this->ErrorResponse( 'User not found !' );
-            } else if ( $UserExist->value( 'is_active' ) == 0 ) {
-                return $this->ErrorResponse( 'User not active !' );
-            } else if ( $UserExist->value( 'login_attamp' ) >= 3 ) {
-                return $this->ErrorResponse( 'Locked Account. Use forget Password.' );
-            } else if ( !$token ) {
+            if ($UserExist->count() == 0) {
+                return $this->ErrorResponse('User not found !');
+            } else if ($UserExist->value('is_active') == 0) {
+                return $this->ErrorResponse('User not active !');
+            } else if ($UserExist->value('login_attamp') >= 3) {
+                return $this->ErrorResponse('Locked Account. Use forget Password.');
+            } else if (!$token) {
 
-                DB::table( 'login_histories' )->insert( [
+                DB::table('login_histories')->insert([
                     [
-                        'user_id' => $UserExist->value( 'id' ),
-                        'ip' => $request->IPinfo[ 'IPv4' ],
-                        'contry_code' => $request->IPinfo[ 'country_code' ],
-                        'city' => $request->IPinfo[ 'city' ],
+                        'user_id' => $UserExist->value('id'),
+                        'ip' => $ipinfo['IPv4'],
+                        'contry_code' => $ipinfo['country_code'],
+                        'city' => $ipinfo['city'],
                         'login_attamp' => 'Failed',
-                        'device_type' => $request->IPinfo[ 'devicetype' ],
-                        'os' => $request->IPinfo[ 'os' ],
+                        'device_type' => $ipinfo['devicetype'],
+                        'os' => $ipinfo['os'],
                     ],
-                ] );
+                ]);
 
-                $la = User::where( 'email', $request->email )->first();
-                if($la->type ==1){
-                return $this->ErrorResponse( 'User not found !' );
-
+                $la = User::where('email', $request->email)->first();
+                if ($la->type == 1) {
+                    return $this->ErrorResponse('User not found !');
                 }
-                $la->login_attamp = $la->login_attamp+1;
+                $la->login_attamp = $la->login_attamp + 1;
                 $la->save();
 
-                if ( $la->login_attamp == 3 ) {
-                    return $this->ErrorResponse( 'Locked Account. Use forget Password.', [ 'RA'=>$la->login_attamp ] );
+                if ($la->login_attamp == 3) {
+                    return $this->ErrorResponse('Locked Account. Use forget Password.', ['RA' => $la->login_attamp]);
                 } else {
-                    return $this->ErrorResponse( 'Wrong Password !', [ 'RA'=>$la->login_attamp ] );
+                    return $this->ErrorResponse('Wrong Password !', ['RA' => $la->login_attamp]);
                 }
             } else {
 
-                $toDate = Carbon::parse( $UserExist->value( 'password_updated_at' ) )->addDays( $UserExist->value( 'password_max_expired' ) );
-                $result = now()->lt( $toDate );
+                $toDate = Carbon::parse($UserExist->value('password_updated_at'))->addDays($UserExist->value('password_max_expired'));
+                $result = now()->lt($toDate);
 
-                if ( $result ) {
+                if ($result) {
 
                     // check maximum attapms
-                    if ( $UserExist->value( 'login_attamp' ) >= 0 && $UserExist->value( 'login_attamp' )<4 ) {
+                    if ($UserExist->value('login_attamp') >= 0 && $UserExist->value('login_attamp') < 4) {
 
-                        DB::table( 'login_histories' )->insert( [
+                        DB::table('login_histories')->insert([
                             [
-                                'user_id' => $UserExist->value( 'id' ),
-                                'ip' => $request->IPinfo[ 'IPv4' ],
-                                'contry_code' => $request->IPinfo[ 'country_code' ],
-                                'city' => $request->IPinfo[ 'city' ],
+                                'user_id' => $UserExist->value('id'),
+                                'ip' => $ipinfo['IPv4'],
+                                'contry_code' => $ipinfo['country_code'],
+                                'city' => $ipinfo['city'],
                                 'login_attamp' => 'Success',
-                                'device_type' => $request->IPinfo[ 'devicetype' ],
-                                'os' => $request->IPinfo[ 'os' ],
+                                'device_type' => $ipinfo['devicetype'],
+                                'os' => $ipinfo['os'],
                             ],
-                        ] );
+                        ]);
 
-                        $laa = User::where( 'email', $request->email )->first();
+                        $laa = User::where('email', $request->email)->first();
                         $laa->login_attamp = 0;
                         $laa->save();
 
-                        DB::table( 'login_histories' )->insert( [
+                        DB::table('login_histories')->insert([
                             [
-                                'user_id' => $UserExist->value( 'id' ),
-                                'ip' => $request->IPinfo[ 'IPv4' ],
-                                'contry_code' => $request->IPinfo[ 'country_code' ],
-                                'city' => $request->IPinfo[ 'city' ],
+                                'user_id' => $UserExist->value('id'),
+                                'ip' => $ipinfo['IPv4'],
+                                'contry_code' => $ipinfo['country_code'],
+                                'city' => $ipinfo['city'],
                                 'login_attamp' => 'Success',
-                                'device_type' => $request->IPinfo[ 'devicetype' ],
-                                'os' => $request->IPinfo[ 'os' ],
+                                'device_type' => $ipinfo['devicetype'],
+                                'os' => $ipinfo['os'],
                             ],
-                        ] );
+                        ]);
 
-                        $success = $this->respondWithToken( $token );
-                        return $this->SuccessResponse( $success, 'Authorized User Login.' );
+                        $success = $this->respondWithToken($token);
+                        return $this->SuccessResponse($success, 'Authorized User Login.');
                     }
 
                     // end check maximum attapms
                 } else {
-                    $laas = User::where( 'email', $request->email )->first();
+                    $laas = User::where('email', $request->email)->first();
                     $laas->login_attamp = 0;
                     $laas->save();
-                    $success = $this->respondWithToken( $token );
-                    return $this->SuccessResponse( $success, 'Your password must be change.' );
+                    $success = $this->respondWithToken($token);
+                    return $this->SuccessResponse($success, 'Your password must be change.');
                 }
-
             }
 
             if ($user->is_active == 0) {
@@ -294,13 +293,19 @@ class AuthController extends BaseController {
             $raw = [];
         }
 
-        return array_merge([
+        $ipinfo = array_merge([
             'IPv4' => $request->ip(),
             'country_code' => '',
             'city' => '',
             'devicetype' => 'Desktop',
             'os' => 'Unknown',
         ], $raw);
+
+        if (empty($ipinfo['IPv4'])) {
+            $ipinfo['IPv4'] = $request->ip();
+        }
+
+        return $ipinfo;
     }
 
     // loginDetails
@@ -326,134 +331,136 @@ class AuthController extends BaseController {
 
     // Sent Mail for reset password
 
-    public function sendResetLinkEmail( Request $request ) {
+    public function sendResetLinkEmail(Request $request)
+    {
 
-        $request->validate( [ 'email' => 'required|email' ] );
-        Artisan::call( 'auth:clear-resets' );
+        $request->validate(['email' => 'required|email']);
+        Artisan::call('auth:clear-resets');
 
         try {
-            $status = Password::sendResetLink( $request->only( 'email' ) );
-            return $status === Password::RESET_LINK_SENT ? $this->SuccessResponse( '', __( $status ) ) :
-            $this->ErrorResponse( __( $status ) );
-        } catch ( Exception $e ) {
-            return $this->ErrorResponse( $e->getMessage() );
+            $status = Password::sendResetLink($request->only('email'));
+            return $status === Password::RESET_LINK_SENT ? $this->SuccessResponse('', __($status)) :
+                $this->ErrorResponse(__($status));
+        } catch (Exception $e) {
+            return $this->ErrorResponse($e->getMessage());
         }
-
     }
 
     // Reset Password
 
-    public function resetPassword( Request $request ) {
+    public function resetPassword(Request $request)
+    {
 
         // dd( $request->all() );
 
-        $request->validate( [
+        $request->validate([
             'token' => 'required',
             'email' => 'required | email',
-            'password' => [ 'required', Pass::min( 8 )->mixedCase()->numbers()->symbols() ],
-            'password_confirmation' => 'required|same:password' ] );
+            'password' => ['required', Pass::min(8)->mixedCase()->numbers()->symbols()],
+            'password_confirmation' => 'required|same:password'
+        ]);
 
-            $Passwords = DB::table( 'users as u' )
-            ->join( 'password_histories as p', 'u.id', '=', 'p.user_id' )
-            ->where( 'u.email', $request->email )
-            ->orderByDesc( 'p.created_at' )
-            ->limit( 3 )
-            ->get( 'p.password' );
+        $Passwords = DB::table('users as u')
+            ->join('password_histories as p', 'u.id', '=', 'p.user_id')
+            ->where('u.email', $request->email)
+            ->orderByDesc('p.created_at')
+            ->limit(3)
+            ->get('p.password');
 
-            foreach ( $Passwords as $pass ) {
-                if ( Hash::check( $request->password, $pass->password ) ) {
-                    return $this->ErrorResponse( 'Matched with last 3 used password, choose diffrent.' );
-                }
-            }
-
-            try {
-
-                $status = Password::reset(
-                    $request->only( 'email', 'password', 'password_confirmation', 'token' ),
-
-                    function ( User $user, string $password ) {
-                        $user->forceFill( [ 'password' => bcrypt( $password ), 'remember_token' => Str::random( 20 ), 'login_attamp' => 0, 'password_updated_at' => now(), 'password_max_expired' => 90 ] )->save();
-                    }
-                );
-
-                return $status === Password::PASSWORD_RESET ? $this->SuccessResponse( '', __( $status ) ) : $this->ErrorResponse( __( $status ) );
-            } catch ( Exception $e ) {
-                return $this->ErrorResponse( $e->getMessage() );
-            }
-
-        }
-
-        //OTP register
-
-        public function registerOTP( Request $request ) {
-
-            Validator::make( $request->all(), [
-                'otp' => 'required',
-            ] )->validate();
-
-            try {
-                $google2fa = app( Google2FA::class );
-                $otp = $request->input( 'otp' );
-                $UserExist = User::where( 'email', auth()->user()->email )->first();
-                $valid = $google2fa->verifyKey( $UserExist->google2fa_secret, $otp );
-
-                if ( $valid ) {
-                    $UserExist->registered_2fa = 1;
-                    $UserExist->save();
-
-                    $success = [ 'require_2fa' => $UserExist->require_2fa, 'registered_2fa' => 1 ];
-                    return $this->SuccessResponse( $success, 'OTP Authrized.' );
-                } else {
-                    return $this->ErrorResponse( 'Unauthorized OTP' );
-                }
-
-            } catch ( Exception $e ) {
-                return $this->ErrorResponse( $e->getMessage() );
+        foreach ($Passwords as $pass) {
+            if (Hash::check($request->password, $pass->password)) {
+                return $this->ErrorResponse('Matched with last 3 used password, choose diffrent.');
             }
         }
 
-        //OTP register
+        try {
 
-        public function ForcePassReset( Request $request ) {
+            $status = Password::reset(
+                $request->only('email', 'password', 'password_confirmation', 'token'),
 
-            $request->validate( [
-                'old_password' => 'required|string|current_password',
-                // 'password' => [ 'required', Pass::min( 8 )->mixedCase()->numbers()->symbols()->uncompromised() ],
-                'password' => [ 'required', Pass::min( 8 )->mixedCase()->numbers()->symbols() ],
-                'password_confirmation' => 'required|same:password',
-                'eDays' => 'required|integer|between:1,90',
-            ], [
-                'old_password.required' => 'Enter Your Current Password.',
-                'old_password.current_password' => 'Current Password incorrect.',
-            ] );
-
-            if ( strcmp( $request->old_password, $request->password ) == 0 ) {
-                return $this->ErrorResponse( 'New Password cannot be same as your current password.' );
-            }
-
-            $Passwords = Password_history::where( 'user_id', Auth::user()->id )->latest()->take( 3 )->get( 'password' );
-
-            foreach ( $Passwords as $pass ) {
-                if ( Hash::check( $request->password, $pass->password ) ) {
-                    return $this->ErrorResponse( 'Matched with last 3 used password, choose diffrent.' );
+                function (User $user, string $password) {
+                    $user->forceFill(['password' => bcrypt($password), 'remember_token' => Str::random(20), 'login_attamp' => 0, 'password_updated_at' => now(), 'password_max_expired' => 90])->save();
                 }
+            );
+
+            return $status === Password::PASSWORD_RESET ? $this->SuccessResponse('', __($status)) : $this->ErrorResponse(__($status));
+        } catch (Exception $e) {
+            return $this->ErrorResponse($e->getMessage());
+        }
+    }
+
+    //OTP register
+
+    public function registerOTP(Request $request)
+    {
+
+        Validator::make($request->all(), [
+            'otp' => 'required',
+        ])->validate();
+
+        try {
+            $google2fa = app(Google2FA::class);
+            $otp = $request->input('otp');
+            $UserExist = User::where('email', auth()->user()->email)->first();
+            $valid = $google2fa->verifyKey($UserExist->google2fa_secret, $otp);
+
+            if ($valid) {
+                $UserExist->registered_2fa = 1;
+                $UserExist->save();
+
+                $success = ['require_2fa' => $UserExist->require_2fa, 'registered_2fa' => 1];
+                return $this->SuccessResponse($success, 'OTP Authrized.');
+            } else {
+                return $this->ErrorResponse('Unauthorized OTP');
             }
+        } catch (Exception $e) {
+            return $this->ErrorResponse($e->getMessage());
+        }
+    }
 
-            $UserExist = User::where( 'email', Auth::user()->email )->first();
-            $UserExist->password = $request->password;
-            $UserExist->password_updated_at = now();
-            $UserExist->password_max_expired = $request->eDays;
-            $UserExist->login_attamp = 0;
-            $UserExist->save();
-            $success = [];
-            return $this->SuccessResponse( $success, 'Password changed successfully.' );
+    //OTP register
 
+    public function ForcePassReset(Request $request)
+    {
+
+        $request->validate([
+            'old_password' => 'required|string|current_password',
+            // 'password' => [ 'required', Pass::min( 8 )->mixedCase()->numbers()->symbols()->uncompromised() ],
+            'password' => ['required', Pass::min(8)->mixedCase()->numbers()->symbols()],
+            'password_confirmation' => 'required|same:password',
+            'eDays' => 'required|integer|between:1,90',
+        ], [
+            'old_password.required' => 'Enter Your Current Password.',
+            'old_password.current_password' => 'Current Password incorrect.',
+        ]);
+
+        if (strcmp($request->old_password, $request->password) == 0) {
+            return $this->ErrorResponse('New Password cannot be same as your current password.');
         }
 
-        public function xml( Request $request ) {
+        $Passwords = Password_history::where('user_id', Auth::user()->id)->latest()->take(3)->get('password');
 
-            $url = 'https://apac.universal-api.pp.travelport.com/B2BGateway/connect/uAPI/AirService';
-            $xmlPayload = '<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+        foreach ($Passwords as $pass) {
+            if (Hash::check($request->password, $pass->password)) {
+                return $this->ErrorResponse('Matched with last 3 used password, choose diffrent.');
+            }
+        }
+
+        $UserExist = User::where('email', Auth::user()->email)->first();
+        $UserExist->password = $request->password;
+        $UserExist->password_updated_at = now();
+        $UserExist->password_max_expired = $request->eDays;
+        $UserExist->login_attamp = 0;
+        $UserExist->save();
+        $success = [];
+        return $this->SuccessResponse($success, 'Password changed successfully.');
+    }
+
+    public function xml(Request $request)
+    {
+
+        $url = 'https://apac.universal-api.pp.travelport.com/B2BGateway/connect/uAPI/AirService';
+        $xmlPayload = '<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
                             <LowFareSearchReq xmlns="http://www.travelport.com/schema/air_v52_0" TraceId="c8f38268-3b70-4141-869d-010611bc23e5" TargetBranch="P7186658" SolutionResult="true" ReturnUpsellFare="true">
                             <BillingPointOfSaleInfo xmlns="http://www.travelport.com/schema/common_v52_0" OriginApplication="UAPI"/>
                             <SearchAirLeg>
@@ -479,37 +486,36 @@ class AuthController extends BaseController {
                             </LowFareSearchReq>
                             </s:Body>
                             </s:Envelope>';
-            $username =env('API_USERNAME');
-            $password =env('API_PASSWORD');
+        $username = env('API_USERNAME');
+        $password = env('API_PASSWORD');
 
-            $ch = curl_init();
+        $ch = curl_init();
 
-            // Set cURL options
-            curl_setopt( $ch, CURLOPT_URL, $url );
-            curl_setopt( $ch, CURLOPT_POST, true );
-            curl_setopt( $ch, CURLOPT_POSTFIELDS, $xmlPayload );
-            curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
-            curl_setopt( $ch, CURLOPT_HTTPHEADER, [
-                'Content-Type: text/xml;charset=UTF-8',
-            ] );
-            curl_setopt( $ch, CURLOPT_USERPWD, "$username:$password" );
+        // Set cURL options
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $xmlPayload);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: text/xml;charset=UTF-8',
+        ]);
+        curl_setopt($ch, CURLOPT_USERPWD, "$username:$password");
 
-            // Execute and fetch the response
-            $response = curl_exec( $ch );
+        // Execute and fetch the response
+        $response = curl_exec($ch);
 
-            // Check for errors
-            if ( curl_errno( $ch ) ) {
-                $error = curl_error( $ch );
-                curl_close( $ch );
-                return response()->json( [ 'error' => $error ] );
-            }
-
-            curl_close( $ch );
-
-            // Return the response
-
-            dd($response);
-            return $response;
+        // Check for errors
+        if (curl_errno($ch)) {
+            $error = curl_error($ch);
+            curl_close($ch);
+            return response()->json(['error' => $error]);
         }
 
+        curl_close($ch);
+
+        // Return the response
+
+        dd($response);
+        return $response;
     }
+}
