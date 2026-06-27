@@ -11,6 +11,7 @@ class HashIdService
     public const SEARCH_LOG = 'search_log';
     public const PRICE_LOG = 'price_log';
     public const BOOKING_SESSION = 'booking_session';
+    public const DYNAMIC_RULE = 'dynamic_rule';
 
     private array $encoders = [];
 

@@ -255,16 +255,20 @@
 }
 
 [data-bs-theme="dark"] .fare-card__header {
-    background: rgba(255, 255, 255, 0.04) !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+    border-bottom-color: var(--bs-border-color) !important;
 }
 
-[data-bs-theme="dark"] .fare-card__label {
+[data-bs-theme="dark"] .fare-card__title {
     color: var(--bs-body-color) !important;
 }
 
-[data-bs-theme="dark"] .fare-card__class-badge {
+[data-bs-theme="dark"] .fare-card__meta-inline {
     color: var(--bs-secondary-color) !important;
-    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-bs-theme="dark"] .fare-card__meta-inline > span:not(:last-child)::after {
+    color: rgba(255, 255, 255, 0.25) !important;
 }
 
 [data-bs-theme="dark"] .fare-card__currency {
@@ -273,6 +277,36 @@
 
 [data-bs-theme="dark"] .fare-card__amount {
     color: var(--bs-body-color) !important;
+}
+
+[data-bs-theme="dark"] .fare-card__price-toggle-ui {
+    background: #3a4466;
+}
+
+[data-bs-theme="dark"] .fare-card__price-toggle-input:checked + .fare-card__price-toggle-ui {
+    background: #5c6bc0;
+}
+
+[data-bs-theme="dark"] .fare-card__price-line {
+    border-bottom-color: rgba(255, 255, 255, 0.07) !important;
+}
+
+[data-bs-theme="dark"] .fare-card__price-label {
+    color: #9aa5c4 !important;
+}
+
+[data-bs-theme="dark"] .fare-card__price-value {
+    color: #e8eaf6 !important;
+}
+
+[data-bs-theme="dark"] .fare-card__price-line--payable .fare-card__price-label,
+[data-bs-theme="dark"] .fare-card__price-line--payable .fare-card__price-value {
+    color: #64b5f6 !important;
+}
+
+[data-bs-theme="dark"] .fare-card__price-line--interactive:hover,
+[data-bs-theme="dark"] .fare-card__price-line--interactive:focus-visible {
+    background: rgba(100, 181, 246, 0.12) !important;
 }
 
 [data-bs-theme="dark"] .fare-card__divider {
@@ -381,12 +415,6 @@
 [data-bs-theme="dark"] .detail-badge-cabin {
     background-color: rgba(18, 206, 105, 0.12) !important;
     border-color: rgba(18, 206, 105, 0.3) !important;
-}
-
-[data-bs-theme="dark"] .detail-badge-ref {
-    background-color: rgba(133, 100, 4, 0.2) !important;
-    color: #fbbf24 !important;
-    border-color: rgba(212, 160, 23, 0.3) !important;
 }
 
 /* ── Fare Summary + Baggage side column ──────────────────────── */

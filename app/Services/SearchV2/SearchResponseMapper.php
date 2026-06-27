@@ -13,6 +13,7 @@ class SearchResponseMapper
     private array $tncMap       = [];
     private array $airportMap   = [];
     private array $airlineDbMap = [];
+    private array $aircraftMap = [];
 
     public function __construct(
         private readonly AirlineRestrictionResolver $restrictionResolver,
@@ -25,6 +26,7 @@ class SearchResponseMapper
         $this->buildReferenceMaps($root['ReferenceList'] ?? []);
         $this->buildAirportMap();
         $this->buildAirlineDbMap();
+        $this->buildAircraftMap();
 
         $catalogIdentifier = $root['CatalogProductOfferings']['Identifier']['value'] ?? null;
 
@@ -272,7 +274,7 @@ class SearchResponseMapper
                 '_brandRef'                => $brandRef,
                 '_tncRef'                  => $tncRef,
                 '_combinabilityCode'       => $pboffer['CombinabilityCode'] ?? [],
-                'availability_source_codes'=> $availSourceCodes,
+                'availability_source_codes' => $availSourceCodes,
             ];
         }
 
@@ -391,6 +393,42 @@ class SearchResponseMapper
         }
     }
 
+    private function buildAircraftMap(): void
+    {
+        $codes = [];
+        foreach ($this->flightMap as $flight) {
+            $code = trim((string) ($flight['equipment'] ?? ''));
+            if ($code !== '') {
+                $codes[] = $code;
+            }
+        }
+        $codes = array_unique($codes);
+        if (empty($codes)) {
+            return;
+        }
+
+        $rows = DB::table('aircraft_type_designators')
+            ->whereIn('iata_code', $codes)
+            ->get(['iata_code', 'model']);
+
+        foreach ($rows as $row) {
+            $model = trim((string) ($row->model ?? ''));
+            if ($model !== '') {
+                $this->aircraftMap[$row->iata_code] = $model;
+            }
+        }
+    }
+
+    private function resolveAircraftName(string $equipment): string
+    {
+        $equipment = trim($equipment);
+        if ($equipment === '') {
+            return '';
+        }
+
+        return $this->aircraftMap[$equipment] ?? $equipment;
+    }
+
     private function buildSegmentClassMap(?array $product): array
     {
         if (!$product) {
@@ -495,6 +533,7 @@ class SearchResponseMapper
             $opName      = $flight['operatingCarrierName']   ?? '';
             $opNumber    = $flight['operatingCarrierNumber'] ?? '';
             $isCodeshare = $opCarrier !== '' && $opCarrier !== $carrier;
+            $equipment   = trim((string) ($flight['equipment'] ?? ''));
 
             $segments[] = [
                 'carrier_code'             => $carrier,
@@ -510,8 +549,8 @@ class SearchResponseMapper
                 'departure_terminal'       => $dep['terminal'] ?? '',
                 'arrival_terminal'         => $arr['terminal'] ?? '',
                 'duration'                 => $this->formatDuration($leg['duration']),
-                'equipment'                => $flight['equipment'] ?? '',
-                'aircraft_name'            => $flight['equipment'] ?? '',
+                'equipment'                => $equipment,
+                'aircraft_name'            => $this->resolveAircraftName($equipment),
                 'layover_time'             => $isLast ? '' : $leg['layover'],
                 'is_codeshare'             => $isCodeshare,
                 'codeshare_info'           => [
@@ -578,8 +617,12 @@ class SearchResponseMapper
         }
 
         return $result ?: [[
-            'type' => 'Adult', 'passengerTypeCode' => 'ADT',
-            'quantity' => 1, 'baseFare' => 0, 'taxes' => 0, 'totalPrice' => 0,
+            'type' => 'Adult',
+            'passengerTypeCode' => 'ADT',
+            'quantity' => 1,
+            'baseFare' => 0,
+            'taxes' => 0,
+            'totalPrice' => 0,
         ]];
     }
 

@@ -279,30 +279,6 @@ const returnDate = ref(_defaultEnd);
 const returnDatePickerRef = ref(null);
 const isRangePicker = ref(false);
 
-const AVAIL_SOURCE_MAP = {
-    A: { label: 'AVS (availability and schedules)',                                                          bg: '#d1fae5', color: '#065f46' },
-    B: { label: 'Travelport cache',                                                                          bg: '#dbeafe', color: '#1e40af' },
-    C: { label: 'AVS',                                                                                       bg: '#d1fae5', color: '#065f46' },
-    D: { label: 'Direct Access',                                                                             bg: '#ffedd5', color: '#9a3412' },
-    E: { label: 'Travelport cache',                                                                          bg: '#dbeafe', color: '#1e40af' },
-    F: { label: 'Travelport cache',                                                                          bg: '#dbeafe', color: '#1e40af' },
-    G: { label: 'Travelport cache',                                                                          bg: '#dbeafe', color: '#1e40af' },
-    H: { label: 'Travelport cache',                                                                          bg: '#dbeafe', color: '#1e40af' },
-    I: { label: 'Travelport cache',                                                                          bg: '#dbeafe', color: '#1e40af' },
-    K: { label: 'Travelport cache',                                                                          bg: '#dbeafe', color: '#1e40af' },
-    L: { label: 'Last seat availability',                                                                    bg: '#fee2e2', color: '#991b1b' },
-    M: { label: 'Unknown source',                                                                            bg: '#f3f4f6', color: '#6b7280' },
-    O: { label: 'Travelport cache',                                                                          bg: '#dbeafe', color: '#1e40af' },
-    P: { label: 'Travelport cache',                                                                          bg: '#dbeafe', color: '#1e40af' },
-    Q: { label: 'Travelport cache',                                                                          bg: '#dbeafe', color: '#1e40af' },
-    S: { label: 'Seamless',                                                                                  bg: '#ede9fe', color: '#5b21b6' },
-    T: { label: 'Travelport cache',                                                                          bg: '#dbeafe', color: '#1e40af' },
-    U: { label: 'Unknown source',                                                                            bg: '#f3f4f6', color: '#6b7280' },
-    X: { label: 'Customer reusing availability data from customer cache (originally from Travelport)',       bg: '#fef9c3', color: '#854d0e' },
-    Y: { label: 'Customer reusing data obtained from another system (data may be fresh or stored in cache)', bg: '#fef9c3', color: '#854d0e' },
-    Z: { label: 'Customer sold from e-streamed data stored in customer cache',                               bg: '#fef9c3', color: '#854d0e' },
-};
-
 const CLASSIFICATION_LABEL = {
     Refund:         'Refund',
     Rebooking:      'Rebooking',
@@ -326,12 +302,6 @@ const CLASSIFICATION_ICON = {
 };
 const classLabel = (c) => CLASSIFICATION_LABEL[c] ?? c;
 const classIcon  = (c) => CLASSIFICATION_ICON[c]  ?? 'fa-solid fa-circle-question';
-
-
-const availSourceStyle = (code) => {
-    const entry = AVAIL_SOURCE_MAP[code] ?? { bg: '#f3f4f6', color: '#374151' };
-    return `background-color:${entry.bg};color:${entry.color};border:1px solid ${entry.color}33;`;
-};
 
 const formatDisplayDate = (date) => {
     if (!date) return '';
@@ -1885,7 +1855,7 @@ const openReturnPicker = () => {
                                                                             flight.outbound.first_airline_name }}
                                                                     </div>
                                                                     <div style="font-size: 9px; color: #5e6878;">
-                                                                        {{ flight.outbound.segments.map(s => s.is_codeshare ? (s.flight_number + '(' + s.codeshare_info.operating_carrier + s.codeshare_info.operating_flight_number + ')') : s.flight_number).join(' | ') }} - {{ flight.outbound.segments.map(s => s.flightRef).join(' | ') }} | {{ flight.outbound._offering_id }}
+                                                                        {{ flight.outbound.segments.map(s => s.is_codeshare ? (s.flight_number + '(' + s.codeshare_info.operating_carrier + s.codeshare_info.operating_flight_number + ')') : s.flight_number).join(' | ') }}
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -1997,7 +1967,7 @@ const openReturnPicker = () => {
                                                                             flight.inbound.first_airline_name }}
                                                                     </div>
                                                                     <div style="font-size: 9px; color: #5e6878;">
-                                                                        {{ flight.inbound.segments.map(s => s.is_codeshare ? (s.flight_number + '(' + s.codeshare_info.operating_carrier + s.codeshare_info.operating_flight_number + ')') : s.flight_number).join(' | ') }} - {{ flight.inbound.segments.map(s => s.flightRef).join(' | ') }} | {{ flight.inbound._offering_id }}
+                                                                        {{ flight.inbound.segments.map(s => s.is_codeshare ? (s.flight_number + '(' + s.codeshare_info.operating_carrier + s.codeshare_info.operating_flight_number + ')') : s.flight_number).join(' | ') }}
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -2339,10 +2309,6 @@ const openReturnPicker = () => {
                                                                                     route.booking_code }}
 
                                                                             </div>
-                                                                            <div class="border border-1 p-1 detail-badge-ref"
-                                                                                style="background-color: #fff3cd; color: #856404; font-size: 9px; line-height: 1.4; white-space: nowrap;">
-                                                                                {{ flight.outbound._offering_id }} | {{ route.flightRef }} | {{ flight.outbound._selected_productRef }} | {{ flight.outbound._selected_brandRef }} | {{ flight.outbound._selected_tncRef }}
-                                                                            </div>
                                                                         </div>
 
 
@@ -2533,10 +2499,6 @@ const openReturnPicker = () => {
                                                                                 style="background-color: rgb(222, 241, 236); color: rgb(18, 206, 105); font-size: 10px; white-space: nowrap;">
                                                                                 {{ returnRoute.cabin_class }} - {{
                                                                                     returnRoute.booking_code }}
-                                                                            </div>
-                                                                            <div class="border border-1 p-1 detail-badge-ref"
-                                                                                style="background-color: #fff3cd; color: #856404; font-size: 9px; line-height: 1.4; white-space: nowrap;">
-                                                                                {{ flight.inbound._offering_id }} | {{ returnRoute.flightRef }} | {{ flight.inbound._selected_productRef }} | {{ flight.inbound._selected_brandRef }} | {{ flight.inbound._selected_tncRef }}
                                                                             </div>
                                                                         </div>
 
@@ -3061,6 +3023,7 @@ const openReturnPicker = () => {
                                                         <div v-for="(brand, bIdx) in flight.outbound.brand_options" :key="bIdx"
                                                             class="brand-card-item">
                                                             <div class="fare-card" style="height:100%;" :class="['fare-card--eco','fare-card--flex','fare-card--first'][bIdx] ?? 'fare-card--eco'">
+                                                                <!-- Header -->
                                                                 <div class="fare-card__header fare-card__header--slim">
                                                                     <div class="fare-card__header-row">
                                                                         <div class="fare-card__title-block">
@@ -3070,31 +3033,6 @@ const openReturnPicker = () => {
                                                                                 <span v-if="brand.fare_basis_code">{{ brand.fare_basis_code }}</span>
                                                                                 <span v-if="brand.is_default_brand" class="fare-card__meta-tag">Default</span>
                                                                             </span>
-                                                                            <div v-if="brand._refs" class="mt-1" style="font-size:9px;line-height:1.7;">
-                                                                                <div class="d-flex align-items-center gap-1 flex-wrap">
-                                                                                    <span style="background:#e8f4fd;color:#1a6ea8;padding:0 4px;border-radius:3px;font-weight:600;">↑ {{ flight.outbound._offering_id }}</span>
-                                                                                    <span class="text-muted">{{ brand._refs }}</span>
-                                                                                    <template v-if="brand.availability_source_codes">
-                                                                                        <AppTooltip
-                                                                                            v-for="(code, ref) in brand.availability_source_codes"
-                                                                                            :key="ref"
-                                                                                            :content="AVAIL_SOURCE_MAP[code]?.label ?? code"
-                                                                                            placement="top"
-                                                                                        >
-                                                                                            <span
-                                                                                                :style="availSourceStyle(code)"
-                                                                                                style="font-size:9px;padding:1px 5px;border-radius:3px;cursor:default;font-weight:600;">
-                                                                                                {{ code }}
-                                                                                            </span>
-                                                                                        </AppTooltip>
-                                                                                    </template>
-                                                                                </div>
-                                                                                <div v-if="flight.inbound" class="d-flex align-items-center gap-1 flex-wrap">
-                                                                                    <span style="background:#fde8f4;color:#a81a6e;padding:0 4px;border-radius:3px;font-weight:600;">↓ {{ flight.inbound._offering_id }}</span>
-                                                                                    <span class="text-muted">flights:{{ flight.inbound.segments.map(s => s.flightRef).join(',') }}</span>
-                                                                                    <span class="text-muted" style="font-style:italic;opacity:0.7;">(best combinable)</span>
-                                                                                </div>
-                                                                            </div>
                                                                         </div>
                                                                         <label
                                                                             v-if="brandHasAgentPricing(brand)"
@@ -3881,13 +3819,16 @@ const openReturnPicker = () => {
 .fare-card--flex { border-top: 4px solid #3B79F2; }
 .fare-card--first{ border-top: 4px solid #875ae9; }
 
-.fare-card__header--slim {
+.fare-card__header {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
     padding: 10px 12px 8px;
     background: #f9fafb;
     border-bottom: 1px solid #eef0f6;
+}
+.fare-card__header--slim {
+    gap: 4px;
 }
 .fare-card__header-row {
     display: flex;
@@ -3913,6 +3854,9 @@ const openReturnPicker = () => {
     color: #1a2436;
     line-height: 1.2;
     letter-spacing: -0.15px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .fare-card__meta-inline {
     display: flex;
@@ -4056,44 +4000,13 @@ const openReturnPicker = () => {
     margin-right: 3px;
     opacity: 0.9;
 }
-
-.fare-card__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    padding: 16px 18px 12px;
-    background: #f8fafc;
-}
-.fare-card__label {
-    font-size: 15px;
-    font-weight: 700;
-    color: #1a2436;
-    line-height: 1.2;
-}
-.fare-card__class-badge {
-    display: inline-block;
-    margin-top: 5px;
-    font-size: 11px;
-    font-weight: 600;
-    color: #6b7a99;
-    background: #eef0f7;
-    padding: 2px 9px;
-    border-radius: 20px;
-    letter-spacing: 0.4px;
-}
-.fare-card__price-block {
-    text-align: right;
-    line-height: 1;
-}
 .fare-card__currency {
     font-size: 11px;
-    font-weight: 600;
-    color: #6b7a99;
-    display: block;
-    margin-bottom: 2px;
+    font-weight: 700;
+    color: #8b97ad;
 }
 .fare-card__amount {
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 800;
     color: #1a2436;
     letter-spacing: -0.5px;
