@@ -481,15 +481,15 @@ async function submitForm() {
         tinFiles.value.forEach((file, i)   => fd.append(`tinFiles[${i}]`,   file));
         nidFiles.value.forEach((file, i)   => fd.append(`nidFiles[${i}]`,   file));
 
-        const accessToken = authStore.decryptWithAES(authStore.token);
+        const headers = {
+            'Content-Type': 'multipart/form-data',
+            Accept: 'application/json',
+        };
+        if (authStore.hasToken()) {
+            headers.Authorization = 'Bearer ' + authStore.decryptWithAES(authStore.token);
+        }
 
-        const response = await axios.post('/api/agent/registration', fd, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-                Authorization: 'Bearer ' + accessToken,
-                Accept: 'application/json',
-            },
-        });
+        const response = await axios.post('/api/agent/registration', fd, { headers });
 
         Notification.showToast('s', response.data.message);
         openSuccessModal();

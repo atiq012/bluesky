@@ -10,6 +10,7 @@ use App\Models\Agent\AgentUser;
 use App\Models\User;
 use App\Services\ImageService;
 use Carbon\Carbon;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -322,6 +323,18 @@ class AgentController extends BaseController
             }
 
             throw $e;
+        } catch (QueryException $e) {
+            report($e);
+
+            if (str_contains($e->getMessage(), 'Duplicate entry')) {
+                return $this->ErrorResponse(
+                    'This email or registration number is already in use.',
+                    [],
+                    422
+                );
+            }
+
+            return $this->ErrorResponse('Registration failed. Please try again later.', [], 500);
         } catch (\Throwable $e) {
             report($e);
 
@@ -331,6 +344,21 @@ class AgentController extends BaseController
 
     private function processRegistration(Request $request)
     {
+        $request->validate([
+            'agencyName' => 'required|string|max:50',
+            'agencyEmail' => 'required|email|max:50',
+            'agencyPhone' => 'required|string|max:20',
+            'country' => 'required|string|max:255',
+            'city' => 'required|string|max:255',
+            'address' => 'required|string|max:255',
+            'firstName' => 'required|string|max:50',
+            'designation' => 'required|string|max:50',
+            'nidNumber' => 'required|string|max:20',
+            'birthDate' => 'required|string',
+            'email' => 'required|email|max:50',
+            'userPhone' => 'required|string|max:20',
+        ]);
+
         $nullIfEmpty = static function ($value) {
             if (is_string($value)) {
                 $value = trim($value);
@@ -355,6 +383,7 @@ class AgentController extends BaseController
             $agent->phone              = $request->agencyPhone;
             $agent->country            = $request->country;
             $agent->city               = $request->city;
+            $agent->zone               = '';
             $agent->address            = $request->address;
             $agent->established_date   = null;
             if (!empty($request->establishedDate)) {
@@ -367,7 +396,8 @@ class AgentController extends BaseController
             $agent->postal_code        = $nullIfEmpty($request->postalCode);
             $agent->ca_number          = $nullIfEmpty($request->cacNumber);
             $agent->iata_number        = $nullIfEmpty($request->iataNumber);
-            $agent->trade_licence      = $nullIfEmpty($request->tradeLicense);
+            $tradeLicence              = trim((string) $request->tradeLicense);
+            $agent->trade_licence      = $tradeLicence !== '' ? $tradeLicence : ('REG-' . $agentCode);
             $agent->hajj_agency_number = $nullIfEmpty($request->hajjNumber);
             $agent->status             = 'Pending';
             $agent->account_ledger_id  = 1;
@@ -386,13 +416,10 @@ class AgentController extends BaseController
             $agent_user->nid         = $request->nidNumber;
             $agent_user->email       = $request->email;
             $agent_user->designation = $request->designation;
-            $agent_user->dob         = null;
-            if (!empty($request->birthDate)) {
-                try {
-                    $agent_user->dob = Carbon::parse($request->birthDate)->format('Y-m-d');
-                } catch (\Throwable $e) {
-                    $agent_user->dob = null;
-                }
+            try {
+                $agent_user->dob = Carbon::parse($request->birthDate)->format('Y-m-d');
+            } catch (\Throwable $e) {
+                throw new \InvalidArgumentException('Invalid birth date format.');
             }
             $agent_user->phone      = $request->userPhone;
             $agent_user->agent_id   = $agent->id;
