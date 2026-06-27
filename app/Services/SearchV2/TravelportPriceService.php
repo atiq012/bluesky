@@ -5,7 +5,10 @@ namespace App\Services\SearchV2;
 use Exception;
 use App\Models\BookingAttempt;
 use App\Models\BookingPriceLog;
+use App\Models\Agent\Agent;
 use App\Services\SearchV2\Concerns\PersistsTravelportResponseFile;
+use App\Services\DynamicRule\DynamicRulePricingApplier;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
@@ -18,7 +21,8 @@ class TravelportPriceService
     public function __construct(
         private readonly TravelportTokenService  $tokenService,
         private readonly PriceResponseMapper     $mapper,
-        private readonly BookingAttemptService   $bookingAttemptService
+        private readonly BookingAttemptService   $bookingAttemptService,
+        private readonly DynamicRulePricingApplier $dynamicRulePricingApplier,
     ) {}
 
     public function price(array $priceRequest, int|string|null $userId = null): array
@@ -29,9 +33,15 @@ class TravelportPriceService
         $payload      = null;
 
         try {
+            $agencyId = $this->resolveAgencyId($userId);
             $fixture = $this->loadPriceFixture();
             if ($fixture !== null) {
                 $priceData = $this->mapper->map($fixture);
+                $priceData = $this->dynamicRulePricingApplier->applyToPriceData(
+                    $priceData,
+                    $priceRequest['form'] ?? [],
+                    $agencyId
+                );
 
                 return [
                     'price_data'       => $priceData,
@@ -51,6 +61,11 @@ class TravelportPriceService
             $response  = $this->executePrice($priceUrl, $payload);
 
             $priceData = $this->mapper->map($response);
+            $priceData = $this->dynamicRulePricingApplier->applyToPriceData(
+                $priceData,
+                $priceRequest['form'] ?? [],
+                $agencyId
+            );
 
             [$responsePath, $responseBytes] = $this->persistTravelportResponseFile('price', $response, $requestId);
 
@@ -261,5 +276,21 @@ class TravelportPriceService
         }
 
         return json_decode(File::get($path), true) ?? null;
+    }
+
+    private function resolveAgencyId(int|string|null $userId): ?int
+    {
+        if (! $userId) {
+            return null;
+        }
+
+        $id = (int) Cache::remember(
+            "user_agency_id:{$userId}",
+            600,
+            fn() =>
+            Agent::where('user_id', $userId)->value('id') ?? 0
+        );
+
+        return $id ?: null;
     }
 }

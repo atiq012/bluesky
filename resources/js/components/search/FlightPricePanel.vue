@@ -6,6 +6,8 @@ import { useSearchStore } from '../../stores/searchStore'
 import { useTpV2Workbench } from '../../composables/useTpV2Workbench'
 import { buildSelectionJson } from '../../utils/bookingSelectionJson'
 import { completePriceAttempt } from '../../utils/bookingAttemptSession'
+import { formatFareAmount } from '../../utils/dynamicRulePricingDisplay'
+import AgencyPricingBreakdown from '../common/AgencyPricingBreakdown.vue'
 
 const props = defineProps({
     visible:           { type: Boolean, default: false },
@@ -44,6 +46,9 @@ const bookingAttemptId = ref(null)
 const offerId          = ref(null)
 const isDownloading    = ref(false)
 const priceChanged     = ref(false)
+
+const dynamicPricing = computed(() => priceData.value?.dynamic_pricing ?? null)
+const hasDynamicPricing = computed(() => !!dynamicPricing.value?.rule_applied)
 
 watch(
     [() => props.visible, () => props.selectedBrand],
@@ -527,7 +532,20 @@ const attrLabel = (attr) => `${classLabel(attr.classification)} (${attr.inclusio
                                 </div>
                                 <div class="fp-gross-row fp-gross-row--total">
                                     <span>Gross Fare</span>
-                                    <span>{{ priceData.currency }} {{ priceData.total_price.toLocaleString() }}</span>
+                                    <span>{{ priceData.currency }} {{ formatFareAmount(priceData.gross_fare ?? priceData.total_price) }}</span>
+                                </div>
+                            </div>
+
+                            <div v-if="hasDynamicPricing" class="fp-dynamic-pricing">
+                                <div class="fp-section-label">
+                                    <i class="fa-solid fa-calculator me-2"></i>Agency Pricing
+                                </div>
+                                <div class="fp-gross-total">
+                                    <AgencyPricingBreakdown
+                                        :pricing="dynamicPricing"
+                                        :currency="priceData.currency"
+                                        :gross-payment="priceData.gross_payment ?? priceData.total_price"
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -1042,6 +1060,9 @@ const attrLabel = (attr) => `${classLabel(attr.classification)} (${attr.inclusio
     font-size: 15px;
     font-weight: 700;
     color: #7944eb;
+}
+.fp-dynamic-pricing {
+    margin-top: 12px;
 }
 
 /* ── Brand card ──────────────────────────── */

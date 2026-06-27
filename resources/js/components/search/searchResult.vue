@@ -16,8 +16,21 @@ import '../../../css/search-dark.css'
 import FlightPricePanel from './FlightPricePanel.vue'
 import AppTooltip from '../common/AppTooltip.vue'
 import AppModal from '../common/AppModal.vue'
+import AgencyPayableBreakdownModal from '../common/AgencyPayableBreakdownModal.vue'
 import { completePriceAttempt, completeSearchAttempt } from '../../utils/bookingAttemptSession'
+import {
+    subscribeDynamicRulePricingUpdates,
+    unsubscribeDynamicRulePricingUpdates,
+} from '../../utils/useDynamicRulePricingBroadcast'
+import {
+    formatFareAmount,
+    brandGrossFare,
+    brandTotalPayable,
+    brandHasAgentPricing,
+    canShowPayableBreakdown,
+} from '../../utils/dynamicRulePricingDisplay'
 
+let unsubscribeDynamicRuleBroadcast = null;
 
 const authStore    = useAuthStore();
 const bookingStore = useBookingStore();
@@ -51,6 +64,37 @@ const showPricePanel          = ref(false)
 const selectedFlightForPrice  = ref(null)
 const selectedBrandForPrice   = ref(null)
 const searchCollapsed         = ref(false)
+const dualPricingToggles      = reactive({})
+
+function farePriceKey(flightIndex, brandIndex) {
+    return `${flightIndex}-${brandIndex}`
+}
+
+function isDualPrice(flightIndex, brandIndex) {
+    return !!dualPricingToggles[farePriceKey(flightIndex, brandIndex)]
+}
+
+function toggleDualPrice(flightIndex, brandIndex) {
+    const key = farePriceKey(flightIndex, brandIndex)
+    dualPricingToggles[key] = !dualPricingToggles[key]
+}
+
+const payableBreakdownOpen = ref(false)
+const payableBreakdownBrand = ref(null)
+
+function openPayableBreakdown(brand) {
+    if (!canShowPayableBreakdown(brand)) {
+        return
+    }
+
+    payableBreakdownBrand.value = brand
+    payableBreakdownOpen.value = true
+}
+
+function closePayableBreakdown() {
+    payableBreakdownOpen.value = false
+    payableBreakdownBrand.value = null
+}
 
 const isDark = ref(document.documentElement.getAttribute('data-bs-theme') === 'dark')
 const _themeObserver = new MutationObserver(() => {
@@ -493,6 +537,15 @@ onMounted(async () => {
     } else if (bookingStore.timerStartedAt) {
         stopBookingTimerDisplay()
     }
+
+    unsubscribeDynamicRuleBroadcast = subscribeDynamicRulePricingUpdates({
+        onUpdated: () => {
+            if (flights.value.length > 0 && !loadging.value) {
+                void Lowfaresearch();
+            }
+        },
+        shouldRefresh: () => flights.value.length > 0,
+    });
 });
 
 const totalTravellers = computed(() => {
@@ -589,6 +642,7 @@ onBeforeRouteLeave(async (to) => {
 });
 
 onUnmounted(() => {
+    unsubscribeDynamicRulePricingUpdates(unsubscribeDynamicRuleBroadcast);
     document.removeEventListener("click", handleClickOutside);
     document.removeEventListener('visibilitychange', handleVisibilityChange);
     if (bookingTimerInterval.value) clearInterval(bookingTimerInterval.value)
@@ -3007,45 +3061,93 @@ const openReturnPicker = () => {
                                                         <div v-for="(brand, bIdx) in flight.outbound.brand_options" :key="bIdx"
                                                             class="brand-card-item">
                                                             <div class="fare-card" style="height:100%;" :class="['fare-card--eco','fare-card--flex','fare-card--first'][bIdx] ?? 'fare-card--eco'">
-                                                                <!-- Header -->
-                                                                <div class="fare-card__header">
-                                                                    <div>
-                                                                        <div class="fare-card__label">{{ brand.label }}<span v-if="brand.fare_basis_code" class="text-muted ms-2" style="font-size:10px;font-weight:normal;">| {{ brand.fare_basis_code }}</span></div>
-                                                                        <span class="fare-card__class-badge">Class {{ brand.class_of_service }}</span>
-                                                                        <div v-if="brand._refs" class="mt-1" style="font-size:9px;line-height:1.7;">
-                                                                            <!-- Outbound row -->
-                                                                            <div class="d-flex align-items-center gap-1 flex-wrap">
-                                                                                <span style="background:#e8f4fd;color:#1a6ea8;padding:0 4px;border-radius:3px;font-weight:600;">↑ {{ flight.outbound._offering_id }}</span>
-                                                                                <span class="text-muted">{{ brand._refs }}</span>
-                                                                                <template v-if="brand.availability_source_codes">
-                                                                                    <AppTooltip
-                                                                                        v-for="(code, ref) in brand.availability_source_codes"
-                                                                                        :key="ref"
-                                                                                        :content="AVAIL_SOURCE_MAP[code]?.label ?? code"
-                                                                                        placement="top"
-                                                                                    >
-                                                                                        <span
-                                                                                            :style="availSourceStyle(code)"
-                                                                                            style="font-size:9px;padding:1px 5px;border-radius:3px;cursor:default;font-weight:600;">
-                                                                                            {{ code }}
-                                                                                        </span>
-                                                                                    </AppTooltip>
-                                                                                </template>
-                                                                            </div>
-                                                                            <!-- Inbound row (round-trip only) -->
-                                                                            <div v-if="flight.inbound" class="d-flex align-items-center gap-1 flex-wrap">
-                                                                                <span style="background:#fde8f4;color:#a81a6e;padding:0 4px;border-radius:3px;font-weight:600;">↓ {{ flight.inbound._offering_id }}</span>
-                                                                                <span class="text-muted">flights:{{ flight.inbound.segments.map(s => s.flightRef).join(',') }}</span>
-                                                                                <span class="text-muted" style="font-style:italic;opacity:0.7;">(best combinable)</span>
+                                                                <div class="fare-card__header fare-card__header--slim">
+                                                                    <div class="fare-card__header-row">
+                                                                        <div class="fare-card__title-block">
+                                                                            <span class="fare-card__title">{{ brand.label }}</span>
+                                                                            <span class="fare-card__meta-inline">
+                                                                                <span>Class {{ brand.class_of_service }}</span>
+                                                                                <span v-if="brand.fare_basis_code">{{ brand.fare_basis_code }}</span>
+                                                                                <span v-if="brand.is_default_brand" class="fare-card__meta-tag">Default</span>
+                                                                            </span>
+                                                                            <div v-if="brand._refs" class="mt-1" style="font-size:9px;line-height:1.7;">
+                                                                                <div class="d-flex align-items-center gap-1 flex-wrap">
+                                                                                    <span style="background:#e8f4fd;color:#1a6ea8;padding:0 4px;border-radius:3px;font-weight:600;">↑ {{ flight.outbound._offering_id }}</span>
+                                                                                    <span class="text-muted">{{ brand._refs }}</span>
+                                                                                    <template v-if="brand.availability_source_codes">
+                                                                                        <AppTooltip
+                                                                                            v-for="(code, ref) in brand.availability_source_codes"
+                                                                                            :key="ref"
+                                                                                            :content="AVAIL_SOURCE_MAP[code]?.label ?? code"
+                                                                                            placement="top"
+                                                                                        >
+                                                                                            <span
+                                                                                                :style="availSourceStyle(code)"
+                                                                                                style="font-size:9px;padding:1px 5px;border-radius:3px;cursor:default;font-weight:600;">
+                                                                                                {{ code }}
+                                                                                            </span>
+                                                                                        </AppTooltip>
+                                                                                    </template>
+                                                                                </div>
+                                                                                <div v-if="flight.inbound" class="d-flex align-items-center gap-1 flex-wrap">
+                                                                                    <span style="background:#fde8f4;color:#a81a6e;padding:0 4px;border-radius:3px;font-weight:600;">↓ {{ flight.inbound._offering_id }}</span>
+                                                                                    <span class="text-muted">flights:{{ flight.inbound.segments.map(s => s.flightRef).join(',') }}</span>
+                                                                                    <span class="text-muted" style="font-style:italic;opacity:0.7;">(best combinable)</span>
+                                                                                </div>
                                                                             </div>
                                                                         </div>
+                                                                        <label
+                                                                            v-if="brandHasAgentPricing(brand)"
+                                                                            class="fare-card__price-toggle fare-card__price-toggle--sm"
+                                                                            :title="isDualPrice(index, bIdx) ? 'Show selling price only' : 'Show selling and payable'"
+                                                                        >
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                class="fare-card__price-toggle-input"
+                                                                                :checked="isDualPrice(index, bIdx)"
+                                                                                @change="toggleDualPrice(index, bIdx)"
+                                                                            />
+                                                                            <span class="fare-card__price-toggle-ui" aria-hidden="true"></span>
+                                                                        </label>
                                                                     </div>
-                                                                    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
-                                                                        <span v-if="brand.is_default_brand" style="font-size:9px;background:#6c757d;color:#fff;padding:1px 6px;border-radius:3px;font-weight:600;letter-spacing:0.5px;">Default</span>
-                                                                        <div class="fare-card__price-block">
-                                                                            <span class="fare-card__currency">{{ brand.currency }}</span>
-                                                                            <span class="fare-card__amount">{{ brand.price.toLocaleString() }}</span>
-                                                                        </div>
+                                                                    <div class="fare-card__header-row fare-card__header-row--price">
+                                                                        <template v-if="!isDualPrice(index, bIdx)">
+                                                                            <div class="fare-card__price-single">
+                                                                                <span class="fare-card__currency">{{ brand.currency }}</span>
+                                                                                <span class="fare-card__amount">{{ formatFareAmount(brandGrossFare(brand)) }}</span>
+                                                                            </div>
+                                                                        </template>
+                                                                        <template v-else>
+                                                                            <div class="fare-card__price-stack">
+                                                                                <div class="fare-card__price-line">
+                                                                                    <span class="fare-card__price-label">Selling</span>
+                                                                                    <span class="fare-card__price-value">
+                                                                                        <span class="fare-card__price-currency">{{ brand.currency }}</span>
+                                                                                        {{ formatFareAmount(brandGrossFare(brand)) }}
+                                                                                    </span>
+                                                                                </div>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    class="fare-card__price-line fare-card__price-line--payable"
+                                                                                    :class="{ 'fare-card__price-line--interactive': canShowPayableBreakdown(brand) }"
+                                                                                    :title="canShowPayableBreakdown(brand) ? 'View payable breakdown' : undefined"
+                                                                                    @click.stop="openPayableBreakdown(brand)"
+                                                                                >
+                                                                                    <span class="fare-card__price-label">
+                                                                                        Payable
+                                                                                        <i
+                                                                                            v-if="canShowPayableBreakdown(brand)"
+                                                                                            class="fa-solid fa-circle-info fare-card__price-hint"
+                                                                                            aria-hidden="true"
+                                                                                        ></i>
+                                                                                    </span>
+                                                                                    <span class="fare-card__price-value">
+                                                                                        <span class="fare-card__price-currency">{{ brand.currency }}</span>
+                                                                                        {{ formatFareAmount(brandTotalPayable(brand)) }}
+                                                                                    </span>
+                                                                                </button>
+                                                                            </div>
+                                                                        </template>
                                                                     </div>
                                                                 </div>
                                                                 <div class="fare-card__divider"></div>
@@ -3109,6 +3211,14 @@ const openReturnPicker = () => {
         :catalog-identifier="catalogIdentifier"
         :search-log-id="searchLogId"
         @close="showPricePanel = false"
+    />
+
+    <AgencyPayableBreakdownModal
+        :is-open="payableBreakdownOpen"
+        :pricing="payableBreakdownBrand?.dynamic_pricing ?? null"
+        :currency="payableBreakdownBrand?.currency ?? 'BDT'"
+        :gross-payment="payableBreakdownBrand ? brandGrossFare(payableBreakdownBrand) : null"
+        @close="closePayableBreakdown"
     />
 
     <AppModal
@@ -3770,6 +3880,182 @@ const openReturnPicker = () => {
 .fare-card--eco  { border-top: 4px solid #16B4A1; }
 .fare-card--flex { border-top: 4px solid #3B79F2; }
 .fare-card--first{ border-top: 4px solid #875ae9; }
+
+.fare-card__header--slim {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 12px 8px;
+    background: #f9fafb;
+    border-bottom: 1px solid #eef0f6;
+}
+.fare-card__header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 0;
+}
+.fare-card__header-row--price {
+    justify-content: flex-end;
+    padding-top: 1px;
+}
+.fare-card__title-block {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.fare-card__title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a2436;
+    line-height: 1.2;
+    letter-spacing: -0.15px;
+}
+.fare-card__meta-inline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0;
+    font-size: 10px;
+    font-weight: 500;
+    color: #7b879f;
+    line-height: 1.2;
+}
+.fare-card__meta-inline > span:not(:last-child)::after {
+    content: '·';
+    margin: 0 5px;
+    color: #b8c0d0;
+    font-weight: 700;
+}
+.fare-card__meta-tag {
+    color: #5c6778;
+    font-weight: 600;
+}
+.fare-card__price-toggle {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    margin: 0;
+    flex-shrink: 0;
+}
+.fare-card__price-toggle--sm {
+    min-height: 20px;
+    min-width: 32px;
+}
+.fare-card__price-toggle-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.fare-card__price-toggle-ui {
+    width: 28px;
+    height: 16px;
+    border-radius: 999px;
+    background: #c5cae9;
+    position: relative;
+    transition: background 0.2s ease;
+}
+.fare-card__price-toggle-ui::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+    transition: transform 0.2s ease;
+}
+.fare-card__price-toggle-input:checked + .fare-card__price-toggle-ui {
+    background: #3d5afe;
+}
+.fare-card__price-toggle-input:checked + .fare-card__price-toggle-ui::after {
+    transform: translateX(12px);
+}
+.fare-card__price-toggle-input:focus-visible + .fare-card__price-toggle-ui {
+    outline: 2px solid #3d5afe;
+    outline-offset: 1px;
+}
+.fare-card__price-single {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+    font-variant-numeric: tabular-nums;
+}
+.fare-card__price-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    width: 100%;
+    max-width: 100%;
+}
+.fare-card__price-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 3px 0;
+    font-variant-numeric: tabular-nums;
+    border-bottom: 1px solid #eef0f5;
+}
+.fare-card__price-line:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+.fare-card__price-line--payable {
+    padding-top: 2px;
+}
+.fare-card__price-line--payable .fare-card__price-label,
+.fare-card__price-line--payable .fare-card__price-value {
+    color: #1565c0;
+}
+.fare-card__price-line--interactive {
+    width: 100%;
+    border: none;
+    background: transparent;
+    text-align: inherit;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+.fare-card__price-line--interactive:hover,
+.fare-card__price-line--interactive:focus-visible {
+    background: rgba(21, 101, 192, 0.08);
+    outline: none;
+}
+.fare-card__price-hint {
+    margin-left: 4px;
+    font-size: 9px;
+    opacity: 0.75;
+}
+.fare-card__price-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #8b97ad;
+    white-space: nowrap;
+}
+.fare-card__price-value {
+    font-size: 13px;
+    font-weight: 800;
+    color: #1a2436;
+    letter-spacing: -0.25px;
+    text-align: right;
+    white-space: nowrap;
+}
+.fare-card__price-line--payable .fare-card__price-value {
+    font-size: 15px;
+}
+.fare-card__price-currency {
+    font-size: 10px;
+    font-weight: 700;
+    margin-right: 3px;
+    opacity: 0.9;
+}
 
 .fare-card__header {
     display: flex;

@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\Agent\AgentController;
 use App\Http\Controllers\Admin\AircraftType\AircraftTypeDesignatorController;
 use App\Http\Controllers\Admin\AirlineLogo\AirlineLogoController;
 use App\Http\Controllers\Admin\API\APIController;
+use App\Http\Controllers\Admin\API\DynamicRuleCacheController;
 use App\Http\Controllers\Admin\API\SearchV2Controller;
 use App\Http\Controllers\Admin\API\PriceV2Controller;
 use App\Http\Controllers\Admin\API\TravelportFareRulesController;
@@ -193,6 +194,7 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('/v2/search/latest-snapshot', [SearchV2Controller::class, 'latestSnapshot'])->name('search.v2.latestSnapshot');
     Route::get('/flight-search-logs', [SearchV2Controller::class, 'getFlightSearchLogs'])->name('search.v2.logs');
     Route::post('/flight-search-log/view', [SearchV2Controller::class, 'viewFlightSearchLog'])->name('search.v2.logs.view');
+    Route::get('dynamic-rules/cache-stamp', [DynamicRuleCacheController::class, 'cacheStamp'])->name('dynamicRules.cacheStamp');
     Route::get('/v2/fare-rules', [TravelportFareRulesController::class, 'index'])->name('fareRules.index');
     Route::get('/v2/fare-rules/download', [TravelportFareRulesController::class, 'download'])->name('fareRules.download');
 

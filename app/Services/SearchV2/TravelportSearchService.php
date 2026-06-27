@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use App\Models\Agent\Agent;
 use App\Services\SearchV2\SearchResponseMapper;
+use App\Services\DynamicRule\DynamicRulePricingApplier;
 
 class TravelportSearchService
 {
@@ -20,7 +21,8 @@ class TravelportSearchService
     public function __construct(
         private readonly TravelportTokenService $tokenService,
         private readonly SearchResponseMapper $mapper,
-        private readonly BookingAttemptService $bookingAttemptService
+        private readonly BookingAttemptService $bookingAttemptService,
+        private readonly DynamicRulePricingApplier $dynamicRulePricingApplier,
     ) {}
 
     public function search(array $form, int|string|null $userId = null): array
@@ -41,7 +43,7 @@ class TravelportSearchService
                 [$providerResp, $fixtureForm] = $fixture;
                 $effectiveForm     = is_array($fixtureForm) && !empty($fixtureForm) ? $fixtureForm : $form;
                 $mapResult         = $this->mapper->map($providerResp, $effectiveForm, $agencyId);
-                $flights           = $mapResult['flights'];
+                $flights           = $this->dynamicRulePricingApplier->applyToFlights($mapResult['flights'], $effectiveForm, $agencyId);
                 $catalogIdentifier = $mapResult['catalog_identifier'];
 
                 return [
@@ -64,7 +66,7 @@ class TravelportSearchService
             $providerResp      = $this->resolveProviderResponseWithCache($searchUrl, $providerPayload);
 
             $mapResult         = $this->mapper->map($providerResp, $form, $agencyId);
-            $flights           = $mapResult['flights'];
+            $flights           = $this->dynamicRulePricingApplier->applyToFlights($mapResult['flights'], $form, $agencyId);
             $catalogIdentifier = $mapResult['catalog_identifier'];
             $snapshotKey       = $this->persistSnapshot($form, $providerResp, $userId);
 
@@ -121,7 +123,10 @@ class TravelportSearchService
         if (!$userId) {
             return null;
         }
-        $id = (int) Cache::remember("user_agency_id:{$userId}", 600, fn() =>
+        $id = (int) Cache::remember(
+            "user_agency_id:{$userId}",
+            600,
+            fn() =>
             Agent::where('user_id', $userId)->value('id') ?? 0
         );
         return $id ?: null;
