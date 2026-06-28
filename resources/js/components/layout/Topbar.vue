@@ -75,7 +75,7 @@ onMounted(loadBalance);
 
                         </li>
 
-                        <li class="nav-item dropdown dropdown-large">
+                        <!-- <li class="nav-item dropdown dropdown-large">
 
                             <a v-wave class="nav-link dropdown-toggle dropdown-toggle-nocaret position-relative"
                                 href="#" data-bs-toggle="dropdown"><span class="alert-count">7</span>
@@ -223,7 +223,7 @@ onMounted(loadBalance);
                                     </div>
                                 </a>
                             </div>
-                        </li>
+                        </li> -->
 
                     </ul>
                 </div>
@@ -240,7 +240,7 @@ onMounted(loadBalance);
                         <li><a class="dropdown-item d-flex align-items-center" href="javascript:;"><i
                                     class="bx bx-user fs-5"></i><span>Profile</span></a>
                         </li>
-                        <li><a class="dropdown-item d-flex align-items-center" href="javascript:;"><i
+                        <!-- <li><a class="dropdown-item d-flex align-items-center" href="javascript:;"><i
                                     class="bx bx-cog fs-5"></i><span>Settings</span></a>
                         </li>
                         <li><a class="dropdown-item d-flex align-items-center" href="javascript:;"><i
@@ -251,7 +251,7 @@ onMounted(loadBalance);
                         </li>
                         <li><a class="dropdown-item d-flex align-items-center" href="javascript:;"><i
                                     class="bx bx-download fs-5"></i><span>Downloads</span></a>
-                        </li>
+                        </li> -->
                         <li>
                             <div class="dropdown-divider mb-0"></div>
                         </li>
