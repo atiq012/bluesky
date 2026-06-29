@@ -100,6 +100,7 @@ class ImageService
             'hajj_licence_img',
             'tin_img',
             'nid_img',
+            'deposit_reference_img',
             'misc',
         ];
     }

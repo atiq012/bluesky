@@ -164,7 +164,7 @@ const routes = [
 
     //deposit
     { path: '/agent-deposit-list', component: depositList, name: 'depositList', meta: { auth: true } },
-    { path: '/agent-deposit-details', component: depoDetails, name: 'depoDetails', meta: { auth: true } },
+    { path: '/agent-deposit-details/:id', component: depoDetails, name: 'depoDetails', meta: { auth: true }, props: true },
     { path: '/new-deposit-request', component: CreateDeposit, name: 'CreateDeposit', meta: { auth: true } },
     { path: '/account-statement', component: accountStatement, name: 'accountStatement', meta: { auth: true } },
 

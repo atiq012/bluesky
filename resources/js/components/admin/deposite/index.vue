@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import axiosInstance from '../../../axiosInstance';
 import moment from 'moment';
 import ActionButtons from '../../../components/common/ActionButtons.vue';
@@ -8,6 +9,8 @@ import AppButton from '../../../components/common/AppButton.vue';
 import FinancialHistoryModal from './FinancialHistoryModal.vue';
 import { fetchFinancialHistory } from './financialHistoryApi';
 import { runAction } from '../../../utils/runAction';
+
+const router = useRouter();
 
 const rData = ref([]);
 const loading = ref(false);
@@ -87,6 +90,11 @@ async function openHistoryModal() {
 function closeHistoryModal() {
     if (historyLoading.value) return;
     showHistoryModal.value = false;
+}
+
+function openDepositDetails(item) {
+    if (!item?.idd) return;
+    router.push({ name: 'depoDetails', params: { id: item.idd } });
 }
 
 onMounted(getListValues);
@@ -305,10 +313,12 @@ onMounted(getListValues);
                     <template #action="{ value: row }">
                         <ActionButtons
                             :item="row"
+                            :show-view="true"
                             :show-edit="false"
                             :show-delete="false"
                             :show-cancel-booking="row.status === 'Requested'"
                             cancel-booking-label="Cancel Request"
+                            @view="openDepositDetails"
                             @cancel-booking="openCancelModal"
                         />
                     </template>

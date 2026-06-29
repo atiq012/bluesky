@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, watch, onMounted } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axiosInstance from '../../../axiosInstance';
 import AppDatePicker from '../../common/AppDatePicker.vue';
@@ -23,37 +23,12 @@ const form = reactive({
     total_amount: '',
     reference_number: '',
     reference_date: todayDisplay(),
-    reference_file: '',
     remarks: '',
-    payment_type: '',
     issued_bank: '',
 });
 
-const refFile            = ref(null);
-const refFileDisplayUrl  = ref('');
-const refFileUploading   = ref(false);
-const refFileError       = ref('');
-
-watch(refFile, async (file) => {
-    if (!file) return;
-    refFileError.value    = '';
-    refFileUploading.value = true;
-    form.reference_file   = '';
-    refFileDisplayUrl.value = '';
-    try {
-        const fd = new FormData();
-        fd.append('referenceFile', file);
-        const res = await axiosInstance.post('/deposit/upload-reference', fd, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-        });
-        form.reference_file     = res.data.path;
-        refFileDisplayUrl.value = res.data.path;
-    } catch {
-        refFileError.value = 'Upload failed. Try again.';
-    } finally {
-        refFileUploading.value = false;
-    }
-});
+const refFile    = ref(null);
+const submitting = ref(false);
 
 onMounted(() => {
     $('.payment_acc').on('change', function () { form.payment_acc  = $(this).val(); });
@@ -74,14 +49,31 @@ async function loadPaymentAccounts() {
 
 async function submitForm(type) {
     try {
-        form.payment_type = type;
-        const res = await axiosInstance.post('/deposit/save', form);
+        submitting.value = true;
+        const fd = new FormData();
+        fd.append('payment_type', type);
+        fd.append('payment_acc', form.payment_acc);
+        fd.append('requested_amount', form.requested_amount);
+        fd.append('service_charge', form.service_charge);
+        fd.append('total_amount', form.total_amount);
+        fd.append('reference_number', form.reference_number);
+        fd.append('reference_date', form.reference_date);
+        fd.append('remarks', form.remarks);
+        fd.append('issued_bank', form.issued_bank);
+        if (refFile.value) {
+            fd.append('referenceFile', refFile.value);
+        }
+        const res = await axiosInstance.post('/deposit/save', fd, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
         if (res.data.message) {
             Notification.showToast('s', res.data.message);
             router.push({ name: 'depositList' });
         }
     } catch (error) {
         ErrorCatch.CatchError(error);
+    } finally {
+        submitting.value = false;
     }
 }
 </script>
@@ -193,16 +185,13 @@ async function submitForm(type) {
                                                     <div class="d-flex align-items-center gap-3">
                                                         <ImageCropUpload
                                                             v-model="refFile"
-                                                            :display-url="refFileDisplayUrl"
                                                             :max-file-size-mb="2"
                                                             accept="image/jpeg,image/png,image/webp"
                                                             crop-modal-title="Crop Reference Image"
                                                             shape="square"
                                                         />
                                                         <span class="text-muted small">
-                                                            <template v-if="refFileUploading"><i class="fa-solid fa-spinner fa-spin me-1"></i>Uploading...</template>
-                                                            <template v-else-if="form.reference_file"><i class="fa fa-circle-check text-success me-1"></i>Uploaded successfully.</template>
-                                                            <template v-else-if="refFileError"><span class="text-danger">{{ refFileError }}</span></template>
+                                                            <template v-if="refFile"><i class="fa fa-circle-check text-success me-1"></i>Image selected — uploads on submit.</template>
                                                             <template v-else>Click box to upload image (JPG, PNG, WebP — max 2 MB)</template>
                                                         </span>
                                                     </div>
@@ -221,7 +210,10 @@ async function submitForm(type) {
                                 <div class="col-md-9">
                                     <div class="d-flex gap-2">
                                         <router-link :to="{ name: 'depositList' }" class="btn btn-sm btn-secondary px-4">Cancel</router-link>
-                                        <button type="button" class="btn btn-sm btn-info px-4" @click="submitForm('Cash')">Submit</button>
+                                        <button type="button" class="btn btn-sm btn-info px-4" :disabled="submitting" @click="submitForm('Cash')">
+                                            <template v-if="submitting"><i class="fa-solid fa-spinner fa-spin me-1"></i>Submitting...</template>
+                                            <template v-else>Submit</template>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -284,16 +276,13 @@ async function submitForm(type) {
                                                     <div class="d-flex align-items-center gap-3">
                                                         <ImageCropUpload
                                                             v-model="refFile"
-                                                            :display-url="refFileDisplayUrl"
                                                             :max-file-size-mb="2"
                                                             accept="image/jpeg,image/png,image/webp"
                                                             crop-modal-title="Crop Reference Image"
                                                             shape="square"
                                                         />
                                                         <span class="text-muted small">
-                                                            <template v-if="refFileUploading"><i class="fa-solid fa-spinner fa-spin me-1"></i>Uploading...</template>
-                                                            <template v-else-if="form.reference_file"><i class="fa fa-circle-check text-success me-1"></i>Uploaded successfully.</template>
-                                                            <template v-else-if="refFileError"><span class="text-danger">{{ refFileError }}</span></template>
+                                                            <template v-if="refFile"><i class="fa fa-circle-check text-success me-1"></i>Image selected — uploads on submit.</template>
                                                             <template v-else>Click box to upload image (JPG, PNG, WebP — max 2 MB)</template>
                                                         </span>
                                                     </div>
@@ -312,7 +301,10 @@ async function submitForm(type) {
                                 <div class="col-md-9">
                                     <div class="d-flex gap-2">
                                         <router-link :to="{ name: 'depositList' }" class="btn btn-sm btn-secondary px-4">Cancel</router-link>
-                                        <button type="button" class="btn btn-sm btn-info px-4" @click="submitForm('MFS')">Submit</button>
+                                        <button type="button" class="btn btn-sm btn-info px-4" :disabled="submitting" @click="submitForm('MFS')">
+                                            <template v-if="submitting"><i class="fa-solid fa-spinner fa-spin me-1"></i>Submitting...</template>
+                                            <template v-else>Submit</template>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -379,16 +371,13 @@ async function submitForm(type) {
                                                     <div class="d-flex align-items-center gap-3">
                                                         <ImageCropUpload
                                                             v-model="refFile"
-                                                            :display-url="refFileDisplayUrl"
                                                             :max-file-size-mb="2"
                                                             accept="image/jpeg,image/png,image/webp"
                                                             crop-modal-title="Crop Reference Image"
                                                             shape="square"
                                                         />
                                                         <span class="text-muted small">
-                                                            <template v-if="refFileUploading"><i class="fa-solid fa-spinner fa-spin me-1"></i>Uploading...</template>
-                                                            <template v-else-if="form.reference_file"><i class="fa fa-circle-check text-success me-1"></i>Uploaded successfully.</template>
-                                                            <template v-else-if="refFileError"><span class="text-danger">{{ refFileError }}</span></template>
+                                                            <template v-if="refFile"><i class="fa fa-circle-check text-success me-1"></i>Image selected — uploads on submit.</template>
                                                             <template v-else>Click box to upload image (JPG, PNG, WebP — max 2 MB)</template>
                                                         </span>
                                                     </div>
@@ -407,7 +396,10 @@ async function submitForm(type) {
                                 <div class="col-md-9">
                                     <div class="d-flex gap-2">
                                         <router-link :to="{ name: 'depositList' }" class="btn btn-sm btn-secondary px-4">Cancel</router-link>
-                                        <button type="button" class="btn btn-sm btn-info px-4" @click="submitForm('Cheque')">Submit</button>
+                                        <button type="button" class="btn btn-sm btn-info px-4" :disabled="submitting" @click="submitForm('Cheque')">
+                                            <template v-if="submitting"><i class="fa-solid fa-spinner fa-spin me-1"></i>Submitting...</template>
+                                            <template v-else>Submit</template>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -470,16 +462,13 @@ async function submitForm(type) {
                                                     <div class="d-flex align-items-center gap-3">
                                                         <ImageCropUpload
                                                             v-model="refFile"
-                                                            :display-url="refFileDisplayUrl"
                                                             :max-file-size-mb="2"
                                                             accept="image/jpeg,image/png,image/webp"
                                                             crop-modal-title="Crop Reference Image"
                                                             shape="square"
                                                         />
                                                         <span class="text-muted small">
-                                                            <template v-if="refFileUploading"><i class="fa-solid fa-spinner fa-spin me-1"></i>Uploading...</template>
-                                                            <template v-else-if="form.reference_file"><i class="fa fa-circle-check text-success me-1"></i>Uploaded successfully.</template>
-                                                            <template v-else-if="refFileError"><span class="text-danger">{{ refFileError }}</span></template>
+                                                            <template v-if="refFile"><i class="fa fa-circle-check text-success me-1"></i>Image selected — uploads on submit.</template>
                                                             <template v-else>Click box to upload image (JPG, PNG, WebP — max 2 MB)</template>
                                                         </span>
                                                     </div>
@@ -502,7 +491,10 @@ async function submitForm(type) {
                                 <div class="col-md-9">
                                     <div class="d-flex gap-2">
                                         <router-link :to="{ name: 'depositList' }" class="btn btn-sm btn-secondary px-4">Cancel</router-link>
-                                        <button type="button" class="btn btn-sm btn-info px-4" @click="submitForm('Bank_Transfer')">Submit</button>
+                                        <button type="button" class="btn btn-sm btn-info px-4" :disabled="submitting" @click="submitForm('Bank_Transfer')">
+                                            <template v-if="submitting"><i class="fa-solid fa-spinner fa-spin me-1"></i>Submitting...</template>
+                                            <template v-else>Submit</template>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -559,16 +551,13 @@ async function submitForm(type) {
                                                     <div class="d-flex align-items-center gap-3">
                                                         <ImageCropUpload
                                                             v-model="refFile"
-                                                            :display-url="refFileDisplayUrl"
                                                             :max-file-size-mb="2"
                                                             accept="image/jpeg,image/png,image/webp"
                                                             crop-modal-title="Crop Reference Image"
                                                             shape="square"
                                                         />
                                                         <span class="text-muted small">
-                                                            <template v-if="refFileUploading"><i class="fa-solid fa-spinner fa-spin me-1"></i>Uploading...</template>
-                                                            <template v-else-if="form.reference_file"><i class="fa fa-circle-check text-success me-1"></i>Uploaded successfully.</template>
-                                                            <template v-else-if="refFileError"><span class="text-danger">{{ refFileError }}</span></template>
+                                                            <template v-if="refFile"><i class="fa fa-circle-check text-success me-1"></i>Image selected — uploads on submit.</template>
                                                             <template v-else>Click box to upload image (JPG, PNG, WebP — max 2 MB)</template>
                                                         </span>
                                                     </div>
@@ -591,7 +580,10 @@ async function submitForm(type) {
                                 <div class="col-md-9">
                                     <div class="d-flex gap-2">
                                         <router-link :to="{ name: 'depositList' }" class="btn btn-sm btn-secondary px-4">Cancel</router-link>
-                                        <button type="button" class="btn btn-sm btn-info px-4" @click="submitForm('Credit_Request')">Submit</button>
+                                        <button type="button" class="btn btn-sm btn-info px-4" :disabled="submitting" @click="submitForm('Credit_Request')">
+                                            <template v-if="submitting"><i class="fa-solid fa-spinner fa-spin me-1"></i>Submitting...</template>
+                                            <template v-else>Submit</template>
+                                        </button>
                                     </div>
                                 </div>
                             </div>

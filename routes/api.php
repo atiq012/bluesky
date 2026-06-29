@@ -175,7 +175,7 @@ Route::middleware(['auth:api'])->group(function () {
 
     // deposit section
     Route::get('getDeposit', [DepositController::class, 'index'])->name('deposit.getDeposit');
-    Route::post('/deposit/upload-reference', [DepositController::class, 'uploadReferenceFile'])->name('deposit.uploadReference');
+    Route::get('/deposit/{id}', [DepositController::class, 'show'])->name('deposit.show');
     Route::post('/deposit/save', [DepositController::class, 'store'])->name('deposit.store');
     Route::post('/deleteDeposite', [DepositController::class, 'destroy'])->name('deposit.deleteDeposite');
     Route::post('banDeposite', [DepositController::class, 'destroy']);

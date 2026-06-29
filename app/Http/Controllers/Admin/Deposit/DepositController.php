@@ -35,131 +35,211 @@ class DepositController extends BaseController
             ->make(true);
     }
 
-    public function uploadReferenceFile(Request $request, ImageService $imageService)
+    public function store(Request $request, ImageService $imageService)
     {
         $request->validate([
-            'referenceFile' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'referenceFile' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ]);
 
-        $path = $imageService->uploadAgentImage($request->file('referenceFile'), 'referenceFile');
-
-        return response()->json(['path' => $path]);
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        // Get the authenticated user
         $user = auth()->user();
-
         $agent = Agent::where('user_id', $user->id)->first();
-        // dd($request->all());
-        if ($request->payment_type == 'Cash') {
 
-            $depo                  = new Deposit;
-            $depo->type            = $request->payment_type;
-            $depo->agent_id        = $agent->id;
-            $depo->paid_account_no = $request->payment_acc;
-            $depo->amount          = $request->requested_amount;
-            $depo->charge          = $request->service_charge;
-            $depo->total           = $request->total_amount;
-            $depo->reference_no    = $request->reference_number;
-            $depo->reference_date  = date('Y-m-d', strtotime($request->reference_date));
-            $depo->reference_file  = $request->reference_file;
-            $depo->remarks         = $request->remarks;
-            $depo->status          = 'Requested';
-            $depo->created_by      = auth()->user()->id;
-            $depo->save();
-        } else if ($request->payment_type == 'MFS') {
-
-            $depo                  = new Deposit;
-            $depo->type            = $request->payment_type;
-            $depo->agent_id        = $agent->id;
-            $depo->paid_account_no = $request->payment_acc;
-            $depo->amount          = $request->requested_amount;
-            $depo->charge          = $request->service_charge;
-            $depo->issued_bank     = $request->issued_bank;
-            $depo->total           = $request->total_amount;
-            // $depo->reference_no =  $request->reference_number;
-            $depo->reference_date = date('Y-m-d', strtotime($request->reference_date));
-            $depo->reference_file = $request->reference_file;
-            $depo->remarks        = $request->remarks;
-            $depo->status         = 'Requested';
-            $depo->created_by     = auth()->user()->id;
-            $depo->save();
-        } else if ($request->payment_type == 'Cheque') {
-
-            $depo                  = new Deposit;
-            $depo->type            = $request->payment_type;
-            $depo->agent_id        = $agent->id;
-            $depo->paid_account_no = $request->payment_acc;
-            $depo->amount          = $request->requested_amount;
-            $depo->charge          = $request->service_charge;
-            $depo->total           = $request->total_amount;
-            $depo->issued_bank     = $request->issued_bank;
-            // $depo->reference_no =  $request->reference_number;
-            $depo->reference_date = date('Y-m-d', strtotime($request->reference_date));
-            $depo->reference_file = $request->reference_file;
-            $depo->remarks        = $request->remarks;
-            $depo->status         = 'Requested';
-            $depo->created_by     = auth()->user()->id;
-            $depo->save();
-        } else if ($request->payment_type == 'Bank_Transfer') {
-
-            $depo                  = new Deposit;
-            $depo->type            = 'Bank Transfer';
-            $depo->agent_id        = $agent->id;
-            $depo->paid_account_no = $request->payment_acc;
-            $depo->amount          = $request->requested_amount;
-            $depo->charge          = $request->service_charge;
-            $depo->total           = $request->total_amount;
-            $depo->issued_bank     = $request->issued_bank;
-            // $depo->reference_no =  $request->reference_number;
-            $depo->reference_date = date('Y-m-d', strtotime($request->reference_date));
-            $depo->reference_file = $request->reference_file;
-            $depo->remarks        = $request->remarks;
-            $depo->status         = 'Requested';
-            $depo->created_by     = auth()->user()->id;
-            $depo->save();
-        } else if ($request->payment_type == 'Credit_Request') {
-
-            $depo                  = new Deposit;
-            $depo->type            = 'Credit Request';
-            $depo->agent_id        = $agent->id;
-            $depo->paid_account_no = $request->payment_acc;
-            $depo->amount          = $request->requested_amount;
-            $depo->charge          = $request->service_charge;
-            $depo->total           = $request->total_amount;
-            // $depo->reference_no =  $request->reference_number;
-            $depo->reference_date = date('Y-m-d', strtotime($request->reference_date));
-            $depo->reference_file = $request->reference_file;
-            $depo->remarks        = $request->remarks;
-            $depo->status         = 'Requested';
-            $depo->created_by     = auth()->user()->id;
-            $depo->save();
+        $referenceFilePath = null;
+        if ($request->hasFile('referenceFile')) {
+            $referenceFilePath = $imageService->uploadAgentImage($request->file('referenceFile'), 'referenceFile');
         }
-        // Prepare the success response
-        $success = '';
 
-        return $this->SuccessResponse($success, 'Successfully Deposit Saved.');
+        try {
+            if ($request->payment_type == 'Cash') {
+
+                $depo                  = new Deposit;
+                $depo->type            = $request->payment_type;
+                $depo->agent_id        = $agent->id;
+                $depo->paid_account_no = $request->payment_acc;
+                $depo->amount          = $request->requested_amount;
+                $depo->charge          = $request->service_charge;
+                $depo->total           = $request->total_amount;
+                $depo->reference_no    = $request->reference_number;
+                $depo->reference_date  = date('Y-m-d', strtotime($request->reference_date));
+                $depo->reference_file  = $referenceFilePath;
+                $depo->remarks         = $request->remarks;
+                $depo->status          = 'Requested';
+                $depo->created_by      = auth()->user()->id;
+                $depo->save();
+            } else if ($request->payment_type == 'MFS') {
+
+                $depo                  = new Deposit;
+                $depo->type            = $request->payment_type;
+                $depo->agent_id        = $agent->id;
+                $depo->paid_account_no = $request->payment_acc;
+                $depo->amount          = $request->requested_amount;
+                $depo->charge          = $request->service_charge;
+                $depo->issued_bank     = $request->issued_bank;
+                $depo->total           = $request->total_amount;
+                // $depo->reference_no =  $request->reference_number;
+                $depo->reference_date = date('Y-m-d', strtotime($request->reference_date));
+                $depo->reference_file = $referenceFilePath;
+                $depo->remarks        = $request->remarks;
+                $depo->status         = 'Requested';
+                $depo->created_by     = auth()->user()->id;
+                $depo->save();
+            } else if ($request->payment_type == 'Cheque') {
+
+                $depo                  = new Deposit;
+                $depo->type            = $request->payment_type;
+                $depo->agent_id        = $agent->id;
+                $depo->paid_account_no = $request->payment_acc;
+                $depo->amount          = $request->requested_amount;
+                $depo->charge          = $request->service_charge;
+                $depo->total           = $request->total_amount;
+                $depo->issued_bank     = $request->issued_bank;
+                // $depo->reference_no =  $request->reference_number;
+                $depo->reference_date = date('Y-m-d', strtotime($request->reference_date));
+                $depo->reference_file = $referenceFilePath;
+                $depo->remarks        = $request->remarks;
+                $depo->status         = 'Requested';
+                $depo->created_by     = auth()->user()->id;
+                $depo->save();
+            } else if ($request->payment_type == 'Bank_Transfer') {
+
+                $depo                  = new Deposit;
+                $depo->type            = 'Bank Transfer';
+                $depo->agent_id        = $agent->id;
+                $depo->paid_account_no = $request->payment_acc;
+                $depo->amount          = $request->requested_amount;
+                $depo->charge          = $request->service_charge;
+                $depo->total           = $request->total_amount;
+                $depo->issued_bank     = $request->issued_bank;
+                // $depo->reference_no =  $request->reference_number;
+                $depo->reference_date = date('Y-m-d', strtotime($request->reference_date));
+                $depo->reference_file = $referenceFilePath;
+                $depo->remarks        = $request->remarks;
+                $depo->status         = 'Requested';
+                $depo->created_by     = auth()->user()->id;
+                $depo->save();
+            } else if ($request->payment_type == 'Credit_Request') {
+
+                $depo                  = new Deposit;
+                $depo->type            = 'Credit Request';
+                $depo->agent_id        = $agent->id;
+                $depo->paid_account_no = $request->payment_acc;
+                $depo->amount          = $request->requested_amount;
+                $depo->charge          = $request->service_charge;
+                $depo->total           = $request->total_amount;
+                // $depo->reference_no =  $request->reference_number;
+                $depo->reference_date = date('Y-m-d', strtotime($request->reference_date));
+                $depo->reference_file = $referenceFilePath;
+                $depo->remarks        = $request->remarks;
+                $depo->status         = 'Requested';
+                $depo->created_by     = auth()->user()->id;
+                $depo->save();
+            }
+        } catch (\Throwable $e) {
+            if ($referenceFilePath) {
+                $imageService->deleteByDbPath($referenceFilePath);
+            }
+
+            throw $e;
+        }
+
+        return $this->SuccessResponse('', 'Successfully Deposit Saved.');
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(string $id)
     {
-        //
+        $depositId = hashid_decode(HashIdService::DEPOSIT, $id);
+        if (! $depositId) {
+            return $this->ErrorResponse('Deposit not found.', [], 404);
+        }
+
+        $agent = Agent::where('user_id', Auth::id())->first();
+        if (! $agent) {
+            return $this->ErrorResponse('Agent account not found.', [], 404);
+        }
+
+        $row = DB::table('deposits as d')
+            ->join('agents as ag', 'd.agent_id', 'ag.id')
+            ->leftJoin('payment_accounts as pa', 'd.paid_account_no', 'pa.id')
+            ->leftJoin('issued_bank_m_f_s as ib', 'd.issued_bank', 'ib.id')
+            ->where('d.id', $depositId)
+            ->where('d.agent_id', $agent->id)
+            ->selectRaw('
+                d.id,
+                d.type,
+                d.amount,
+                d.charge,
+                d.total,
+                d.reference_no,
+                d.reference_date,
+                d.reference_file,
+                d.remarks,
+                d.status,
+                d.created_at,
+                ag.name as agent_name,
+                ag.agent_code,
+                ag.logo_path,
+                ag.net_balance,
+                ag.credit_balance,
+                ag.iata_number,
+                pa.bank_name as payment_bank,
+                pa.acc_no as payment_acc_no,
+                pa.branch as payment_branch,
+                ib.name as issued_bank_name,
+                f_username(d.created_by) as requested_by
+            ')
+            ->first();
+
+        if (! $row) {
+            return $this->ErrorResponse('Deposit not found.', [], 404);
+        }
+
+        return $this->SuccessResponse([
+            'id' => hashid_encode(HashIdService::DEPOSIT, (int) $row->id),
+            'type' => $row->type,
+            'amount' => $row->amount,
+            'charge' => $row->charge,
+            'total' => $row->total,
+            'reference_no' => $row->reference_no,
+            'reference_date' => $row->reference_date,
+            'reference_file' => $this->normalizeUploadPath($row->reference_file),
+            'remarks' => $row->remarks,
+            'status' => $row->status,
+            'created_at' => $row->created_at,
+            'agent_name' => $row->agent_name,
+            'agent_code' => $row->agent_code,
+            'logo_path' => $this->normalizeUploadPath($row->logo_path),
+            'net_balance' => $row->net_balance,
+            'credit_balance' => $row->credit_balance,
+            'iata_number' => $row->iata_number,
+            'payment_bank' => $row->payment_bank,
+            'payment_acc_no' => $row->payment_acc_no,
+            'payment_branch' => $row->payment_branch,
+            'issued_bank_name' => $row->issued_bank_name,
+            'requested_by' => $row->requested_by,
+        ], 'Deposit loaded.');
+    }
+
+    private function normalizeUploadPath(?string $path): ?string
+    {
+        if (! $path) {
+            return null;
+        }
+
+        $path = trim($path);
+        if ($path === '') {
+            return null;
+        }
+
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
+        }
+
+        $path = preg_replace('#^public/#', '', $path);
+        if (! str_starts_with($path, '/')) {
+            $path = '/' . ltrim($path, '/');
+        }
+
+        return $path;
     }
 
     /**
