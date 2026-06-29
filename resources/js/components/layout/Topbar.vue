@@ -420,8 +420,8 @@ onMounted(loadBalance);
 }
 
 .pill-credit {
-    background: #FFF4E5;
-    border-color: #FAC775;
+    background: #ffeceb;
+    border-color: #fa7a75;
     color: #633806;
 }
 
@@ -431,8 +431,8 @@ onMounted(loadBalance);
 }
 
 .pill-balance {
-    background: #EAF3DE;
-    border-color: #C0DD97;
+    background: #e3ecf7de;
+    border-color: #95acd7;
     color: #173404;
 }
 
