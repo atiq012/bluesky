@@ -37,19 +37,15 @@ const panelStyle = computed(() => {
 <template>
     <Teleport to="body">
         <Transition name="app-modal-fade">
-            <div
-                v-if="isOpen"
-                class="app-modal-backdrop"
-                :class="align === 'top' ? 'app-modal-backdrop-top' : ''"
-                @click.self="closeOnBackdrop && $emit('close')"
-            >
+            <div v-if="isOpen" class="app-modal-backdrop" :class="align === 'top' ? 'app-modal-backdrop-top' : ''"
+                @click.self="closeOnBackdrop && $emit('close')">
                 <div :class="dialogClass" :style="panelStyle" class="app-modal-dialog">
                     <div class="modal-content app-modal-content">
                         <div v-if="showHeader" class="modal-header app-modal-header">
                             <slot name="header">
                                 <h5 class="modal-title app-modal-title">{{ title }}</h5>
                             </slot>
-                            <button type="button" class="btn-close" aria-label="Close" @click="$emit('close')"></button>
+                            <button type="button" class="btn-close ms-auto" aria-label="Close" @click="$emit('close')"></button>
                         </div>
                         <slot />
                     </div>

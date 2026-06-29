@@ -8,178 +8,10 @@ const authStore = useAuthStore();
 const form = reactive({
     useEmail: authStore.email, name: '', email: "", staff_id: '',
     profile_picture: '',
-    phone: '', dept_name: '', desg: '', off_loct: '', report_to: '', role_id: '',
+    phone: '', dept_name: '', desg: '',
 });
 
 
-
-getDepartment();
-
-async function getDepartment() {
-    try {
-        const response = await axiosInstance.get('getAllDept');
-
-        var options = [];
-        $.each(response.data, function (key, value) {
-            var obj = { id: value.id, text: value.name }
-            options.push(obj);
-
-        });
-
-        let select = $("#deptment_id")
-        select.select2({
-            placeholder: '=Select=',
-            theme: 'bootstrap-5',
-            width: '100%',
-            allowClear: true,
-            height: '50',
-            data: options,
-        });
-
-
-    } catch (error) {
-        // console.log(error);
-
-    }
-}
-
-getDesignation();
-
-async function getDesignation() {
-    try {
-        const response = await axiosInstance.get('getAllDesign');
-
-        var options = [];
-        $.each(response.data, function (key, value) {
-            var obj = { id: value.id, text: value.name }
-            options.push(obj);
-
-        });
-
-        let select = $("#desg_id")
-        select.select2({
-            placeholder: '=Select=',
-            theme: 'bootstrap-5',
-            width: '100%',
-            allowClear: true,
-            height: '50',
-            data: options,
-        });
-
-
-    } catch (error) {
-        // console.log(error);
-
-    }
-}
-
-getOffLoc();
-
-async function getOffLoc() {
-    try {
-        const response = await axiosInstance.get('getAllOffLoc');
-
-        var options = [];
-        $.each(response.data, function (key, value) {
-            var obj = { id: value.id, text: value.name }
-            options.push(obj);
-
-        });
-
-        let select = $("#off_loc")
-        select.select2({
-            placeholder: '=Select=',
-            theme: 'bootstrap-5',
-            width: '100%',
-            allowClear: true,
-            height: '50',
-            data: options,
-        });
-
-
-    } catch (error) {
-        // console.log(error);
-
-    }
-}
-getRoles();
-
-async function getRoles() {
-    try {
-        const response = await axiosInstance.get('getAllRoles');
-
-        var options = [];
-        $.each(response.data, function (key, value) {
-            var obj = { id: value.id, text: value.name }
-            options.push(obj);
-
-        });
-
-        let select = $("#role_id")
-        select.select2({
-            placeholder: '=Select=',
-            theme: 'bootstrap-5',
-            width: '100%',
-            allowClear: true,
-            height: '50',
-            data: options,
-        });
-
-
-    } catch (error) {
-        // console.log(error);
-
-    }
-}
-
-getAllUsers();
-
-async function getAllUsers() {
-    try {
-        const response = await axiosInstance.get('getAllUsers');
-
-        var options = [];
-        $.each(response.data, function (key, value) {
-            var obj = { id: value.id, text: value.name }
-            options.push(obj);
-        });
-
-        let select = $("#report_to")
-        select.select2({
-            placeholder: '=Select=',
-            theme: 'bootstrap-5',
-            width: '100%',
-            allowClear: true,
-            height: '50',
-            data: options,
-        });
-
-
-    } catch (error) {
-        // console.log(error);
-
-    }
-}
-
-
-onMounted(() => {
-    $('.dept_name').on("change", function () {
-        form.dept_name = $(this).val();
-    });
-
-    $('.desg').on("change", function () {
-        form.desg = $(this).val();
-    });
-    $('.off_loc').on("change", function () {
-        form.off_loct = $(this).val();
-    });
-    $('.report_to').on("change", function () {
-        form.report_to = $(this).val();
-    });
-    $('.role').on("change", function () {
-        form.role_id = $(this).val();
-    });
-});
 
 async function save() {
     // console.log(form);
@@ -198,17 +30,6 @@ async function save() {
         });
 
         document.getElementById("addUserform").reset();
-
-        $('.dept_name option:first').prop('selected', true).trigger(
-            "change"); // reset dropdown value
-        $('.desg option:first').prop('selected', true).trigger(
-            "change"); // reset dropdown value
-        $('.off_loc option:first').prop('selected', true).trigger(
-            "change"); // reset dropdown value
-        $('.report_to option:first').prop('selected', true).trigger(
-            "change"); // reset dropdown value
-        $('.role option:first').prop('selected', true).trigger(
-            "change"); // reset dropdown value
         previewImage.value = '';
 
         Notification.showToast('s', response.data.message);
@@ -221,7 +42,7 @@ async function save() {
     }
 }
 const previewImage = ref('');
-
+const profilePicture = ref(null);
 
 const handleFileChange = (event) => {
     form.profile_picture = event.target.files[0];
@@ -232,6 +53,11 @@ const handleFileChange = (event) => {
     reader.onload = (e) => {
         previewImage.value = e.target.result;
     };
+}
+
+// triggers the hidden file input when the upload box or "Choose File" link is clicked
+function triggerFileInput() {
+    profilePicture.value.click();
 }
 </script>
 
@@ -252,106 +78,176 @@ const handleFileChange = (event) => {
             </nav>
         </div>
     </div>
-    <div class="card">
-        <div class="card-header">
-            <h5 class="m-0 p-0" style="border-left:5px solid #7239ea;"> &nbsp; Create New User</h5>
+
+    <div class="card user-create-card">
+        <div class="card-header bg-white">
+            <h5 class="m-0 p-0 card-title-accent">&nbsp; Create New User</h5>
         </div>
         <form id="addUserform">
 
-            <div class="card-body">
-                <div class="row">
+            <div class="card-body p-4">
+                <div class="row g-4">
+                    <!-- Profile Image -->
                     <div class="col-lg-2">
-                        <p class="text-center">Profile Image</p>
+                        <label class="form-label">Profile Image</label>
 
-                        <div class="mb-3 pt-0 text-center mx-auto">
-                            <img v-if="previewImage" :src="previewImage" height="150" width="150"
-                                class="border border-1 rounded rounded-2" alt="Profile Picture">
-                            <img v-else src="../../../../../public/theme/appimages/profile_default_img.svg" height="150" width="150"
-                                class="border border-1 rounded rounded-2" alt="Profile Picture">
+                        <div class="profile-upload-box" @click="triggerFileInput">
+                            <img v-if="previewImage" :src="previewImage" alt="Profile Picture"
+                                class="profile-preview-img">
+                            <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="1.6">
+                                <rect x="3" y="5" width="18" height="14" rx="2" />
+                                <circle cx="9" cy="10.5" r="1.6" />
+                                <path d="M3 16.5l5-4.5 3.5 3 4-3.5L21 16" />
+                            </svg>
                         </div>
 
-                        <input type="file" id="profile-picture" ref="profilePicture" class="w-1/2"
+                        <button type="button" class="choose-file-btn" @click="triggerFileInput">Choose File</button>
+                        <input type="file" id="profile-picture" ref="profilePicture" class="d-none"
                             @change="handleFileChange" accept="image/*">
                     </div>
-                    <div class="col-lg-8" style="border-left: 2px solid #dfeffd;">
-                        <div class="row">
+
+                    <!-- Form Fields -->
+                    <div class="col-lg-10">
+                        <div class="row g-4">
                             <div class="col-md-6">
-                                <div class="row">
-                                    <div class="col-md-12">
-                                        <label for="input1" class="form-label">Name</label>
-                                        <input type="text" class="form-control form-control-sm" id="name"
-                                            placeholder="Enter Name" v-model="form.name">
-                                    </div>
-                                    <div class="col-md-12 mt-2">
-                                        <label for="input4" class="form-label">Email</label><input type="email"
-                                            class="form-control form-control-sm" id="input4" placeholder="Email"
-                                            v-model="form.email">
-                                    </div>
-                                    <div class="col-md-12 mt-2">
-                                        <label for="input7" class="form-label">Department</label>
-                                        <select id="deptment_id" class="form-control form-control-sm dept_name">
-                                            <option>Choose...</option>
-
-                                        </select>
-                                    </div>
-                                    <div class="col-md-12 mt-2">
-                                        <label for="input11" class="form-label">Office Location</label>
-                                        <select id="off_loc" class="form-control form-control-sm off_loc">
-                                            <option>Choose...</option>
-
-                                        </select>
-                                    </div>
-
-                                    <div class="col-md-12 mt-2">
-                                        <label for="input11" class="form-label">Role</label>
-                                        <select id="role_id" class="form-control form-control-sm role">
-                                            <option>Choose...</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-
+                                <label for="name" class="form-label">Name</label>
+                                <input type="text" class="form-control custom-input" id="name"
+                                    placeholder="Enter Your Name" v-model="form.name">
                             </div>
                             <div class="col-md-6">
-                                <div class="row">
-                                    <div class="col-md-12">
-                                        <label for="input1" class="form-label">Staff ID</label>
-                                        <input type="text" class="form-control form-control-sm" id="input1"
-                                            placeholder="Enter Name" v-model="form.staff_id">
-                                    </div>
-                                    <div class="col-md-12 mt-2">
-                                        <label for="input4" class="form-label">Phone</label><input type="number"
-                                            class="form-control form-control-sm" id="input4" placeholder="Phone"
-                                            v-model="form.phone">
-                                    </div>
+                                <label for="staff_id" class="form-label">Staff ID</label>
+                                <input type="text" class="form-control custom-input" id="staff_id"
+                                    placeholder="Enter Your Staff ID" v-model="form.staff_id">
+                            </div>
 
-                                    <div class="col-md-12 mt-2">
-                                        <label for="input4" class="form-label">Designation</label>
-                                        <select id="desg_id" class="form-control form-control-sm desg">
-                                            <option>Choose...</option>
+                            <div class="col-md-6">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" class="form-control custom-input" id="email"
+                                    placeholder="Enter Your Email" v-model="form.email">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="phone" class="form-label">Phone</label>
+                                <input type="number" class="form-control custom-input" id="phone"
+                                    placeholder="Enter Your Phone Number" v-model="form.phone">
+                            </div>
 
-                                        </select>
-                                    </div>
-
-                                    <div class="col-md-12 mt-2">
-                                        <label for="input4" class="form-label">Report To</label>
-                                        <select id="report_to" class="form-control form-control-sm report_to">
-                                            <option>Choose...</option>
-
-                                        </select>
-                                    </div>
-                                </div>
+                            <div class="col-md-6">
+                                <label for="deptment_id1" class="form-label">Department</label>
+                                <input type="text" class="form-control custom-input" id="deptment_id1"
+                                    placeholder="Enter Department Name" v-model="form.deptment_id">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="desg_id1" class="form-label">Designation</label>
+                                <input type="text" class="form-control custom-input" id="desg_id1"
+                                    placeholder="Enter Your Designation" v-model="form.desg_id">
                             </div>
                         </div>
-
                     </div>
                 </div>
             </div>
-            <div class="card-footer">
-                <button type="button" @click="save()"
-                    class="m-2 btn btn-sm btn-info px-4 ms-2 float-end text-white">Save</button>
-                <button class="m-2 btn btn-sm btn-danger px-4 ms-2  float-end" @click="$router.go(-1)">Back </button>
+
+            <div class="card-footer bg-white mb-3">
+                <button type="button" @click="save()" class="btn btn-save px-4 float-end ms-2 mb-3">Save</button>
+                <button type="button" class="btn btn-back px-4 float-end mb-3" @click="$router.go(-1)">Back</button>
             </div>
         </form>
     </div>
 </template>
+
+<style scoped>
+.user-create-card {
+    border: none;
+    border-radius: 14px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.card-title-accent {
+    border-left: 4px solid #4f6df5;
+    padding-left: 10px;
+    font-weight: 600;
+    color: #1d2433;
+}
+
+.form-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #344054;
+    margin-bottom: 6px;
+}
+
+.custom-input {
+    border: 1px solid #e3e8ef;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 0.9rem;
+    background: #fff;
+    width: 100%;
+}
+
+.custom-input:focus {
+    border-color: #4f6df5;
+    box-shadow: 0 0 0 3px rgba(79, 109, 245, 0.12);
+    outline: none;
+}
+
+.profile-upload-box {
+    width: 120px;
+    height: 110px;
+    border: 1.5px dashed #a9c1f5;
+    border-radius: 12px;
+    background: #f3f6ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.profile-upload-box svg {
+    width: 32px;
+    height: 32px;
+    color: #6a8bf2;
+}
+
+.profile-preview-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.choose-file-btn {
+    background: none;
+    border: none;
+    color: #4f6df5;
+    font-size: 0.85rem;
+    text-decoration: underline;
+    padding: 0;
+    cursor: pointer;
+    display: block;
+}
+
+.btn-save {
+    background-color: #4f6df5;
+    border: none;
+    color: #fff;
+    border-radius: 8px;
+}
+
+.btn-save:hover {
+    background-color: #3d5ae0;
+    color: #fff;
+}
+
+.btn-back {
+    background-color: #f1f3f6;
+    border: none;
+    color: #555;
+    border-radius: 8px;
+}
+
+.btn-back:hover {
+    background-color: #e4e7ec;
+}
+</style>
