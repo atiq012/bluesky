@@ -48,7 +48,7 @@ onMounted(loadBalance);
                 </div>
                 <a href="#" class="gt-brand me-auto">
 
-                    <span class="agent_company_name fadeIn animated">{{ authStore.agent_name ?? '' }}</span>
+                    <span class="agent_company_name fadeIn animated">{{ authStore.agent_name }}</span>
                 </a>
 
                 <div class="top-menu ms-auto">

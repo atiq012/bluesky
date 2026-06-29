@@ -293,6 +293,8 @@ authStore.getRequire_2fa      = res.data.data.require_2fa
 authStore.getotp_regisered    = res.data.data.registered_2fa   // DB value
 authStore.getgoogle2fa_secret = res.data.data.google2fa_secret
 authStore.getgoogle2fa_qr     = res.data.data.google2fa_qr
+authStore.agent_name = res.data.data.agent_name;
+
 
 // already registered → frontend store clear (backend already null)
 if (registered_2fa == 1) {

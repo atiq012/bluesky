@@ -18,6 +18,7 @@ export const useAuthStore = defineStore(
         const getgoogle2fa_qr = ref("");
         const email = ref("");
         const name = ref("");
+        const agent_name = ref("");
         const GlobalLoading = ref(false);
 
         const showExpireWarrning = ref(false);
@@ -122,6 +123,7 @@ export const useAuthStore = defineStore(
             email,
             token,
             name,
+            agent_name,
             encryptWithAES,
             decryptWithAES,
             hasToken,
