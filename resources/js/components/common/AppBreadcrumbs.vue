@@ -1,7 +1,6 @@
 <script setup>
 defineProps({
     title: { type: String, required: true },
-    icon: { type: String, default: 'fa-solid fa-sliders' },
     backTo: { type: Object, default: null },
     breadcrumbs: { type: Array, default: () => [] },
 });
@@ -19,9 +18,7 @@ defineProps({
 
         <div class="flex-grow-1">
             <div class="d-flex flex-wrap align-items-center gap-2 app-bc-row">
-                <div class="app-bc-title">
-                    <i :class="[icon, 'app-bc-ico']"></i>{{ title }}
-                </div>
+                <div class="app-bc-title">{{ title }}</div>
                 <span class="text-muted app-bc-sep">|</span>
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb mb-0 p-0">
@@ -86,12 +83,6 @@ defineProps({
 .app-bc-sep {
     font-size: 13px;
     opacity: 0.65;
-}
-
-.app-bc-ico {
-    color: #4f46e5;
-    margin-right: 4px;
-    font-size: 11px;
 }
 
 [data-bs-theme="dark"] .app-bc-back-btn {

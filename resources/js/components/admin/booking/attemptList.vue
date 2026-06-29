@@ -1,4 +1,6 @@
 <script setup>
+import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
+
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import axiosInstance from '../../../axiosInstance'
@@ -128,17 +130,14 @@ onMounted(() => load())
 </script>
 
 <template>
-    <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
-        <div class="breadcrumb-title pe-3">Flight Management</div>
-        <div class="ps-3">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0 p-0">
-                    <li class="breadcrumb-item"><router-link :to="{ name: 'Home' }">Dashboard</router-link></li>
-                    <li class="breadcrumb-item active">Booking attempts</li>
-                </ol>
-            </nav>
-        </div>
-    </div>
+        <AppBreadcrumbs
+        title="Flight Management"
+        :back-to="{ name: 'Home' }"
+        :breadcrumbs="[
+            { label: 'Dashboard', to: { name: 'Home' } },
+            { label: 'Booking attempts' },
+        ]"
+    />
 
     <div class="card attempt-list-card">
         <div class="card-header">Booking attempts (support audit)</div>

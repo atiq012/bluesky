@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import AppBreadcrumbs from '../common/AppBreadcrumbs.vue';
+
 import { ref } from "vue";
 import "@vuepic/vue-datepicker/dist/main.css";
 
@@ -56,19 +58,14 @@ const searchFlights = () => {
 </script>
 
 <template>
-    <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
-        <div class="breadcrumb-title pe-3">Settingsx</div>
-        <div class="ps-3">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0 p-0">
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'Home' }">Dashboardx</router-link>
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">Flight Searchx</li>
-                </ol>
-            </nav>
-        </div>
-    </div>
+        <AppBreadcrumbs
+        title="Settingsx"
+        :back-to="{ name: 'Home' }"
+        :breadcrumbs="[
+            { label: 'Dashboardx', to: { name: 'Home' } },
+            { label: 'Flight Searchx' },
+        ]"
+    />
 
     <div class="row">
         <div class="col-12">

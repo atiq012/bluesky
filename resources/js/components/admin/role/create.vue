@@ -1,4 +1,6 @@
 <script setup>
+import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
+
 
 import { useAuthStore } from "../../../stores/authStore";
 import axiosInstance from "../../../axiosInstance"
@@ -29,23 +31,15 @@ async function dataSave() {
 </script>
 
 <template>
-    <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
-        <div class="breadcrumb-title pe-3">Settings</div>
-        <div class="ps-3">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0 p-0">
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'Home' }">Dashboard</router-link>
-
-                    </li>
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'roleList' }">Role-permission List</router-link>
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">Create New Role</li>
-                </ol>
-            </nav>
-        </div>
-    </div>
+        <AppBreadcrumbs
+        title="Settings"
+        :back-to="{ name: 'roleList' }"
+        :breadcrumbs="[
+            { label: 'Dashboard', to: { name: 'Home' } },
+            { label: 'Role-permission List', to: { name: 'roleList' } },
+            { label: 'Create New Role' },
+        ]"
+    />
 
     <form @submit.prevent="dataSave" id="AddRoleForm">
         <div class="card">

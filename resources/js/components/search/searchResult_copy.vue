@@ -1,4 +1,6 @@
 <script setup>
+import AppBreadcrumbs from '../common/AppBreadcrumbs.vue';
+
 import { ref, onMounted, onUnmounted, reactive } from "vue";
 import axiosInstance from "../../axiosInstance"
 import VueDatePicker from '@vuepic/vue-datepicker';
@@ -273,19 +275,14 @@ function showRouteDetails(info) {
 
 </script>
 <template>
-    <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
-        <div class="breadcrumb-title pe-3">Settings</div>
-        <div class="ps-3">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0 p-0">
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'Home' }">Dashboard</router-link>
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">Flight Search Result</li>
-                </ol>
-            </nav>
-        </div>
-    </div>
+        <AppBreadcrumbs
+        title="Settings"
+        :back-to="{ name: 'Home' }"
+        :breadcrumbs="[
+            { label: 'Dashboard', to: { name: 'Home' } },
+            { label: 'Flight Search Result' },
+        ]"
+    />
 
     <div class="row">
         <div class="card flight-search-body">

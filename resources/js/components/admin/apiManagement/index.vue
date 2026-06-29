@@ -1,4 +1,5 @@
 <script setup>
+import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
 import DataTable from "datatables.net-vue3";
 import DataBS5 from "datatables.net-bs5";
 import axiosInstance from "../../../axiosInstance";
@@ -303,32 +304,22 @@ async function getListValues() {
 
 </script>
 <template>
-    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-        <div class="flex-grow-1">
-            <div class="d-flex flex-wrap align-items-center gap-2">
-                <div class="fw-semibold text-dark">API Management</div>
-                <span class="text-muted small">|</span>
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb mb-0 p-0 small">
-                        <li class="breadcrumb-item">
-                            <router-link :to="{ name: 'Home' }">Dashboard</router-link>
-                        </li>
-                        <li class="breadcrumb-item">
-                            <router-link :to="{ name: 'offLoc' }">Setting</router-link>
-                        </li>
-                        <li class="breadcrumb-item active" aria-current="page">API List</li>
-                    </ol>
-                </nav>
-            </div>
-        </div>
-
-        <div class="ms-auto">
+    <AppBreadcrumbs
+        title="API Management"
+        :back-to="{ name: 'Home' }"
+        :breadcrumbs="[
+            { label: 'Dashboard', to: { name: 'Home' } },
+            { label: 'Setting', to: { name: 'offLoc' } },
+            { label: 'API List' },
+        ]"
+    >
+        <template #actions>
             <router-link :to="{ name: 'addApi' }" class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2">
                 <i class="fa fa-circle-plus"></i>
                 <span>Create</span>
             </router-link>
-        </div>
-    </div>
+        </template>
+    </AppBreadcrumbs>
 
     <div class="row g-3 mb-3">
         <div class="col-12 col-md-4">

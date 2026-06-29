@@ -1,4 +1,6 @@
 <script setup>
+import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
+
 import DataTable from "datatables.net-vue3";
 import DataBS5 from "datatables.net-bs5";
 import axiosInstance from "../../../axiosInstance";
@@ -70,30 +72,16 @@ function addSegment() {
 </script>
 
 <template>
-    <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
-        <div class="breadcrumb-title pe-3"> Flight Management</div>
-        <div class="ps-3">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0 p-0">
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'Home' }">Dashboard</router-link>
-                    </li>
-                    <!-- <li class="breadcrumb-item" aria-current="page">
-                        <router-link :to="{ name: 'bookingList' }">Flight Management</router-link>
-                    </li> -->
-                    <li class="breadcrumb-item active" aria-current="page">
-
-                        <router-link :to="{ name: 'bookingList' }">Booking & Ticketing List</router-link>
-
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">
-                        Manual Ticketing
-                    </li>
-
-                </ol>
-            </nav>
-        </div>
-        <div class="ms-auto">
+        <AppBreadcrumbs
+        title="Flight Management"
+        :back-to="{ name: 'bookingList' }"
+        :breadcrumbs="[
+            { label: 'Dashboard', to: { name: 'Home' } },
+            { label: 'Booking & Ticketing List', to: { name: 'bookingList' } },
+            { label: 'Manual Ticketing' },
+        ]"
+    >
+        <template #actions>
             <div class="btn-group">
                 <router-link :to="{ name: 'CreateAgency' }" class="btn btn-outline-primary btn-sm pt-2">
                     <i class="fa fa-file-import"></i> Import PNR
@@ -103,8 +91,8 @@ function addSegment() {
                     <i class="fa fa-circle-plus"></i> Manual Ticketing
                 </router-link>
             </div>
-        </div>
-    </div>
+        </template>
+    </AppBreadcrumbs>
 
     <div class="row position-relative mt-4">
         <div class="col-12 col-md-12 com-sm-12">

@@ -62,7 +62,6 @@ onMounted(loadDeposit);
 <template>
     <AppBreadcrumbs
         title="Deposit Management"
-        icon="fa-solid fa-wallet"
         :back-to="{ name: 'depositList' }"
         :breadcrumbs="[
             { label: 'Dashboard', to: { name: 'Home' } },

@@ -1,4 +1,6 @@
 <script setup>
+import AppBreadcrumbs from '../../../common/AppBreadcrumbs.vue';
+
 import DataTable from "datatables.net-vue3";
 import DataBS5 from "datatables.net-bs5";
 import axiosInstance from "../../../../axiosInstance";
@@ -234,35 +236,25 @@ async function getListValues() {
 
 </script>
 <template>
-    <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
-
-
-        <div class="breadcrumb-title pe-3">Settings</div>
-        <div class="ps-3">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0 p-0">
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'Home' }">Dashboard</router-link>
-                    </li>
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'airlinesList' }">Settings</router-link>
-                    </li>
-                    <!-- <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'issuedBankMFS' }">Deposit</router-link>
-                    </li> -->
-                    <li class="breadcrumb-item active" aria-current="page">Airlines</li>
-                </ol>
-            </nav>
-        </div>
-        <div class="ms-auto">
+        <AppBreadcrumbs
+        title="Settings"
+        :back-to="{ name: 'issuedBankMFS' }"
+        :breadcrumbs="[
+            { label: 'Dashboard', to: { name: 'Home' } },
+            { label: 'Settings', to: { name: 'airlinesList' } },
+            { label: 'Deposit', to: { name: 'issuedBankMFS' } },
+            { label: 'Airlines' },
+        ]"
+    >
+        <template #actions>
             <div class="btn-group">
                 <router-link :to="{ name: 'airlinesCreate' }" class="btn btn-primary btn-sm">
                     <i class="fa fa-circle-plus"></i> Airlines
                 </router-link>
 
             </div>
-        </div>
-    </div>
+        </template>
+    </AppBreadcrumbs>
 
 
     <div class="row">

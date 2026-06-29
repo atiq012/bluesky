@@ -1,4 +1,6 @@
 <script setup>
+import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
+
 import { ref, onMounted, reactive } from "vue";
 import axiosInstance from "../../../axiosInstance"
 import VueDatePicker from '@vuepic/vue-datepicker';
@@ -352,22 +354,15 @@ async function getKam() {
 </script>
 
 <template>
-    <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
-        <div class="breadcrumb-title pe-3">B2B Agent</div>
-        <div class="ps-3">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0 p-0">
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'Home' }">Dashboard</router-link>
-                    </li>
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'AgentList' }">B2B Agent List</router-link>
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">Create Agent</li>
-                </ol>
-            </nav>
-        </div>
-    </div>
+        <AppBreadcrumbs
+        title="B2B Agent"
+        :back-to="{ name: 'AgentList' }"
+        :breadcrumbs="[
+            { label: 'Dashboard', to: { name: 'Home' } },
+            { label: 'B2B Agent List', to: { name: 'AgentList' } },
+            { label: 'Create Agent' },
+        ]"
+    />
 
     <form id="addAgentForm">
         <div class="card" style="box-shadow: none !important;">

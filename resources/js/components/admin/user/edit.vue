@@ -1,4 +1,6 @@
 <script setup>
+import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
+
 import { useAuthStore } from "../../../stores/authStore";
 import axiosInstance from "../../../axiosInstance";
 import { ref, onMounted, reactive } from "vue";
@@ -117,22 +119,15 @@ function triggerFileInput() {
 </script>
 
 <template>
-    <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
-        <div class="breadcrumb-title pe-3">User Managemnet</div>
-        <div class="ps-3">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0 p-0">
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'Home' }">Dashboard</router-link>
-                    </li>
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'UserList' }">User List</router-link>
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">Create New User</li>
-                </ol>
-            </nav>
-        </div>
-    </div>
+        <AppBreadcrumbs
+        title="User Managemnet"
+        :back-to="{ name: 'UserList' }"
+        :breadcrumbs="[
+            { label: 'Dashboard', to: { name: 'Home' } },
+            { label: 'User List', to: { name: 'UserList' } },
+            { label: 'Create New User' },
+        ]"
+    />
 
     <div class="card user-create-card">
         <div class="card-header bg-white">
