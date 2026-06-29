@@ -154,19 +154,8 @@ class BookingAttemptController extends BaseController
 
     private function commitWithBalance(BookingAttempt $attempt, ?int $userId): array
     {
-        $agent = $this->balanceService->resolveAgentForUser($attempt->user_id);
-        $amount = $this->balanceService->resolveBookingAmount($attempt);
-
-        if ($agent) {
-            $this->balanceService->assertSufficientBalance($agent, $amount);
-        }
-
         $commit = $this->commitService->commit($attempt, $userId);
         $attempt->refresh();
-
-        if ($agent) {
-            $this->balanceService->debitForBooking($agent, $amount, $attempt, $userId);
-        }
 
         return $commit;
     }

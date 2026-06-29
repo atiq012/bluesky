@@ -6,6 +6,7 @@ use Exception;
 use Illuminate\Http\Request;
 use App\Http\Controllers\BaseController;
 use App\Models\BookingAttempt;
+use App\Services\AgentBalanceService;
 use App\Services\HashIdService;
 use App\Services\SearchV2\TpV2VoidService;
 
@@ -13,6 +14,7 @@ class TpV2VoidController extends BaseController
 {
     public function __construct(
         private readonly TpV2VoidService $voidService,
+        private readonly AgentBalanceService $balanceService,
     ) {}
 
     public function voidTicket(Request $request, int|string $id)
@@ -43,17 +45,10 @@ class TpV2VoidController extends BaseController
             ], 422);
         }
 
-        try {
-            $result = $this->voidService->void($attempt, $requestedTickets, optional(auth()->user())->id);
+        $userId = optional(auth()->user())->id;
 
-            return response()->json([
-                'status'          => true,
-                'message'         => 'Ticket(s) voided successfully.',
-                'pnr'             => $result['pnr'],
-                'voided_at'       => $result['voided_at'],
-                'voided_tickets'  => $result['voided_tickets'],
-                'document_status' => $result['document_status'],
-            ]);
+        try {
+            $result = $this->voidService->void($attempt, $requestedTickets, $userId);
         } catch (Exception $e) {
             report($e);
 
@@ -62,5 +57,24 @@ class TpV2VoidController extends BaseController
                 'message' => $e->getMessage() ?: 'Ticket void failed. Please try again.',
             ], 500);
         }
+
+        try {
+            $agent = $this->balanceService->resolveAgentForUser($userId);
+            if ($agent) {
+                $amount = $this->balanceService->resolveBookingAmount($attempt);
+                $this->balanceService->creditForVoid($agent, $amount, $attempt, $userId);
+            }
+        } catch (Exception $e) {
+            report($e);
+        }
+
+        return response()->json([
+            'status'          => true,
+            'message'         => 'Ticket(s) voided successfully.',
+            'pnr'             => $result['pnr'],
+            'voided_at'       => $result['voided_at'],
+            'voided_tickets'  => $result['voided_tickets'],
+            'document_status' => $result['document_status'],
+        ]);
     }
 }

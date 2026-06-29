@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin\Deposit;
 
 use App\Http\Controllers\BaseController;
+use App\Jobs\BroadcastResourceEvent;
 use App\Models\Agent\Agent;
 use App\Models\Deposit\Deposit;
 use App\Models\User;
@@ -141,6 +142,11 @@ class DepositController extends BaseController
 
             throw $e;
         }
+
+        BroadcastResourceEvent::dispatch('deposits', 'Created', [
+            'id'       => $depo->id,
+            'actor_id' => $user->id,
+        ]);
 
         return $this->SuccessResponse('', 'Successfully Deposit Saved.');
     }

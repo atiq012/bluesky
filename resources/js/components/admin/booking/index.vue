@@ -16,6 +16,7 @@ import CancelConfirmModal from './CancelConfirmModal.vue'
 import VoidConfirmModal from './VoidConfirmModal.vue'
 import VoidResultModal from './VoidResultModal.vue'
 import BookingHistoryModal from './BookingHistoryModal.vue'
+import TicketErrorModal from './TicketErrorModal.vue'
 
 const rows = ref([])
 const loading = ref(false)
@@ -43,6 +44,9 @@ const voidTargetRow = ref(null)
 const voidConfirmLoading = ref(false)
 const showVoidModal = ref(false)
 const voidModalData = ref({ pnr: null, voidedAt: null, voidedTickets: [] })
+
+const showTicketErrorModal = ref(false)
+const ticketErrorData = ref({ pnr: null, message: null })
 
 const { issueTicket } = useTpV2Ticket()
 const { cancelBooking } = useTpV2Cancel()
@@ -263,14 +267,21 @@ async function onIssueTicket(row) {
             pnr: row.gds_pnr ?? row.pnr ?? null,
         }
         showTicketModal.value = true
+        window.dispatchEvent(new CustomEvent('balance:refresh'))
 
         await load()
     } catch (e) {
-        Notification.showToast('e', e?.response?.data?.message || 'Ticketing failed. Please try again.')
+        const msg = e?.response?.data?.message || 'Ticketing failed. Please try again.'
+        ticketErrorData.value = { pnr: row?.gds_pnr ?? row?.pnr ?? null, message: msg }
+        showTicketErrorModal.value = true
     } finally {
         loadingItemId.value = null
         loadingAction.value = null
     }
+}
+
+function handleTicketErrorModalClose() {
+    showTicketErrorModal.value = false
 }
 
 function handleTicketModalClose() {
@@ -361,6 +372,7 @@ async function onVoidConfirmed(selectedTickets) {
             voidedTickets: res.voided_tickets ?? selectedTickets,
         }
         showVoidModal.value = true
+        window.dispatchEvent(new CustomEvent('balance:refresh'))
         await load()
     } catch (e) {
         Notification.showToast('e', e?.response?.data?.message || 'Ticket void failed. Please try again.')
@@ -726,6 +738,13 @@ onMounted(() => load())
         :voided-at="voidModalData.voidedAt"
         :voided-tickets="voidModalData.voidedTickets"
         @close="handleVoidModalClose"
+    />
+
+    <TicketErrorModal
+        :visible="showTicketErrorModal"
+        :pnr="ticketErrorData.pnr"
+        :message="ticketErrorData.message"
+        @close="handleTicketErrorModalClose"
     />
 </template>
 

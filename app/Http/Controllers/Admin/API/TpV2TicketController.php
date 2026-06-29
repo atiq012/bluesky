@@ -6,6 +6,7 @@ use Exception;
 use Illuminate\Http\Request;
 use App\Http\Controllers\BaseController;
 use App\Models\BookingAttempt;
+use App\Services\AgentBalanceService;
 use App\Services\HashIdService;
 use App\Services\SearchV2\TpV2TicketService;
 
@@ -13,6 +14,7 @@ class TpV2TicketController extends BaseController
 {
     public function __construct(
         private readonly TpV2TicketService $ticketService,
+        private readonly AgentBalanceService $balanceService,
     ) {}
 
     public function issueTicket(Request $request, int|string $id)
@@ -27,15 +29,28 @@ class TpV2TicketController extends BaseController
             ], 422);
         }
 
-        try {
-            $result = $this->ticketService->issue($attempt, optional(auth()->user())->id);
+        $userId = optional(auth()->user())->id;
+        $agent  = $this->balanceService->resolveAgentForUser($userId);
 
+        if (!$agent) {
             return response()->json([
-                'status'         => true,
-                'message'        => 'Ticket issued successfully.',
-                'ticket_numbers' => $result['ticket_numbers'],
-                'ticketed_at'    => $result['ticketed_at'],
-            ]);
+                'status'  => false,
+                'message' => 'Agent account not found.',
+            ], 422);
+        }
+
+        try {
+            $amount = $this->balanceService->resolveBookingAmount($attempt);
+            $this->balanceService->assertSufficientBalance($agent, $amount);
+        } catch (Exception $e) {
+            return response()->json([
+                'status'  => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+
+        try {
+            $result = $this->ticketService->issue($attempt, $userId);
         } catch (Exception $e) {
             report($e);
 
@@ -44,5 +59,18 @@ class TpV2TicketController extends BaseController
                 'message' => $e->getMessage() ?: 'Ticketing failed. Please try again.',
             ], 500);
         }
+
+        try {
+            $this->balanceService->debitForBooking($agent, $amount, $attempt, $userId);
+        } catch (Exception $e) {
+            report($e);
+        }
+
+        return response()->json([
+            'status'         => true,
+            'message'        => 'Ticket issued successfully.',
+            'ticket_numbers' => $result['ticket_numbers'],
+            'ticketed_at'    => $result['ticketed_at'],
+        ]);
     }
 }

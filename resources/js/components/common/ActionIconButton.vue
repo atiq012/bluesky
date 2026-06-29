@@ -1,5 +1,6 @@
 <script setup>
 import AppTooltip from './AppTooltip.vue';
+import LoadingSpinner from './LoadingSpinner.vue';
 
 defineProps({
     loading: { type: Boolean, default: false },
@@ -23,7 +24,7 @@ defineEmits(['click']);
                 @click="$emit('click')"
             >
                 <span v-if="loading" class="action-icon-btn__content" role="status" aria-hidden="true">
-                    <span class="spinner-border spinner-border-sm"></span>
+                    <LoadingSpinner inline size="sm" />
                 </span>
                 <span v-else class="action-icon-btn__content" aria-hidden="true">
                     <i :class="icon"></i>
@@ -92,9 +93,7 @@ defineEmits(['click']);
     cursor: not-allowed;
 }
 
-.action-icon-btn .spinner-border {
-    width: 0.85rem;
-    height: 0.85rem;
+.action-icon-btn :deep(.ls-spin) {
     color: var(--action-btn-color, #94a3b8);
 }
 </style>

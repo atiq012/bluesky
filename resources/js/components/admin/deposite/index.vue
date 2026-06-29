@@ -11,6 +11,7 @@ import { fetchFinancialHistory } from './financialHistoryApi';
 import { runAction } from '../../../utils/runAction';
 import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
 import AppTooltip from '../../common/AppTooltip.vue';
+import { useRealtimeList } from '../../../composables/useRealtimeList';
 
 const router = useRouter();
 
@@ -120,6 +121,8 @@ function openDepositDetails(item) {
 }
 
 onMounted(getListValues);
+
+useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
 </script>
 
 <template>
