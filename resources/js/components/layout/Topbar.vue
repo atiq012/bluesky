@@ -35,7 +35,7 @@ async function loadBalance() {
         const data = res.data?.data || {};
         creditBalance.value = data.credit_balance ?? 0;
         netBalance.value = data.net_balance ?? 0;
-    } catch {}
+    } catch { }
 }
 
 onMounted(loadBalance);
@@ -46,15 +46,83 @@ onMounted(loadBalance);
             <nav class="navbar navbar-expand gap-2 align-items-center">
                 <div class="mobile-toggle-menu d-flex" @click="menuTaggle"><i class='bx bx-menu'></i>
                 </div>
+                <a href="#" class="gt-brand me-auto">
+
+                    <span class="agent_company_name fadeIn animated">{{ authStore.agent_name ?? '' }}</span>
+                </a>
 
                 <div class="top-menu ms-auto">
                     <ul class="navbar-nav align-items-center gap-1">
+                        <div class="wallet-pill-group me-3 dropdown" id="walletDropdown">
+                            <div class="d-flex align-items-center" data-bs-toggle="dropdown"
+                                data-bs-auto-close="outside" aria-expanded="false"
+                                onclick="document.getElementById('walletDropdown').classList.toggle('open')">
+                                <!-- Credit pill -->
+                                <div class="wallet-pill pill-credit me-1">
+                                    <i class="bi bi-coin"></i>
+                                    <span>Credit</span>
+                                    <strong id="nav-credit-val">৳{{ formatMoney(creditBalance) }}</strong>
+                                </div>
+                                <!-- Balance pill -->
+                                <div class="wallet-pill pill-balance">
+                                    <i class="bi bi-wallet2"></i>
+                                    <span>Balance</span>
+                                    <strong id="nav-balance-val">৳{{ formatMoney(netBalance) }}</strong>
+                                </div>
+                                <i class="bi bi-chevron-down pill-chevron ms-1"></i>
+                            </div>
 
-                        <li class="nav-item agent-balance-strip d-none d-lg-flex align-items-center">
-                            <span class="balance-label text-danger">Credit : {{ formatMoney(creditBalance) }}</span>
-                            <span class="balance-sep">|</span>
-                            <span class="balance-label text-primary">Balance : {{ formatMoney(netBalance) }}</span>
-                        </li>
+                            <!-- Dropdown menu -->
+                            <!-- <div class="dropdown-menu wallet-dropdown">
+
+
+                                <div
+                                    class="wallet-dropdown-header dropdown-header d-flex align-items-center justify-content-between">
+                                    <span><i class="bi bi-wallet2 me-1"></i> My Wallet</span>
+                                    <small class="text-muted"
+                                        style="font-size:.7rem;text-transform:none;letter-spacing:0;">Azra
+                                        Shahida</small>
+                                </div>
+
+
+                                <div class="balance-row">
+                                    <div class="balance-card credit">
+                                        <div class="bc-label"><i class="bi bi-coin me-1"></i>Credit</div>
+                                        <div class="bc-amount" id="dd-credit-val">৳0</div>
+                                        <div class="bc-sub" id="dd-credit-sub">No credit available</div>
+                                    </div>
+                                    <div class="balance-card balance">
+                                        <div class="bc-label"><i class="bi bi-wallet2 me-1"></i>Balance</div>
+                                        <div class="bc-amount" id="dd-balance-val">৳0</div>
+                                        <div class="bc-sub" id="dd-balance-sub">No funds available</div>
+                                    </div>
+                                </div>
+
+
+                                <div class="zero-alert" id="zero-alert">
+                                    <i class="bi bi-exclamation-circle-fill"></i>
+                                    <span>Ticket issuance is blocked. Top up your balance or request credit to continue
+                                        booking.</span>
+                                </div>
+
+
+                                <div class="wallet-actions">
+                                    <button class="btn btn-topup" data-bs-toggle="modal" data-bs-target="#topupModal">
+                                        <i class="bi bi-plus-circle me-1"></i>Top up balance
+                                    </button>
+                                    <button class="btn btn-credit">
+                                        <i class="bi bi-coin me-1"></i>Request credit
+                                    </button>
+                                </div>
+
+
+                                <div class="wallet-footer">
+                                    <span id="last-topup-label">Last topped up: Never</span>
+                                    <a href="#">View all transactions →</a>
+                                </div>
+
+                            </div> -->
+                        </div>
 
                         <li class="nav-item dark-mode d-none d-sm-flex" @click="darkMode">
                             <a v-wave class="nav-link dark-mode-icon" href="javascript:;"><i class='bx bx-moon'></i>
@@ -63,7 +131,8 @@ onMounted(loadBalance);
 
                         <li class="nav-item dropdown dropdown-app">
 
-                            <div v-show="authStore.GlobalLoading" class="nav-link dropdown-toggle dropdown-toggle-nocaret">
+                            <div v-show="authStore.GlobalLoading"
+                                class="nav-link dropdown-toggle dropdown-toggle-nocaret">
                                 <div class="center-body1">
                                     <div class="loader-circle-571">
                                         <img class="position-absolute"
@@ -321,5 +390,249 @@ onMounted(loadBalance);
     100% {
         transform: rotatez(360deg);
     }
+}
+
+
+/* ── Wallet pill wrapper ── */
+.wallet-pill-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+}
+
+/* ── Individual pill ── */
+.wallet-pill {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 11px;
+    border-radius: 5px;
+    border: 1px solid transparent;
+    font-size: .8rem;
+    font-weight: 500;
+    transition: filter .15s;
+}
+
+.wallet-pill:hover {
+    filter: brightness(.95);
+}
+
+.pill-credit {
+    background: #FFF4E5;
+    border-color: #FAC775;
+    color: #633806;
+}
+
+.pill-credit i {
+    color: #BA7517;
+    font-size: .9rem;
+}
+
+.pill-balance {
+    background: #EAF3DE;
+    border-color: #C0DD97;
+    color: #173404;
+}
+
+.pill-balance i {
+    color: #3B6D11;
+    font-size: .9rem;
+}
+
+.pill-chevron {
+    color: #adb5bd;
+    font-size: .75rem;
+    margin-left: 2px;
+    transition: transform .2s;
+}
+
+.wallet-pill-group.open .pill-chevron {
+    transform: rotate(180deg);
+}
+
+/* ── Dropdown ── */
+.wallet-dropdown {
+    width: 300px;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .10);
+    padding: 0;
+    overflow: hidden;
+    top: calc(100% + 10px) !important;
+    right: 0;
+    left: auto !important;
+}
+
+.wallet-dropdown .dropdown-header {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.wallet-dropdown .dropdown-header span {
+    font-size: .78rem;
+    font-weight: 600;
+    color: #64748b;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+/* ── Balance cards inside dropdown ── */
+.balance-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 14px 16px;
+}
+
+.balance-card {
+    border-radius: 10px;
+    padding: 12px;
+    border: 1px solid transparent;
+}
+
+.balance-card.credit {
+    background: #FFF4E5;
+    border-color: #FAC775;
+}
+
+.balance-card.balance {
+    background: #EAF3DE;
+    border-color: #C0DD97;
+}
+
+.balance-card .bc-label {
+    font-size: .68rem;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
+.balance-card.credit .bc-label {
+    color: #BA7517;
+}
+
+.balance-card.balance .bc-label {
+    color: #3B6D11;
+}
+
+.balance-card .bc-amount {
+    font-size: 1.3rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.balance-card.credit .bc-amount {
+    color: #633806;
+}
+
+.balance-card.balance .bc-amount {
+    color: #173404;
+}
+
+.balance-card .bc-sub {
+    font-size: .72rem;
+    margin-top: 4px;
+}
+
+.balance-card.credit .bc-sub {
+    color: #BA7517;
+}
+
+.balance-card.balance .bc-sub {
+    color: #3B6D11;
+}
+
+/* zero-state warning strip */
+.zero-alert {
+    margin: 0 16px 10px;
+    background: #FCEBEB;
+    border: 1px solid #F7C1C1;
+    border-radius: 8px;
+    padding: 9px 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: .78rem;
+    color: #791F1F;
+}
+
+.zero-alert i {
+    color: #E24B4A;
+    font-size: 1rem;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.zero-alert.d-none {
+    display: none !important;
+}
+
+/* Action buttons */
+.wallet-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 0 16px 14px;
+}
+
+.wallet-actions .btn {
+    font-size: .8rem;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+.btn-topup {
+    background: #4A7CF6;
+    color: #fff;
+    border: none;
+}
+
+.btn-topup:hover {
+    background: #185FA5;
+    color: #fff;
+}
+
+.btn-credit {
+    background: var(--gt-amber-light);
+    color: #633806;
+    border: 1px solid #FAC775;
+}
+
+.btn-credit:hover {
+    background: #FAC775;
+    color: #633806;
+}
+
+/* divider + footer */
+.wallet-footer {
+    border-top: 1px solid #e9ecef;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.wallet-footer span {
+    font-size: .72rem;
+    color: #94a3b8;
+}
+
+.wallet-footer a {
+    font-size: .72rem;
+    color: #4A7CF6;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.wallet-footer a:hover {
+    text-decoration: underline;
 }
 </style>

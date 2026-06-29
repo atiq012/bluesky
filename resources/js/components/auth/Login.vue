@@ -38,11 +38,11 @@ function handleSubmit() {
         .then((res) => {
             loading.value = false;
 
-
             ButtonName.value = "Login";
             authStore.token = authStore.encryptWithAES(res.data.data.access_token);
             authStore.email = res.data.data.email;
             authStore.name = res.data.data.name;
+            authStore.agent_name = res.data.data.agent_name;
             authStore.ExpireInSec = res.data.data.expires_in_sec;
 
 

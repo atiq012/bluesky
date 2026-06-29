@@ -313,7 +313,10 @@ class AuthController extends BaseController
     {
         $TTLTIME = Auth::factory()->getTTL() * 60;
         $user = auth()->user();
-
+        $agent_name = '';
+        if($user->agent_id){
+            $agent_name = DB::table('agents')->where('id', $user->agent_id)->value('name');
+        }
         return [
             'id'               => $user->id,
             'name'             => $user->name,
@@ -326,6 +329,7 @@ class AuthController extends BaseController
             'access_token'     => $token,
             'token_type'       => 'bearer',
             'expires_in_sec'   => $TTLTIME,
+            'agent_name'         => $agent_name
         ];
     }
 
