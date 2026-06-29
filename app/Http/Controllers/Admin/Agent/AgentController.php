@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Admin\Agent;
 
 use App\Http\Controllers\BaseController;
+use App\Jobs\BroadcastResourceEvent;
 use App\Models\Agent\Agent;
 use App\Models\Agent\AgentApprovalLog;
 use App\Models\Agent\AgentImage;
 use App\Models\Agent\AgentUser;
 use App\Models\User;
+use App\Services\HashIdService;
 use App\Services\ImageService;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
@@ -457,6 +459,8 @@ class AgentController extends BaseController
                 (int) $agent->created_by
             );
 
+            $this->broadcastAgentsEvent('Created', (int) $agent->id);
+
             return $this->SuccessResponse('', 'Successfully Agent Saved.');
         });
     }
@@ -475,6 +479,19 @@ class AgentController extends BaseController
         $agentApprovalLog->approver_id = $approverId;
         $agentApprovalLog->created_by = $createdBy ?? (int) auth()->id();
         $agentApprovalLog->save();
+    }
+
+    private function broadcastAgentsEvent(string $event, int $agentId, ?int $actorId = null): void
+    {
+        $payload = [
+            'id' => app(HashIdService::class)->encodeAgentId($agentId),
+        ];
+
+        if ($actorId !== null) {
+            $payload['actor_id'] = $actorId;
+        }
+
+        BroadcastResourceEvent::dispatch('agents', $event, $payload);
     }
 
     /**

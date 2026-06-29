@@ -73,6 +73,8 @@ jobs:
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
+            # Supervisor workers keep old code until queue:restart after deploy
+            php artisan queue:restart
             chmod -R 775 storage bootstrap/cache
             chmod -R 775 public/uploads
 

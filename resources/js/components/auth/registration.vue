@@ -226,12 +226,11 @@ function validateStep2() {
     errors.trade = tradeFiles.value.length === 0;
     errors.cac = cacFiles.value.length === 0;
     errors.iata = iataFiles.value.length === 0;
-    errors.hajj = hajjFiles.value.length === 0;
-    errors.tin = tinFiles.value.length === 0;
-    errors.nid = nidFiles.value.length === 0;
+    errors.hajj = false;
+    errors.tin = false;
+    errors.nid = false;
 
-    const ok = !errors.trade && !errors.cac && !errors.iata
-        && !errors.hajj && !errors.tin && !errors.nid;
+    const ok = !errors.trade && !errors.cac && !errors.iata;
 
     if (!ok) {
         alert('Please upload all required documents.');
@@ -892,7 +891,7 @@ onUnmounted(() => {
                                     accept=".jpg,.jpeg,.png" @change="handleFileChange($event, 'iata')">
                             </div>
                             <div class="col-md-6 Hj">
-                                <label class="form-label">Hajj License <span class="text-danger">*</span></label>
+                                <label class="form-label">Hajj License</label>
                                 <div class="upload-zone" id="zone-hajj" :style="getZoneStyle('hajj')"
                                     :class="{ 'drag-over': isDragging.hajj, 'has-preview': hasFiles('hajj') }" @click="triggerFile('hajj')"
                                     @drop.prevent="handleDrop($event, 'hajj')"
@@ -912,7 +911,7 @@ onUnmounted(() => {
                                     accept=".jpg,.jpeg,.png" @change="handleFileChange($event, 'hajj')">
                             </div>
                             <div class="col-md-6 tn">
-                                <label class="form-label">TIN <span class="text-danger">*</span></label>
+                                <label class="form-label">TIN</label>
                                 <div class="upload-zone" id="zone-tin" :style="getZoneStyle('tin')"
                                     :class="{ 'drag-over': isDragging.tin, 'has-preview': hasFiles('tin') }" @click="triggerFile('tin')"
                                     @drop.prevent="handleDrop($event, 'tin')" @dragover.prevent="isDragging.tin = true"
@@ -931,7 +930,7 @@ onUnmounted(() => {
                                     accept=".jpg,.jpeg,.png" @change="handleFileChange($event, 'tin')">
                             </div>
                             <div class="col-md-6 nid">
-                                <label class="form-label">NID <span class="text-danger">*</span></label>
+                                <label class="form-label">NID</label>
                                 <div class="upload-zone" id="zone-nid" :style="getZoneStyle('nid')"
                                     :class="{ 'drag-over': isDragging.nid, 'has-preview': hasFiles('nid') }" @click="triggerFile('nid')"
                                     @drop.prevent="handleDrop($event, 'nid')" @dragover.prevent="isDragging.nid = true"

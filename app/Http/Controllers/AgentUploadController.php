@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Services\ImageService;
-use Illuminate\Support\Facades\File;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class AgentUploadController extends Controller
@@ -19,8 +18,10 @@ class AgentUploadController extends Controller
             abort(404);
         }
 
-        $absolutePath = rtrim($imageService->basePath(), '/') . '/' . $path;
-        if (! File::isFile($absolutePath)) {
+        $absolutePath = $imageService->resolveAbsolutePath(
+            rtrim((string) config('agent_uploads.db_public_prefix', '/uploads/agents'), '/') . '/' . $path
+        );
+        if ($absolutePath === null) {
             abort(404);
         }
 

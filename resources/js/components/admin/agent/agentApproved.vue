@@ -4,8 +4,12 @@ import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
 import { useAuthStore } from "../../../stores/authStore";
 import axiosInstance from "../../../axiosInstance";
 import { ref, onMounted, reactive } from "vue";
+import { useRouter } from "vue-router";
+import { runAction } from "../../../utils/runAction";
 import moment from "moment";
 const props = defineProps(['ids']);
+const router = useRouter();
+const submitLoading = ref(false);
 const previewImage = ref('');
 const form = reactive({
     note: '', status: '', agent_id: "", useEmail: useAuthStore().email
@@ -160,18 +164,17 @@ onMounted(() => {
     // });
 });
 
-async function update(props) {
+async function update() {
     form.agent_id = props.ids;
-    console.log(form);
-
-    try {
-        const response = await axiosInstance.post("/agentApproval/update", form);
-
-        Notification.showToast('s', response.data.message);
-
-    } catch (error) {
-        ErrorCatch.CatchError(error);
-    }
+    await runAction(async () => {
+        try {
+            const response = await axiosInstance.post('/agentApproval/update', form);
+            Notification.showToast('s', response.data.message);
+            await router.push({ name: 'AgentList' });
+        } catch (error) {
+            ErrorCatch.CatchError(error);
+        }
+    }, { setLoading: (val) => { submitLoading.value = val; } });
 }
 </script>
 <template>
@@ -433,10 +436,19 @@ async function update(props) {
                         </div>
                     </div>
                     <div class="card-footer">
-                        <div class="d-block">
-                            <button class="btn btn-sm btn-outline-danger float-left">Cancel</button>
-
-                            <button type="button" @click="update(props)" class="btn btn-sm btn-outline-primary float-end">Submit</button>
+                        <div class="d-flex justify-content-between gap-2">
+                            <AppButton
+                                variant="cancel"
+                                :disabled="submitLoading"
+                                @click="router.push({ name: 'AgentList' })"
+                            />
+                            <AppButton
+                                variant="save"
+                                label="Submit"
+                                :loading="submitLoading"
+                                loading-text="Submitting..."
+                                @click="update"
+                            />
                         </div>
                     </div>
                 </div>
