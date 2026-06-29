@@ -1,10 +1,12 @@
 <?php
+
 namespace App\Http\Controllers\Admin\Deposit;
 
 use App\Http\Controllers\BaseController;
 use App\Models\Agent\Agent;
 use App\Models\Deposit\Deposit;
 use App\Models\User;
+use App\Services\HashIdService;
 use App\Services\ImageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -27,7 +29,10 @@ class DepositController extends BaseController
             ->where('dpt.agent_id', $agent?->id)
             ->get();
 
-        return DataTables::of($data)->addIndexColumn()->make(true);
+        return DataTables::of($data)
+            ->addIndexColumn()
+            ->editColumn('idd', fn($row) => hashid_encode(HashIdService::DEPOSIT, (int) $row->idd))
+            ->make(true);
     }
 
     public function uploadReferenceFile(Request $request, ImageService $imageService)
@@ -147,7 +152,6 @@ class DepositController extends BaseController
         $success = '';
 
         return $this->SuccessResponse($success, 'Successfully Deposit Saved.');
-
     }
 
     /**
@@ -179,7 +183,16 @@ class DepositController extends BaseController
      */
     public function destroy(Request $request)
     {
-        $depo = Deposit::find($request->id);
+        $id = hashid_decode(HashIdService::DEPOSIT, (string) $request->id);
+        if (!$id) {
+            return $this->ErrorResponse('Deposit not found.', [], 404);
+        }
+
+        $depo = Deposit::find($id);
+        if (!$depo) {
+            return $this->ErrorResponse('Deposit not found.', [], 404);
+        }
+
         $depo->delete();
 
         return $this->SuccessResponse('', 'Successfully Deposit Deleted.');
@@ -187,7 +200,16 @@ class DepositController extends BaseController
 
     public function cancel(Request $request)
     {
-        $depo = Deposit::find($request->id);
+        $id = hashid_decode(HashIdService::DEPOSIT, (string) $request->id);
+        if (!$id) {
+            return $this->ErrorResponse('Deposit not found.', [], 404);
+        }
+
+        $depo = Deposit::find($id);
+        if (!$depo) {
+            return $this->ErrorResponse('Deposit not found.', [], 404);
+        }
+
         $depo->status = 'Cancelled';
         $depo->updated_by = auth()->user()->id;
         $depo->save();

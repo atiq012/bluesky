@@ -2090,33 +2090,33 @@ const openReturnPicker = () => {
                             <div class="float-start p-2">
                                 <div class="d-flex gap-2">
 
-                                    <div v-if="flight.outbound.refund_type === 'refundable'" class="border border-1 text-center p-1 flight-badge flight-badge--refundable"
+                                    <div v-if="flight.outbound.refund_type === 'refundable'" class="border text-center p-1 flight-badge flight-badge--refundable"
                                         style="background-color: #def1ec; color: #12ce69; font-size: 12px;">
                                         <img src="../../../../public/theme/appimages/refund-able.svg" alt="">
                                         Refundable
                                     </div>
-                                    <div v-else-if="flight.outbound.refund_type === 'partial'" class="border border-1 text-center p-1 flight-badge flight-badge--partial"
+                                    <div v-else-if="flight.outbound.refund_type === 'partial'" class="border text-center p-1 flight-badge flight-badge--partial"
                                         style="background-color: #fef9ec; color: #d4a017; font-size: 12px;">
                                         <img src="../../../../public/theme/appimages/refund-able.svg" alt="">
                                         Partially Refundable
                                     </div>
-                                    <div v-else class="border border-1 text-center p-1 flight-badge flight-badge--non-refundable"
+                                    <div v-else class="border text-center p-1 flight-badge flight-badge--non-refundable"
                                         style="background-color: #f1dede; color: #ce1212; font-size: 12px;">
                                         <img src="../../../../public/theme/appimages/Non-Refundable.svg" alt="">
                                         Non-refundable
                                     </div>
 
-                                    <div class="border border-1 text-center p-1 flight-badge flight-badge--seats"
+                                    <div class="border text-center p-1 flight-badge flight-badge--seats"
                                         style="background-color: #e4e3f6; color: #7944eb; font-size: 12px;">
                                         <i class="fa-regular fa-seat-airline"></i> Available Seats: 09
                                     </div>
 
-                                    <div v-if="flight.outbound.segments.some(s => s.is_codeshare)" class="border border-1 text-center p-1"
+                                    <div v-if="flight.outbound.segments.some(s => s.is_codeshare)" class="border text-center p-1"
                                         style="background-color: #fff3e0; color: #e65100; font-size: 12px;">
                                          <i class="fa-solid fa-plane-circle-check"></i>
                                          Operated by {{ flight.outbound.segments.find(s => s.is_codeshare)?.codeshare_info.operating_airline_name }}
                                     </div>
-                                    <div v-if="flight.inbound && flight.inbound.segments.some(s => s.is_codeshare)" class="border border-1 text-center p-1"
+                                    <div v-if="flight.inbound && flight.inbound.segments.some(s => s.is_codeshare)" class="border text-center p-1"
                                         style="background-color: #fff3e0; color: #e65100; font-size: 12px;">
                                          <i class="fa-solid fa-plane-circle-check"></i>
                                          Return operated by {{ flight.inbound.segments.find(s => s.is_codeshare)?.codeshare_info.operating_airline_name }}
@@ -2235,7 +2235,7 @@ const openReturnPicker = () => {
 
                                                             <div class="card-body">
                                                                 <div class="row">
-                                                                    <div class="col-sm-4 col-4 col-md-4 col-4">
+                                                                    <div class="col-4 col-sm-4 col-md-4">
                                                                         <div
                                                                             class="d-block justify-content-center align-items-center h-100 w-100">
                                                                             <div class="text-black-"
@@ -2268,7 +2268,7 @@ const openReturnPicker = () => {
                                                                             route.flightTime1
                                                                             }}</span>
                                                                     </div>
-                                                                    <div class="col-sm-4 col-md-4 col-4">
+                                                                    <div class="col-4 col-sm-4 col-md-4">
                                                                         <div
                                                                             class="d-block justify-content-center align-items-center h-100 w-100">
                                                                             <div class="text-black-"
@@ -2299,11 +2299,11 @@ const openReturnPicker = () => {
                                                                     <div class="col-md-6">
                                                                         <div class="d-flex gap-2 mt-2">
 
-                                                                            <div class="border border-1 text-center p-1 detail-badge-flight"
+                                                                            <div class="border text-center p-1 detail-badge-flight"
                                                                                 style="background-color: rgb(228, 227, 246); color: rgb(121, 68, 235); font-size: 10px; white-space: nowrap;">
                                                                                 {{ route.flight }}-{{
                                                                                     route.aircraft_name }}</div>
-                                                                            <div class="border border-1 text-center p-1 detail-badge-cabin"
+                                                                            <div class="border text-center p-1 detail-badge-cabin"
                                                                                 style="background-color: rgb(222, 241, 236); color: rgb(18, 206, 105); font-size: 10px; white-space: nowrap;">
                                                                                 {{ route.cabin_class }} - {{
                                                                                     route.booking_code }}
@@ -2329,12 +2329,12 @@ const openReturnPicker = () => {
                                                                     <div class="col-md-6">
                                                                         <div class="d-flex gap-2 mt-2">
 
-                                                                            <div class="border border-1 text-center p-1 detail-badge-flight"
+                                                                            <div class="border text-center p-1 detail-badge-flight"
                                                                                 style="background-color: rgb(228, 227, 246); color: rgb(121, 68, 235); font-size: 10px; white-space: nowrap;">
 
                                                                                {{ route.codeshare_info.operating_carrier }}{{ route.codeshare_info.operating_flight_number }}-{{ route.aircraft_name }}
                                                                                     </div>
-                                                                            <div class="border border-1 text-center p-1 detail-badge-cabin"
+                                                                            <div class="border text-center p-1 detail-badge-cabin"
                                                                                 style="background-color: rgb(222, 241, 236); color: rgb(18, 206, 105); font-size: 10px; white-space: nowrap;">
                                                                                 {{ route.cabin_class }} - {{
                                                                                     route.booking_code }}
@@ -2491,11 +2491,11 @@ const openReturnPicker = () => {
                                                                     <div class="col-md-6">
                                                                         <div class="d-flex gap-2 mt-2">
 
-                                                                            <div class="border border-1 text-center p-1 detail-badge-flight"
+                                                                            <div class="border text-center p-1 detail-badge-flight"
                                                                                 style="background-color: rgb(228, 227, 246); color: rgb(121, 68, 235); font-size: 10px; white-space: nowrap;">
                                                                                 {{ returnRoute.flight }}-{{
                                                                                     returnRoute.aircraft_name }}</div>
-                                                                            <div class="border border-1 text-center p-1 detail-badge-cabin"
+                                                                            <div class="border text-center p-1 detail-badge-cabin"
                                                                                 style="background-color: rgb(222, 241, 236); color: rgb(18, 206, 105); font-size: 10px; white-space: nowrap;">
                                                                                 {{ returnRoute.cabin_class }} - {{
                                                                                     returnRoute.booking_code }}
@@ -2519,11 +2519,11 @@ const openReturnPicker = () => {
                                                                     <div class="col-md-6">
                                                                         <div class="d-flex gap-2 mt-2">
 
-                                                                            <div class="border border-1 text-center p-1 detail-badge-flight"
+                                                                            <div class="border text-center p-1 detail-badge-flight"
                                                                                 style="background-color: rgb(228, 227, 246); color: rgb(121, 68, 235); font-size: 10px; white-space: nowrap;">
                                                                                 {{ returnRoute.codeshare_info.operating_carrier }}{{ returnRoute.codeshare_info.operating_flight_number }}-{{
                                                                                     returnRoute.aircraft_name }}</div>
-                                                                            <div class="border border-1 text-center p-1 detail-badge-cabin"
+                                                                            <div class="border text-center p-1 detail-badge-cabin"
                                                                                 style="background-color: rgb(222, 241, 236); color: rgb(18, 206, 105); font-size: 10px; white-space: nowrap;">
                                                                                 {{ returnRoute.cabin_class }} - {{
                                                                                     returnRoute.booking_code }}

@@ -1,0 +1,26 @@
+---
+description: Hashids for any DB id exposed in URL, API JSON, or UI
+alwaysApply: true
+---
+
+# Public IDs (Hashids)
+
+Never expose raw numeric DB `id` in URLs, API responses, Vue templates, or breadcrumbs.
+
+## Backend
+
+- Use `hashid_encode($connection, $id)` and `hashid_decode($connection, $hash)` from `app/Helpers/hashids.php`.
+- Connection names: `HashIdService::BOOKING_ATTEMPT`, `SEARCH_LOG`, `PRICE_LOG`, `BOOKING_SESSION` (add new connection per table/entity).
+- Config: `config/hashids.php` — `min_length` 8, salt from `APP_KEY` + connection name.
+- API list/detail: return hashed `id` only; omit duplicate fields like `idd`.
+- Route params: type `string`, decode before `find()`; 404 if decode fails.
+- Download/action endpoints: decode hash for the target entity connection.
+
+## Frontend
+
+- Use API `id` / `booking_attempt_id` as-is (already hashed). Do not build URLs with numeric ids.
+- Router params, links, breadcrumbs: hashed ref only — no `#9` style raw ids.
+
+## New features
+
+Any new id in URL/UI/API → same pattern: encode on output, decode on input, entity-specific connection.
