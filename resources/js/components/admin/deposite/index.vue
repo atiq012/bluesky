@@ -9,6 +9,7 @@ import AppButton from '../../../components/common/AppButton.vue';
 import FinancialHistoryModal from './FinancialHistoryModal.vue';
 import { fetchFinancialHistory } from './financialHistoryApi';
 import { runAction } from '../../../utils/runAction';
+import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
 
 const router = useRouter();
 
@@ -101,24 +102,22 @@ onMounted(getListValues);
 </script>
 
 <template>
-    <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
-        <div class="breadcrumb-title pe-3">Deposit Management</div>
-        <div class="ps-3">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0 p-0">
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'Home' }">Dashboard</router-link>
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">Deposit List</li>
-                </ol>
-            </nav>
-        </div>
-        <div class="ms-auto">
-            <router-link :to="{ name: 'CreateDeposit' }" class="btn btn-primary btn-sm">
-                <i class="fa fa-circle-plus"></i> Deposit Request
+    <AppBreadcrumbs
+        title="Deposit Management"
+        icon="fa-solid fa-wallet"
+        :back-to="{ name: 'Home' }"
+        :breadcrumbs="[
+            { label: 'Dashboard', to: { name: 'Home' } },
+            { label: 'Deposit Management' },
+        ]"
+    >
+        <template #actions>
+            <router-link :to="{ name: 'CreateDeposit' }" class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2">
+                <i class="fa fa-circle-plus"></i>
+                <span>Deposit Request</span>
             </router-link>
-        </div>
-    </div>
+        </template>
+    </AppBreadcrumbs>
 
     <div class="row">
         <div class="col-12 col-sm-6 col-md-3">

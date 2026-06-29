@@ -4,6 +4,7 @@ import axiosInstance from '../../../axiosInstance';
 import AppDataTable from '../../common/DataTable.vue';
 import AppDatePicker from '../../common/AppDatePicker.vue';
 import moment from 'moment';
+import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
 
 const loading = ref(false);
 const balance = ref({ net_balance: 0, credit_balance: 0, cash_portion: 0 });
@@ -71,22 +72,16 @@ onMounted(async () => {
 </script>
 
 <template>
-    <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
-        <div class="breadcrumb-title pe-3">Deposit Management</div>
-        <div class="ps-3">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0 p-0">
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'Home' }">Dashboard</router-link>
-                    </li>
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'depositList' }">Deposit Management</router-link>
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">Account Statement</li>
-                </ol>
-            </nav>
-        </div>
-    </div>
+    <AppBreadcrumbs
+        title="Deposit Management"
+        icon="fa-solid fa-wallet"
+        :back-to="{ name: 'depositList' }"
+        :breadcrumbs="[
+            { label: 'Dashboard', to: { name: 'Home' } },
+            { label: 'Deposit Management', to: { name: 'depositList' } },
+            { label: 'Account Statement' },
+        ]"
+    />
 
     <div class="row g-3 mb-3">
         <div class="col-md-4">

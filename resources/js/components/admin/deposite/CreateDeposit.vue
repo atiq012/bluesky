@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import axiosInstance from '../../../axiosInstance';
 import AppDatePicker from '../../common/AppDatePicker.vue';
 import ImageCropUpload from '../../common/ImageCropUpload.vue';
+import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
 
 const router = useRouter();
 
@@ -79,22 +80,16 @@ async function submitForm(type) {
 </script>
 
 <template>
-    <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
-        <div class="breadcrumb-title pe-3">Deposit Management</div>
-        <div class="ps-3">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0 p-0">
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'Home' }">Dashboard</router-link>
-                    </li>
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'depositList' }">Deposit Management</router-link>
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">New Deposit Request</li>
-                </ol>
-            </nav>
-        </div>
-    </div>
+    <AppBreadcrumbs
+        title="Deposit Management"
+        icon="fa-solid fa-wallet"
+        :back-to="{ name: 'depositList' }"
+        :breadcrumbs="[
+            { label: 'Dashboard', to: { name: 'Home' } },
+            { label: 'Deposit Management', to: { name: 'depositList' } },
+            { label: 'New Deposit Request' },
+        ]"
+    />
 
     <div class="row">
         <div class="col-md-12">

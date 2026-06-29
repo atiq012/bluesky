@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import axiosInstance from '../../../axiosInstance';
 import moment from 'moment';
 import { resolveUploadUrl } from '../../../utils/resolveUploadUrl';
+import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
 
 const props = defineProps({
     id: { type: String, required: true },
@@ -59,22 +60,16 @@ onMounted(loadDeposit);
 </script>
 
 <template>
-    <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
-        <div class="breadcrumb-title pe-3">Deposit Management</div>
-        <div class="ps-3">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0 p-0">
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'Home' }">Dashboard</router-link>
-                    </li>
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'depositList' }">Deposit Management</router-link>
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">View</li>
-                </ol>
-            </nav>
-        </div>
-    </div>
+    <AppBreadcrumbs
+        title="Deposit Management"
+        icon="fa-solid fa-wallet"
+        :back-to="{ name: 'depositList' }"
+        :breadcrumbs="[
+            { label: 'Dashboard', to: { name: 'Home' } },
+            { label: 'Deposit Management', to: { name: 'depositList' } },
+            { label: 'View' },
+        ]"
+    />
 
     <div v-if="loading" class="text-center py-5 text-muted">
         <i class="fa-solid fa-spinner fa-spin me-2"></i>Loading deposit details...
@@ -230,7 +225,7 @@ onMounted(loadDeposit);
                                     <b>Requested Date &amp; Time:</b>
                                     <p class="m-0">
                                         {{ moment(deposit.created_at).format('DD-MMM-YYYY') }} |
-                                        {{ moment(deposit.created_at).format('HH:mm') }}
+                                        {{ moment(deposit.created_at).format('hh:mm A') }}
                                     </p>
                                 </td>
                             </tr>
