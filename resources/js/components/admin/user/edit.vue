@@ -125,13 +125,13 @@ function triggerFileInput() {
         :breadcrumbs="[
             { label: 'Dashboard', to: { name: 'Home' } },
             { label: 'User List', to: { name: 'UserList' } },
-            { label: 'Create New User' },
+            { label: 'Update User' },
         ]"
     />
 
     <div class="card user-create-card">
         <div class="card-header bg-white">
-            <h5 class="m-0 p-0 card-title-accent">&nbsp; Create New User</h5>
+            <h5 class="m-0 p-0 card-title-accent">&nbsp; Update User</h5>
         </div>
         <form id="addUserform">
 

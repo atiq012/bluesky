@@ -32,7 +32,7 @@ const apiOrigin = apiBaseUrl ? new URL(apiBaseUrl, window.location.origin).origi
 const columns = [
     { field: 'sl', title: 'SL', sort: false, width: '60px' },
     { field: 'staff_info', title: 'Staff Info', sort: false },
-    { field: 'login_info', title: 'User Login Info', sort: false },
+    { field: 'login_info', title: 'User Contact', sort: false },
     { field: 'created_by_info', title: 'Created', sort: false, cellClass: 'user-meta-cell' },
     { field: 'updated_by_info', title: 'Updated', sort: false, cellClass: 'user-meta-cell' },
     { field: 'status', title: 'Status', sort: false, width: '120px', cellClass: 'user-status-cell' },
@@ -259,12 +259,13 @@ onMounted(() => {
                         <template #login_info="{ value: row }">
                             <div class="user-cell-stack">
                                 <span class="user-cell-line user-cell-line--title">
-                                    <i class="fa-solid fa-envelope user-ico user-ico--email" aria-hidden="true" />
-                                    {{ displayValue(row?.email) }}
+                                    {{ displayValue(row?.phone) }}
                                 </span>
                                 <span class="user-cell-line user-cell-line--link">
                                     <i class="fa-solid fa-phone user-ico user-ico--phone" aria-hidden="true" />
-                                    {{ displayValue(row?.phone) }}
+
+                                    <i class="fa-solid fa-envelope user-ico user-ico--email" aria-hidden="true" />
+                                    {{ displayValue(row?.email) }}
                                 </span>
                             </div>
                         </template>
