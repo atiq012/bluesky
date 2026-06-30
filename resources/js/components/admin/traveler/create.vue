@@ -337,6 +337,7 @@ function selectTraveler(travl) {
                                                 <label for="name" class="form-label">Nationality</label>
                                                 <select name="nationality" id="nationality"
                                                     class="form-select form-select-sm">
+                                                    <option value="">Select Nationality</option>
                                                     <option value="Bangladeshi">Bangladeshi</option>
                                                     <option value="American">American</option>
                                                     <option value="Pakistani">Pakistani</option>
