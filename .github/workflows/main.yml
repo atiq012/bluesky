@@ -73,8 +73,10 @@ jobs:
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
-            chmod -R 775 storage bootstrap/cache
-            chmod -R 775 public/uploads
+            # Supervisor workers keep old code until queue:restart after deploy
+            php artisan queue:restart
+            chmod -R 775 storage bootstrap/cache 2>/dev/null || true
+            chmod -R 775 public/uploads 2>/dev/null || true
 
             # Shared upload path setup (single source for both domains)
             SHARED_UPLOAD_BASE="/home/devblues/public_html/uploads/agents"

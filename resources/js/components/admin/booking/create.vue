@@ -1,4 +1,6 @@
 <script setup>
+import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
+
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from "vue";
 import { useRouter } from 'vue-router';
 import { storeToRefs } from "pinia";
@@ -639,28 +641,15 @@ function handlePnrNewSearch() {
 
 </script>
 <template>
-    <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
-
-        <div class="breadcrumb-title pe-3"> Flight Management</div>
-        <div class="ps-3">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0 p-0">
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'Home' }">Dashboard</router-link>
-                    </li>
-
-                    <li class="breadcrumb-item active" aria-current="page">
-                        <router-link :to="{ name: 'searchResult' }">Search</router-link>
-
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">Traveller Info</li>
-                </ol>
-            </nav>
-        </div>
-        <!-- <div class="ms-auto">
-
-        </div> -->
-    </div>
+    <AppBreadcrumbs
+        title="Flight Management"
+        :back-to="{ name: 'searchResult' }"
+        :breadcrumbs="[
+            { label: 'Dashboard', to: { name: 'Home' } },
+            { label: 'Search', to: { name: 'searchResult' } },
+            { label: 'Traveller Info' },
+        ]"
+    />
 
     <div class="row">
         <div class="col-12 col-md-12 com-sm-12">

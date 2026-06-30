@@ -1,7 +1,8 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import axiosInstance from '../../axiosInstance';
 import { useAuthStore } from '../../stores/authStore';
+import { useRealtimeList } from '../../composables/useRealtimeList';
 
 const authStore = useAuthStore();
 const creditBalance = ref(0);
@@ -38,7 +39,16 @@ async function loadBalance() {
     } catch { }
 }
 
-onMounted(loadBalance);
+onMounted(() => {
+    loadBalance();
+    window.addEventListener('balance:refresh', loadBalance);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('balance:refresh', loadBalance);
+});
+
+useRealtimeList('deposits', loadBalance);
 </script>
 <template>
     <header>

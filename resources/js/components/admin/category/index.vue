@@ -1,4 +1,6 @@
 <script setup>
+import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
+
 import DataTable from "datatables.net-vue3";
 import DataBS5 from "datatables.net-bs5";
 import Buttons from 'datatables.net-buttons';
@@ -278,33 +280,24 @@ async function getLog() {
 
 </script>
 <template>
-    <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
-
-        <div class="breadcrumb-title pe-3">Category & SubCategory</div>
-        <div class="ps-3">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0 p-0">
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'Home' }">Dashboard</router-link>
-                    </li>
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'helpDesk' }">Help Desk</router-link>
-                    </li>
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'categoryList' }">Category & Sub Category</router-link>
-                    </li>
-                </ol>
-            </nav>
-        </div>
-        <div class="ms-auto">
+        <AppBreadcrumbs
+        title="Category & SubCategory"
+        :back-to="{ name: 'categoryList' }"
+        :breadcrumbs="[
+            { label: 'Dashboard', to: { name: 'Home' } },
+            { label: 'Help Desk', to: { name: 'helpDesk' } },
+            { label: 'Category & Sub Category', to: { name: 'categoryList' } },
+        ]"
+    >
+        <template #actions>
             <div class="btn-group">
                 <router-link :to="{ name: 'categoryCreate' }" class="btn btn-primary btn-sm">
                     <i class="fa fa-circle-plus"></i>Create
                 </router-link>
 
             </div>
-        </div>
-    </div>
+        </template>
+    </AppBreadcrumbs>
 
 
     <div class="row">

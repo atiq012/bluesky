@@ -1,4 +1,5 @@
 <script setup>
+import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
 import DataTable from "datatables.net-vue3";
 import DataBS5 from "datatables.net-bs5";
 import Buttons from 'datatables.net-buttons';
@@ -613,32 +614,22 @@ defineExpose({
 })
 </script>
 <template>
-    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-        <div class="flex-grow-1">
-            <div class="d-flex flex-wrap align-items-center gap-2">
-                <div class="fw-semibold text-dark">Support Request</div>
-                <span class="text-muted small">|</span>
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb mb-0 p-0 small">
-                        <li class="breadcrumb-item">
-                            <router-link :to="{ name: 'Home' }">Dashboard</router-link>
-                        </li>
-                        <li class="breadcrumb-item">
-                            <router-link :to="{ name: 'helpDesk' }">Helpdesk</router-link>
-                        </li>
-                        <li class="breadcrumb-item active" aria-current="page">Support Request List</li>
-                    </ol>
-                </nav>
-            </div>
-        </div>
-
-        <div class="ms-auto">
+    <AppBreadcrumbs
+        title="Support Request"
+        :back-to="{ name: 'Home' }"
+        :breadcrumbs="[
+            { label: 'Dashboard', to: { name: 'Home' } },
+            { label: 'Helpdesk', to: { name: 'helpDesk' } },
+            { label: 'Support Request List' },
+        ]"
+    >
+        <template #actions>
             <router-link :to="{ name: 'requestCreate' }" class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2">
                 <i class="fa fa-circle-plus"></i>
                 <span>Request</span>
             </router-link>
-        </div>
-    </div>
+        </template>
+    </AppBreadcrumbs>
 
     <div class="row g-3 mb-3">
         <div class="col-12 col-sm-6 col-lg">

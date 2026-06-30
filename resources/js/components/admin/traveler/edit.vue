@@ -1,4 +1,6 @@
 <script setup>
+import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
+
 import { useRouter } from 'vue-router';
 const router = useRouter();
 import { useAuthStore } from '../../../stores/authStore';
@@ -113,26 +115,15 @@ async function getTravelerData(props) {
 </script>
 
 <template>
-    <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
-        <div class="breadcrumb-title pe-3"> Traveller Management</div>
-        <div class="ps-3">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0 p-0">
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'Home' }">Dashboard</router-link>
-                    </li>
-
-                    <li class="breadcrumb-item active" aria-current="page">
-                        <router-link :to="{ name: 'TravelerList' }">Traveller Management</router-link>
-
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">
-                        New Traveller
-                    </li>
-                </ol>
-            </nav>
-        </div>
-    </div>
+        <AppBreadcrumbs
+        title="Traveller Management"
+        :back-to="{ name: 'Home' }"
+        :breadcrumbs="[
+            { label: 'Dashboard', to: { name: 'Home' } },
+            { label: 'Traveller Management' },
+            { label: 'New Traveller' },
+        ]"
+    />
     <div class="row position-relative">
         <div class="col-md-12">
             <form id="travelerForm">

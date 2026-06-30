@@ -1,4 +1,5 @@
 <script setup>
+import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import axiosInstance from '../../../axiosInstance';
@@ -7,27 +8,14 @@ import { runAction } from '../../../utils/runAction';
 
 <template>
     <div class="container-fluid px-2 px-md-3">
-        <!-- Header Section -->
-        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-            <router-link :to="{ name: 'apiManagement' }" class="back-btn">
-                <i class="fa-solid fa-arrow-left"></i>
-            </router-link>
-
-            <div class="flex-grow-1">
-                <div class="d-flex flex-wrap align-items-center gap-2">
-                    <div class="fw-semibold text-dark" style="font-size: clamp(14px, 2vw, 18px);">Flight PNR</div>
-                    <span class="text-muted small d-none d-sm-inline">|</span>
-                    <nav aria-label="breadcrumb" class="d-none d-sm-block">
-                        <ol class="breadcrumb mb-0 p-0 small">
-                            <li class="breadcrumb-item">
-                                <router-link :to="{ name: 'Home' }">Dashboard</router-link>
-                            </li>
-                            <li class="breadcrumb-item active" aria-current="page">Flight PNR</li>
-                        </ol>
-                    </nav>
-                </div>
-            </div>
-        </div>
+        <AppBreadcrumbs
+            title="Flight PNR"
+            :back-to="{ name: 'apiManagement' }"
+            :breadcrumbs="[
+                { label: 'Dashboard', to: { name: 'Home' } },
+                { label: 'Flight PNR' },
+            ]"
+        />
     </div>
 
     <div class="row page-grid-row g-4">

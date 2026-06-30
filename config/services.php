@@ -31,6 +31,10 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'ably' => [
+        'key' => env('ABLY_KEY'),
+    ],
+
     'travelport_v2' => [
         'auth_url' => env('TRAVELPORT_V2_AUTH_URL', 'https://auth.pp.travelport.net/oauth/token'),
         'search_url' => env('TRAVELPORT_V2_SEARCH_URL'),

@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import axiosInstance from '../../../axiosInstance';
 import moment from 'moment';
 import ActionButtons from '../../../components/common/ActionButtons.vue';
@@ -8,6 +9,11 @@ import AppButton from '../../../components/common/AppButton.vue';
 import FinancialHistoryModal from './FinancialHistoryModal.vue';
 import { fetchFinancialHistory } from './financialHistoryApi';
 import { runAction } from '../../../utils/runAction';
+import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
+import AppTooltip from '../../common/AppTooltip.vue';
+import { useRealtimeList } from '../../../composables/useRealtimeList';
+
+const router = useRouter();
 
 const rData = ref([]);
 const loading = ref(false);
@@ -21,21 +27,41 @@ const historyRows = ref([]);
 
 const columns = [
     { field: 'index', title: 'SL' },
-    { field: 'name', title: 'Payment Term' },
+    { field: 'name', title: 'Amount' },
     { field: 'bank', title: 'Payment Account' },
-    { field: 'reference_no', title: 'Reference No & Date' },
+    { field: 'status', title: 'Status' },
     { field: 'agent', title: 'Requested By' },
-    { field: 'total', title: 'Total Amount' },
-    { field: 'remarks', title: 'Remarks' },
+    { field: 'reference_no', title: 'Ref No & Date' },
     { field: 'created_by', title: 'Created By' },
     { field: 'updated_by', title: 'Updated By' },
-    { field: 'status', title: 'Status' },
     { field: 'action', title: 'Action' },
 ];
 
 const tableRows = computed(() =>
     rData.value.map((row, i) => ({ ...row, index: i + 1 }))
 );
+
+function formatAmount(value) {
+    const n = Number(value ?? 0);
+    return Number.isFinite(n) ? n.toLocaleString('en-BD', { maximumFractionDigits: 0 }) : '0';
+}
+
+function remarkText(row) {
+    const remarks = row?.remarks;
+    if (!remarks || remarks === 'null') return 'No remarks';
+    return remarks;
+}
+
+function paymentTermMeta(row) {
+    const name = row?.name || '';
+    if (name === 'Cash') {
+        return { icon: 'fa-solid fa-money-bill-wave', tone: 'cash' };
+    }
+    if (name === 'Bank Transfer') {
+        return { icon: 'fa-solid fa-building-columns', tone: 'bank' };
+    }
+    return { icon: 'fa-solid fa-credit-card', tone: 'card' };
+}
 
 async function getListValues() {
     try {
@@ -89,28 +115,32 @@ function closeHistoryModal() {
     showHistoryModal.value = false;
 }
 
+function openDepositDetails(item) {
+    if (!item?.idd) return;
+    router.push({ name: 'depoDetails', params: { id: item.idd } });
+}
+
 onMounted(getListValues);
+
+useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
 </script>
 
 <template>
-    <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
-        <div class="breadcrumb-title pe-3">Deposit Management</div>
-        <div class="ps-3">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0 p-0">
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'Home' }">Dashboard</router-link>
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">Deposit List</li>
-                </ol>
-            </nav>
-        </div>
-        <div class="ms-auto">
-            <router-link :to="{ name: 'CreateDeposit' }" class="btn btn-primary btn-sm">
-                <i class="fa fa-circle-plus"></i> Deposit Request
+    <AppBreadcrumbs
+        title="Deposit Management"
+        :back-to="{ name: 'Home' }"
+        :breadcrumbs="[
+            { label: 'Dashboard', to: { name: 'Home' } },
+            { label: 'Deposit Management' },
+        ]"
+    >
+        <template #actions>
+            <router-link :to="{ name: 'CreateDeposit' }" class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2">
+                <i class="fa fa-circle-plus"></i>
+                <span>Deposit Request</span>
             </router-link>
-        </div>
-    </div>
+        </template>
+    </AppBreadcrumbs>
 
     <div class="row">
         <div class="col-12 col-sm-6 col-md-3">
@@ -198,20 +228,18 @@ onMounted(getListValues);
                     @refresh="getListValues"
                 >
                     <template #name="{ value: row }">
-                        <span>
-                            <i
-                                v-if="row.name === 'Cash'"
-                                class="fa-solid fa-money-bill-wave me-1"
-                                style="color: #00ab55;"
-                            ></i>
-                            <i
-                                v-else-if="row.name === 'Bank Transfer'"
-                                class="fa-solid fa-building-columns me-1"
-                                style="color: #027DE2;"
-                            ></i>
-                            <i v-else class="fa-solid fa-credit-card me-1" style="color: #805dca;"></i>
-                            {{ row.name }}
-                        </span>
+                        <div class="deposit-amount-cell">
+                            <div class="deposit-amount-cell__term">
+                                <i
+                                    :class="[paymentTermMeta(row).icon, `deposit-amount-cell__term-icon--${paymentTermMeta(row).tone}`]"
+                                    aria-hidden="true"
+                                ></i>
+                                {{ row.name }}
+                            </div>
+                            <div class="deposit-amount-cell__value">
+                                <span class="deposit-amount-cell__currency">৳</span>{{ formatAmount(row.total) }}
+                            </div>
+                        </div>
                     </template>
 
                     <template #bank="{ value: row }">
@@ -220,8 +248,7 @@ onMounted(getListValues);
                             {{ row.bank }}
                             <br />
                             <small class="text-primary">
-                                <i class="fa-solid fa-hashtag" style="font-size: 0.65rem;"></i>
-                                Acount No: {{ row.acct_no }}
+                                A/C : {{ row.acct_no }}
                             </small>
                         </div>
                     </template>
@@ -246,24 +273,34 @@ onMounted(getListValues);
                             <small class="text-primary">
                                 <i class="fa-regular fa-clock me-1" style="font-size: 0.65rem;"></i>
                                 {{ moment(row.created_at).format('DD-MMM-YYYY') }} |
-                                {{ moment(row.created_at).format('h:mm') }}
+                                {{ moment(row.created_at).format('h:mm A') }}
                             </small>
                         </div>
                     </template>
 
-                    <template #total="{ value: row }">
-                        <span>
-                            <i class="fa-solid fa-coins me-1" style="color: #00ab55;"></i>
-                            {{ row.total }}
-                        </span>
-                    </template>
-
-                    <template #remarks="{ value: row }">
-                        <span v-if="row.remarks && row.remarks !== 'null'">
-                            <i class="fa-solid fa-comment-dots me-1 text-muted"></i>
-                            {{ row.remarks }}
-                        </span>
-                        <span v-else class="text-muted">—</span>
+                    <template #status="{ value: row }">
+                        <div class="status-cell">
+                            <div
+                                v-if="row.status === 'Requested'"
+                                class="badge rounded-pill text-warning bg-light-warning p-2 text-uppercase px-3"
+                            >
+                                <i class="bx bxs-circle me-1"></i>{{ row.status }}
+                            </div>
+                            <div
+                                v-else-if="row.status === 'Rejected' || row.status === 'Cancelled'"
+                                class="badge rounded-pill text-danger bg-light-danger p-2 text-uppercase px-3"
+                            >
+                                <i class="bx bxs-circle me-1"></i>{{ row.status }}
+                            </div>
+                            <div v-else class="badge rounded-pill text-success bg-light-success p-2 text-uppercase px-3">
+                                <i class="bx bxs-circle me-1"></i>{{ row.status }}
+                            </div>
+                            <AppTooltip :content="remarkText(row)" placement="top">
+                                <span class="remarks-info-badge" aria-label="View remarks">
+                                    <i class="fa-solid fa-circle-info"></i>
+                                </span>
+                            </AppTooltip>
+                        </div>
                     </template>
 
                     <template #created_by="{ value: row }">
@@ -284,31 +321,15 @@ onMounted(getListValues);
                         <span v-else class="text-muted">—</span>
                     </template>
 
-                    <template #status="{ value: row }">
-                        <div
-                            v-if="row.status === 'Requested'"
-                            class="badge rounded-pill text-warning bg-light-warning p-2 text-uppercase px-3"
-                        >
-                            <i class="bx bxs-circle me-1"></i>{{ row.status }}
-                        </div>
-                        <div
-                            v-else-if="row.status === 'Rejected' || row.status === 'Cancelled'"
-                            class="badge rounded-pill text-danger bg-light-danger p-2 text-uppercase px-3"
-                        >
-                            <i class="bx bxs-circle me-1"></i>{{ row.status }}
-                        </div>
-                        <div v-else class="badge rounded-pill text-success bg-light-success p-2 text-uppercase px-3">
-                            <i class="bx bxs-circle me-1"></i>{{ row.status }}
-                        </div>
-                    </template>
-
                     <template #action="{ value: row }">
                         <ActionButtons
                             :item="row"
+                            :show-view="true"
                             :show-edit="false"
                             :show-delete="false"
                             :show-cancel-booking="row.status === 'Requested'"
                             cancel-booking-label="Cancel Request"
+                            @view="openDepositDetails"
                             @cancel-booking="openCancelModal"
                         />
                     </template>
@@ -375,7 +396,7 @@ onMounted(getListValues);
                     <span class="cdm-info-label">
                         <i class="fa-solid fa-coins cdm-row-icon"></i> Total Amount
                     </span>
-                    <span class="cdm-info-value cdm-amount">{{ selectedDeposit.total }}</span>
+                    <span class="cdm-info-value cdm-amount-value">{{ formatAmount(selectedDeposit.total) }}</span>
                 </div>
                 <div class="cdm-info-row">
                     <span class="cdm-info-label">
@@ -706,7 +727,71 @@ onMounted(getListValues);
     text-align: right;
     word-break: break-all;
 }
-.cdm-amount { color: #16a34a; }
+.cdm-amount-value {
+    color: #1576c9;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.deposit-amount-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    line-height: 1.3;
+}
+
+.deposit-amount-cell__term {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #475569;
+}
+
+.deposit-amount-cell__term-icon--cash { color: #00ab55; }
+.deposit-amount-cell__term-icon--bank { color: #027de2; }
+.deposit-amount-cell__term-icon--card { color: #805dca; }
+
+.deposit-amount-cell__value {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #1576c9;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+}
+
+.deposit-amount-cell__currency {
+    font-size: 0.82rem;
+    font-weight: 700;
+    margin-right: 0.1rem;
+}
+
+.status-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.remarks-info-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 50%;
+    background: #dbeafe;
+    color: #2563eb;
+    font-size: 0.8rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s;
+}
+.remarks-info-badge:hover {
+    background: #bfdbfe;
+    color: #1d4ed8;
+}
+
 .cdm-acct {
     display: block;
     font-size: 0.72rem;
@@ -727,4 +812,9 @@ onMounted(getListValues);
 [data-bs-theme="dark"] .cdm-info-row + .cdm-info-row { border-color: #1e293b; }
 [data-bs-theme="dark"] .cdm-info-label { color: #94a3b8; }
 [data-bs-theme="dark"] .cdm-info-value { color: #e2e8f0; }
+[data-bs-theme="dark"] .cdm-amount-value { color: #60a5fa; }
+[data-bs-theme="dark"] .deposit-amount-cell__term { color: #94a3b8; }
+[data-bs-theme="dark"] .deposit-amount-cell__value { color: #60a5fa; }
+[data-bs-theme="dark"] .remarks-info-badge { background: rgba(37, 99, 235, 0.2); color: #60a5fa; }
+[data-bs-theme="dark"] .remarks-info-badge:hover { background: rgba(37, 99, 235, 0.35); color: #93c5fd; }
 </style>

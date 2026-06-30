@@ -15,6 +15,7 @@ class AgentBalanceService
     public const EVENT_DEPOSIT_APPROVED = 'deposit_approved';
     public const EVENT_DEPOSIT_CREDIT_ADJUST = 'deposit_credit_adjust';
     public const EVENT_BOOKING_DEBIT = 'booking_debit';
+    public const EVENT_VOID_REFUND = 'void_refund';
 
     public function getBalances(int $agentId): array
     {
@@ -120,6 +121,39 @@ class AgentBalanceService
                     'gds_pnr' => $attempt->gds_pnr,
                 ],
                 'user_id' => $userId,
+            ]);
+        });
+    }
+
+    public function creditForVoid(Agent $agent, float $amount, BookingAttempt $attempt, ?int $userId): void
+    {
+        DB::transaction(function () use ($agent, $amount, $attempt, $userId) {
+            $agent = Agent::where('id', $agent->id)->lockForUpdate()->firstOrFail();
+
+            $netBefore    = (float) ($agent->net_balance ?? 0);
+            $creditBefore = (float) ($agent->credit_balance ?? 0);
+
+            $agent->net_balance = $netBefore + $amount;
+            $agent->save();
+
+            $pnr = $attempt->gds_pnr ?? $attempt->airline_pnr ?? '';
+
+            $this->writeLedger($agent, [
+                'event_type'     => self::EVENT_VOID_REFUND,
+                'amount'         => $amount,
+                'direction'      => 'in',
+                'net_before'     => $netBefore,
+                'credit_before'  => $creditBefore,
+                'net_after'      => (float) $agent->net_balance,
+                'credit_after'   => $creditBefore,
+                'reference_type' => 'booking_attempt',
+                'reference_id'   => $attempt->id,
+                'description'    => $pnr ? "Ticket void refund (PNR: {$pnr})" : 'Ticket void refund',
+                'metadata'       => [
+                    'booking_attempt_id' => $attempt->id,
+                    'gds_pnr'            => $attempt->gds_pnr,
+                ],
+                'user_id'        => $userId,
             ]);
         });
     }

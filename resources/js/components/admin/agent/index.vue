@@ -1,4 +1,6 @@
 <script setup>
+import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
+
 import DataTable from "datatables.net-vue3";
 import DataBS5 from "datatables.net-bs5";
 import axiosInstance from "../../../axiosInstance";
@@ -326,28 +328,23 @@ async function getListValues() {
 
 </script>
 <template>
-    <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
-
-        <div class="breadcrumb-title pe-3"> B2B Agent</div>
-        <div class="ps-3">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0 p-0">
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'Home' }">Dashboard</router-link>
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">B2B Agent List</li>
-                </ol>
-            </nav>
-        </div>
-        <div class="ms-auto">
+        <AppBreadcrumbs
+        title="B2B Agent"
+        :back-to="{ name: 'Home' }"
+        :breadcrumbs="[
+            { label: 'Dashboard', to: { name: 'Home' } },
+            { label: 'B2B Agent List' },
+        ]"
+    >
+        <template #actions>
             <div class="btn-group">
                 <router-link :to="{ name: 'CreateAgency' }" class="btn btn-primary btn-sm">
                     <i class="fa fa-circle-plus"></i> B2B Agent
                 </router-link>
 
             </div>
-        </div>
-    </div>
+        </template>
+    </AppBreadcrumbs>
 
     <div class="row">
         <div class="col-12 col-sm-6 col-md-3">

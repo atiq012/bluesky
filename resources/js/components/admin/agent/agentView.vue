@@ -1,4 +1,6 @@
 <script setup>
+import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
+
 import { useAuthStore } from "../../../stores/authStore";
 import axiosInstance from "../../../axiosInstance";
 import { ref, onMounted, reactive } from "vue";
@@ -152,24 +154,15 @@ async function getAgentApprovalLog(props) {
 
 </script>
 <template>
-    <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
-        <div class="breadcrumb-title pe-3">B2B Agency</div>
-        <div class="ps-3">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0 p-0">
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'Home' }">Dashboard</router-link>
-
-                    </li>
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'AgentList' }">B2B Agency List</router-link>
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">View Agency</li>
-
-                </ol>
-            </nav>
-        </div>
-    </div>
+        <AppBreadcrumbs
+        title="B2B Agency"
+        :back-to="{ name: 'AgentList' }"
+        :breadcrumbs="[
+            { label: 'Dashboard', to: { name: 'Home' } },
+            { label: 'B2B Agency List', to: { name: 'AgentList' } },
+            { label: 'View Agency' },
+        ]"
+    />
 
     <div class="row">
         <div class="col-lg-4">

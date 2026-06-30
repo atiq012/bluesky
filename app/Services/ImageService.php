@@ -87,6 +87,39 @@ class ImageService
         return rtrim((string) config('agent_uploads.base_path'), '/');
     }
 
+    // Resolve physical file from DB path — checks base_path, local public, then fallback bases.
+    public function resolveAbsolutePath(?string $dbPath): ?string
+    {
+        if (! $dbPath) {
+            return null;
+        }
+
+        $relative = ltrim(trim($dbPath), '/');
+        $dbPrefix = trim((string) config('agent_uploads.db_public_prefix', '/uploads/agents'), '/');
+        $relativeFromPrefix = $relative;
+
+        if (str_starts_with($relative, $dbPrefix . '/')) {
+            $relativeFromPrefix = substr($relative, strlen($dbPrefix) + 1);
+        }
+
+        $candidates = [
+            rtrim($this->basePath(), '/') . '/' . $relativeFromPrefix,
+            public_path($relative),
+        ];
+
+        foreach ((array) config('agent_uploads.fallback_base_paths', []) as $fallbackBase) {
+            $candidates[] = rtrim((string) $fallbackBase, '/') . '/' . $relativeFromPrefix;
+        }
+
+        foreach ($candidates as $candidate) {
+            if (File::isFile($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
     /**
      * @return list<string>
      */
@@ -100,6 +133,7 @@ class ImageService
             'hajj_licence_img',
             'tin_img',
             'nid_img',
+            'deposit_reference_img',
             'misc',
         ];
     }

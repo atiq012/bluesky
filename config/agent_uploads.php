@@ -21,4 +21,5 @@ return [
     |
     */
     'db_public_prefix' => env('AGENT_UPLOAD_DB_PREFIX', '/uploads/agents'),
+    'fallback_base_paths' => array_filter(array_map('trim', explode(',', (string) env('AGENT_UPLOAD_FALLBACK_BASE_PATHS', '/home/gb053/Projects/BlueSky/public/uploads/agents,/home/devblues/public_html/uploads/agents')))),
 ];

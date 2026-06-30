@@ -1,4 +1,5 @@
 <script setup>
+import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
 import axiosInstance from "../../../axiosInstance";
 import { reactive } from "vue";
 import { useRouter } from "vue-router";
@@ -49,29 +50,15 @@ async function save() {
 
 </script>
 <template>
-    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-        <router-link :to="{ name: 'apiManagement' }" class="btn btn-sm btn-link text-decoration-none px-0">
-            <i class="fa-solid fa-arrow-left"></i>
-        </router-link>
-
-        <div class="flex-grow-1">
-            <div class="d-flex flex-wrap align-items-center gap-2">
-                <div class="fw-semibold text-dark">API Management</div>
-                <span class="text-muted small">|</span>
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb mb-0 p-0 small">
-                        <li class="breadcrumb-item">
-                            <router-link :to="{ name: 'Home' }">Dashboard</router-link>
-                        </li>
-                        <li class="breadcrumb-item">
-                            <router-link :to="{ name: 'apiManagement' }">API Management</router-link>
-                        </li>
-                        <li class="breadcrumb-item active" aria-current="page">Create</li>
-                    </ol>
-                </nav>
-            </div>
-        </div>
-    </div>
+    <AppBreadcrumbs
+        title="API Management"
+        :back-to="{ name: 'apiManagement' }"
+        :breadcrumbs="[
+            { label: 'Dashboard', to: { name: 'Home' } },
+            { label: 'API Management', to: { name: 'apiManagement' } },
+            { label: 'Create' },
+        ]"
+    />
 
     <div class="card border-0 shadow-sm api-create-card position-relative">
         <div v-if="authStore.GlobalLoading" class="api-create-loading">

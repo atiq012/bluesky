@@ -1,4 +1,6 @@
 <script setup>
+import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
+
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axiosInstance from '../../../axiosInstance'
@@ -14,6 +16,12 @@ const refreshLoading = ref(false)
 const error = ref(null)
 const loadingItemId = ref(null)
 const loadingAction = ref(null)
+
+const attemptBreadcrumbs = computed(() => [
+    { label: 'Dashboard', to: { name: 'Home' } },
+    { label: 'Booking attempts', to: { name: 'bookingAttemptList' } },
+    { label: attempt.value?.id || route.params.id },
+])
 
 const timelineLabels = {
     search: 'Search',
@@ -223,20 +231,11 @@ onMounted(() => load())
 </script>
 
 <template>
-    <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
-        <div class="breadcrumb-title pe-3">Flight Management</div>
-        <div class="ps-3">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0 p-0">
-                    <li class="breadcrumb-item"><router-link :to="{ name: 'Home' }">Dashboard</router-link></li>
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'bookingAttemptList' }">Booking attempts</router-link>
-                    </li>
-                    <li class="breadcrumb-item active">{{ attempt?.id || route.params.id }}</li>
-                </ol>
-            </nav>
-        </div>
-    </div>
+        <AppBreadcrumbs
+        title="Flight Management"
+        :back-to="{ name: 'bookingAttemptList' }"
+        :breadcrumbs="attemptBreadcrumbs"
+    />
 
     <div v-if="loading" class="attempt-detail-loading">
         <LoadingSpinner />

@@ -109,14 +109,6 @@ const loadVisibleFields = () => {
     visibleFields.value = [...datatableColumnsStore.initTable(props.tableId, fallback)];
 };
 
-function toggleColumnField(field) {
-    if (visibleFields.value.includes(field)) {
-        visibleFields.value = visibleFields.value.filter((f) => f !== field);
-        return;
-    }
-    visibleFields.value = [...visibleFields.value, field];
-}
-
 watch(
     visibleFields,
     (val) => {
@@ -281,14 +273,12 @@ onBeforeUnmount(() => {
                                     v-for="(column, idx) in filteredColumnOptions"
                                     :key="column.field"
                                     class="app-data-table-column-item"
-                                    @click.prevent="toggleColumnField(column.field)"
                                 >
                                     <input
+                                        v-model="visibleFields"
                                         class="form-check-input flex-shrink-0"
                                         type="checkbox"
-                                        tabindex="-1"
-                                        :checked="visibleFields.includes(column.field)"
-                                        @click.prevent
+                                        :value="column.field"
                                     />
                                     <span class="app-data-table-column-bar" :style="{ backgroundColor: getColumnBarColor(idx) }" />
                                     <span class="app-data-table-column-label">{{ column.label }}</span>

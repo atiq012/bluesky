@@ -1,4 +1,6 @@
 <script setup>
+import AppBreadcrumbs from '../../../common/AppBreadcrumbs.vue';
+
 import { useAuthStore } from "../../../../stores/authStore";
 import axiosInstance from "../../../../axiosInstance"
 import { ref, onMounted, reactive } from "vue";
@@ -80,24 +82,15 @@ onMounted(() => {
 
 </script>
 <template>
-    <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
-        <div class="breadcrumb-title pe-3">Setting</div>
-        <div class="ps-3">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0 p-0">
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'Home' }">Dashboard</router-link>
-
-                    </li>
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'airlinesList' }">Airlines List</router-link>
-
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">Airlines Edit</li>
-                </ol>
-            </nav>
-        </div>
-    </div>
+        <AppBreadcrumbs
+        title="Setting"
+        :back-to="{ name: 'airlinesList' }"
+        :breadcrumbs="[
+            { label: 'Dashboard', to: { name: 'Home' } },
+            { label: 'Airlines List', to: { name: 'airlinesList' } },
+            { label: 'Airlines Edit' },
+        ]"
+    />
 
     <div class="card">
         <div class="card-header">
