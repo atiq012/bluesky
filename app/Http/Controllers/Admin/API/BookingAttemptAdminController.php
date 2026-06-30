@@ -41,8 +41,8 @@ class BookingAttemptAdminController extends BaseController
 
         if ($request->filled('user_id')) {
             $query->where('user_id', (int) $request->input('user_id'));
-        } elseif ($request->user()) {
-            $query->where('user_id', $request->user()->id);
+        } else {
+            BookingListMapper::applyAgencyScope($query, $request->user());
         }
 
         if ($request->filled('workbench_identifier')) {
@@ -51,6 +51,7 @@ class BookingAttemptAdminController extends BaseController
 
         $attempts = $query->limit(500)->get();
         BookingListMapper::attachUserNames($attempts);
+        BookingListMapper::attachAgencyNames($attempts);
 
         $rows = $attempts->map(function ($row, $index) {
             $commitResponse = BookingListMapper::commitResponseForAttempt($row);
@@ -70,6 +71,10 @@ class BookingAttemptAdminController extends BaseController
 
         $attempt = BookingAttempt::with(['searchLog', 'priceLog', 'paxes', 'sessions'])->find($attemptId);
         if (!$attempt) {
+            return $this->ErrorResponse('Booking attempt not found', [], 404);
+        }
+
+        if (!BookingListMapper::userCanAccessAttempt($attempt, request()->user())) {
             return $this->ErrorResponse('Booking attempt not found', [], 404);
         }
 

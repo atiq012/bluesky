@@ -15,7 +15,7 @@ const loadingItemId = ref(null)
 const loadingAction = ref(null)
 
 const columns = [
-    { field: 'attempt_ref', title: 'Id', sort: false },
+    { field: 'code_name', title: 'Booking ID & User', sort: false },
     { field: 'journey', title: 'Sector', sort: false },
     { field: 'workbench_identifier', title: 'Workbench', sort: false },
     { field: 'status', title: 'Status', sort: false, cellClass: 'attempt-status-cell' },
@@ -157,6 +157,18 @@ onMounted(() => load())
                 no-match-text="No matching attempts"
                 @refresh="load(true)"
             >
+                <template #code_name="{ value: row }">
+                    <div class="attempt-ref-stack">
+                        <div class="attempt-ref-line attempt-ref-code">
+                            <i class="fa-solid fa-barcode attempt-ref-ico attempt-ref-ico-barcode" aria-hidden="true" />
+                            <span>{{ row?.booking_code || '—' }}</span>
+                        </div>
+                        <div class="attempt-ref-line attempt-ref-name">
+                            <i class="fa-solid fa-user attempt-ref-ico attempt-ref-ico-user" aria-hidden="true" />
+                            <span class="attempt-ref-name-text">{{ row?.created_by || '—' }}</span>
+                        </div>
+                    </div>
+                </template>
                 <template #journey="{ value: row }">
                     <div class="attempt-journey">
                         <div class="attempt-journey__line">
@@ -228,6 +240,42 @@ onMounted(() => load())
 </template>
 
 <style scoped>
+.attempt-ref-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    white-space: nowrap;
+}
+
+.attempt-ref-line {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.attempt-ref-ico {
+    width: 14px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.attempt-ref-ico-barcode { color: #7c3aed; }
+.attempt-ref-ico-user { color: #2563eb; }
+
+.attempt-ref-code {
+    font-weight: 700;
+    color: #7c3aed;
+}
+
+.attempt-ref-name {
+    align-items: center;
+}
+
+.attempt-ref-name-text {
+    font-weight: 500;
+    color: #334155;
+}
+
 .attempt-journey {
     display: flex;
     flex-direction: column;
@@ -415,5 +463,9 @@ onMounted(() => load())
 
 .attempt-pax-tooltip__item--inf {
     color: #f9a8d4;
+}
+
+html[data-bs-theme='dark'] .attempt-list-card .attempt-ref-name-text {
+    color: #cbd5e1;
 }
 </style>
