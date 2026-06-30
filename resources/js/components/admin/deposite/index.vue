@@ -27,11 +27,11 @@ const historyRows = ref([]);
 
 const columns = [
     { field: 'index', title: 'SL' },
-    { field: 'name', title: 'Amount' },
+    { field: 'created_at', title: 'Date' },
     { field: 'bank', title: 'Payment Account' },
-    { field: 'status', title: 'Status' },
-    { field: 'agent', title: 'Requested By' },
     { field: 'reference_no', title: 'Ref No & Date' },
+    { field: 'name', title: 'Amount' },
+    { field: 'status', title: 'Status' },
     { field: 'created_by', title: 'Created By' },
     { field: 'updated_by', title: 'Updated By' },
     { field: 'action', title: 'Action' },
@@ -126,16 +126,13 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
 </script>
 
 <template>
-    <AppBreadcrumbs
-        title="Deposit Management"
-        :back-to="{ name: 'Home' }"
-        :breadcrumbs="[
-            { label: 'Dashboard', to: { name: 'Home' } },
-            { label: 'Deposit Management' },
-        ]"
-    >
+    <AppBreadcrumbs title="Deposit Management" :back-to="{ name: 'Home' }" :breadcrumbs="[
+        { label: 'Dashboard', to: { name: 'Home' } },
+        { label: 'Deposit Management' },
+    ]">
         <template #actions>
-            <router-link :to="{ name: 'CreateDeposit' }" class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2">
+            <router-link :to="{ name: 'CreateDeposit' }"
+                class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2">
                 <i class="fa fa-circle-plus"></i>
                 <span>Deposit Request</span>
             </router-link>
@@ -154,7 +151,8 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
         </div>
         <div class="col-12 col-sm-6 col-md-3">
             <div class="active-agency mb-3">
-                <span class="active-agency-icon bg-success elevation-1 text-white"><i class="fa-solid fa-circle-check"></i></span>
+                <span class="active-agency-icon bg-success elevation-1 text-white"><i
+                        class="fa-solid fa-circle-check"></i></span>
                 <div class="active-agency-content">
                     <span class="active-agency-text">Approved</span>
                     <span class="active-agency-number">760</span>
@@ -204,12 +202,8 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
                         <i class="fa fa-times text-danger"></i> Clear
                     </div>
                     <div class="col-md d-flex justify-content-end align-items-center mt-2 mt-md-0">
-                        <AppButton
-                            variant="browse"
-                            label="History"
-                            :loading="historyLoading"
-                            @click="openHistoryModal"
-                        />
+                        <AppButton variant="browse" label="History" :loading="historyLoading"
+                            @click="openHistoryModal" />
                     </div>
                 </div>
             </div>
@@ -219,27 +213,30 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
     <div class="row">
         <div class="col-12">
             <div class="card rounded rounded-2 shadow-none p-3">
-                <DataTable
-                    table-id="deposit-list"
-                    :rows="tableRows"
-                    :columns="columns"
-                    :loading="loading"
-                    search-placeholder="Search by anything"
-                    @refresh="getListValues"
-                >
+                <DataTable table-id="deposit-list" :rows="tableRows" :columns="columns" :loading="loading"
+                    search-placeholder="Search by anything" @refresh="getListValues">
                     <template #name="{ value: row }">
                         <div class="deposit-amount-cell">
-                            <div class="deposit-amount-cell__term">
-                                <i
-                                    :class="[paymentTermMeta(row).icon, `deposit-amount-cell__term-icon--${paymentTermMeta(row).tone}`]"
-                                    aria-hidden="true"
-                                ></i>
-                                {{ row.name }}
-                            </div>
                             <div class="deposit-amount-cell__value">
                                 <span class="deposit-amount-cell__currency">৳</span>{{ formatAmount(row.total) }}
                             </div>
+                            <div class="deposit-amount-cell__term">
+                                <i :class="[paymentTermMeta(row).icon, `deposit-amount-cell__term-icon--${paymentTermMeta(row).tone}`]"
+                                    aria-hidden="true"></i>
+                                {{ row.name }}
+                            </div>
                         </div>
+                    </template>
+
+                    <template #created_at="{ value: row }">
+
+                        <div class="deposit-amount-cell__date">
+                            <i class="fa-regular fa-calendar me-1" style="font-size: 0.65rem;"></i>
+                            {{ moment(row.created_at).format('DD-MMM-YYYY') }}
+                        </div>
+                        <small class="text-primary">
+                            {{ `DEP${String(row.dep_id).padStart(10, '0')}` }}
+                        </small>
                     </template>
 
                     <template #bank="{ value: row }">
@@ -257,6 +254,11 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
                         <div>
                             <i class="fa-solid fa-receipt me-1 text-muted"></i>
                             {{ row.reference_no }}
+                            <AppTooltip :content="remarkText(row)" placement="top">
+                                <span class="remarks-info-badge" aria-label="View remarks">
+                                    <i class="fa-solid fa-download"></i>
+                                </span>
+                            </AppTooltip>
                             <br />
                             <small class="text-primary">
                                 <i class="fa-regular fa-calendar me-1" style="font-size: 0.65rem;"></i>
@@ -265,34 +267,18 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
                         </div>
                     </template>
 
-                    <template #agent="{ value: row }">
-                        <div>
-                            <i class="fa-solid fa-user me-1" style="color: #027DE2;"></i>
-                            {{ row.agent }}
-                            <br />
-                            <small class="text-primary">
-                                <i class="fa-regular fa-clock me-1" style="font-size: 0.65rem;"></i>
-                                {{ moment(row.created_at).format('DD-MMM-YYYY') }} |
-                                {{ moment(row.created_at).format('h:mm A') }}
-                            </small>
-                        </div>
-                    </template>
-
                     <template #status="{ value: row }">
                         <div class="status-cell">
-                            <div
-                                v-if="row.status === 'Requested'"
-                                class="badge rounded-pill text-warning bg-light-warning p-2 text-uppercase px-3"
-                            >
+                            <div v-if="row.status === 'Requested'"
+                                class="badge rounded-pill text-warning bg-light-warning p-2 text-uppercase px-3">
                                 <i class="bx bxs-circle me-1"></i>{{ row.status }}
                             </div>
-                            <div
-                                v-else-if="row.status === 'Rejected' || row.status === 'Cancelled'"
-                                class="badge rounded-pill text-danger bg-light-danger p-2 text-uppercase px-3"
-                            >
+                            <div v-else-if="row.status === 'Rejected' || row.status === 'Cancelled'"
+                                class="badge rounded-pill text-danger bg-light-danger p-2 text-uppercase px-3">
                                 <i class="bx bxs-circle me-1"></i>{{ row.status }}
                             </div>
-                            <div v-else class="badge rounded-pill text-success bg-light-success p-2 text-uppercase px-3">
+                            <div v-else
+                                class="badge rounded-pill text-success bg-light-success p-2 text-uppercase px-3">
                                 <i class="bx bxs-circle me-1"></i>{{ row.status }}
                             </div>
                             <AppTooltip :content="remarkText(row)" placement="top">
@@ -304,48 +290,28 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
                     </template>
 
                     <template #created_by="{ value: row }">
-                        <CreatedInfo
-                            :name="row?.created_by"
-                            :date="row?.created_at"
-                            :image-path="row?.created_by_avatar || ''"
-                        />
+                        <CreatedInfo :name="row?.created_by" :date="row?.created_at"
+                            :image-path="row?.created_by_avatar || ''" />
                     </template>
 
                     <template #updated_by="{ value: row }">
-                        <CreatedInfo
-                            v-if="row?.updated_by"
-                            :name="row.updated_by"
-                            :date="row.updated_at"
-                            :image-path="row?.updated_by_avatar || ''"
-                        />
+                        <CreatedInfo v-if="row?.updated_by" :name="row.updated_by" :date="row.updated_at"
+                            :image-path="row?.updated_by_avatar || ''" />
                         <span v-else class="text-muted">—</span>
                     </template>
 
                     <template #action="{ value: row }">
-                        <ActionButtons
-                            :item="row"
-                            :show-view="true"
-                            :show-edit="false"
-                            :show-delete="false"
-                            :show-cancel-booking="row.status === 'Requested'"
-                            cancel-booking-label="Cancel Request"
-                            @view="openDepositDetails"
-                            @cancel-booking="openCancelModal"
-                        />
+                        <ActionButtons :item="row" :show-view="true" :show-edit="false" :show-delete="false"
+                            :show-cancel-booking="row.status === 'Requested'" cancel-booking-label="Cancel Request"
+                            @view="openDepositDetails" @cancel-booking="openCancelModal" />
                     </template>
                 </DataTable>
             </div>
         </div>
     </div>
 
-    <AppModal
-        :is-open="showCancelModal"
-        :show-header="false"
-        size="sm"
-        max-width="460px"
-        :close-on-backdrop="!cancelLoading"
-        @close="closeCancelModal"
-    >
+    <AppModal :is-open="showCancelModal" :show-header="false" size="sm" max-width="460px"
+        :close-on-backdrop="!cancelLoading" @close="closeCancelModal">
         <div v-if="selectedDeposit" class="cdm-body">
             <!-- Icon + Title -->
             <div class="cdm-header">
@@ -389,7 +355,9 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
                         <i class="fa-regular fa-calendar cdm-row-icon"></i> Reference Date
                     </span>
                     <span class="cdm-info-value">
-                        {{ selectedDeposit.reference_date ? moment(selectedDeposit.reference_date).format('DD-MMM-YYYY') : '—' }}
+                        {{ selectedDeposit.reference_date ? moment(selectedDeposit.reference_date).format('DD-MMM-YYYY')
+                            :
+                            '—' }}
                     </span>
                 </div>
                 <div class="cdm-info-row">
@@ -415,14 +383,8 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
             <!-- Footer -->
             <div class="cdm-footer">
                 <AppButton variant="close" :block="true" :disabled="cancelLoading" @click="closeCancelModal" />
-                <AppButton
-                    variant="delete"
-                    label="Cancel Request"
-                    loading-text="Cancelling..."
-                    :loading="cancelLoading"
-                    :block="true"
-                    @click="confirmCancel"
-                >
+                <AppButton variant="delete" label="Cancel Request" loading-text="Cancelling..." :loading="cancelLoading"
+                    :block="true" @click="confirmCancel">
                     <template #icon>
                         <i class="fa-solid fa-ban"></i>
                     </template>
@@ -431,19 +393,9 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
         </div>
     </AppModal>
 
-    <AppModal
-        :is-open="showHistoryModal"
-        :show-header="false"
-        size="xl"
-        max-width="1100px"
-        :close-on-backdrop="!historyLoading"
-        @close="closeHistoryModal"
-    >
-        <FinancialHistoryModal
-            :balance="historyBalance"
-            :rows="historyRows"
-            @close="closeHistoryModal"
-        />
+    <AppModal :is-open="showHistoryModal" :show-header="false" size="xl" max-width="1100px"
+        :close-on-backdrop="!historyLoading" @close="closeHistoryModal">
+        <FinancialHistoryModal :balance="historyBalance" :rows="historyRows" @close="closeHistoryModal" />
     </AppModal>
 </template>
 
@@ -459,6 +411,7 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
     position: relative;
     width: 100%;
 }
+
 .info-agency .info-agency-icon {
     border-radius: .25rem;
     align-items: center;
@@ -468,6 +421,7 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
     text-align: center;
     width: 70px;
 }
+
 .info-agency .info-agency-content {
     display: flex;
     flex-direction: column;
@@ -477,6 +431,7 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
     padding: 0 30px;
     overflow: hidden;
 }
+
 .info-agency .info-agency-text {
     font-size: 19px;
     color: #838587;
@@ -485,6 +440,7 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
 .info-agency .info-agency-number {
     display: block;
     margin-top: .25rem;
@@ -503,6 +459,7 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
     position: relative;
     width: 100%;
 }
+
 .active-agency .active-agency-icon {
     border-radius: .25rem;
     align-items: center;
@@ -512,6 +469,7 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
     text-align: center;
     width: 70px;
 }
+
 .active-agency .active-agency-content {
     display: flex;
     flex-direction: column;
@@ -521,6 +479,7 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
     padding: 0 30px;
     overflow: hidden;
 }
+
 .active-agency .active-agency-text {
     font-size: 19px;
     color: #838587;
@@ -529,6 +488,7 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
 .active-agency .active-agency-number {
     display: block;
     margin-top: .25rem;
@@ -547,6 +507,7 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
     position: relative;
     width: 100%;
 }
+
 .pending-agnt .pending-agnt-icon {
     border-radius: .25rem;
     align-items: center;
@@ -556,6 +517,7 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
     text-align: center;
     width: 70px;
 }
+
 .pending-agnt .pending-agnt-content {
     display: flex;
     flex-direction: column;
@@ -565,6 +527,7 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
     padding: 0 30px;
     overflow: hidden;
 }
+
 .pending-agnt .pending-agnt-text {
     font-size: 19px;
     color: #838587;
@@ -573,6 +536,7 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
 .pending-agnt .pending-agnt-number {
     display: block;
     margin-top: .25rem;
@@ -591,6 +555,7 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
     position: relative;
     width: 100%;
 }
+
 .info-box .info-box-icon {
     border-radius: .25rem;
     align-items: center;
@@ -600,6 +565,7 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
     text-align: center;
     width: 70px;
 }
+
 .info-box .info-box-content {
     display: flex;
     flex-direction: column;
@@ -609,6 +575,7 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
     padding: 0 30px;
     overflow: hidden;
 }
+
 .info-box .info-box-text {
     font-size: 19px;
     color: #838587;
@@ -617,6 +584,7 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
 .info-box .info-box-number {
     display: block;
     margin-top: .25rem;
@@ -627,10 +595,22 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
 .elevation-1 {
     box-shadow: 0 1px 3px rgba(0, 0, 0, .12), 0 1px 2px rgba(0, 0, 0, .24) !important;
 }
-.bg-info { background-color: #0880e1 !important; }
-.bg-success { background-color: #05cc61 !important; }
-.bg-warning { background-color: #fb8e28 !important; }
-.bg-danger { background-color: #efb51d !important; }
+
+.bg-info {
+    background-color: #0880e1 !important;
+}
+
+.bg-success {
+    background-color: #05cc61 !important;
+}
+
+.bg-warning {
+    background-color: #fb8e28 !important;
+}
+
+.bg-danger {
+    background-color: #efb51d !important;
+}
 
 /* ── Cancel Deposit Modal ───────────────────────────── */
 .cdm-body {
@@ -656,6 +636,7 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
     align-items: center;
     justify-content: center;
 }
+
 .cdm-icon {
     color: #dc2626;
     font-size: 1rem;
@@ -665,6 +646,7 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
     flex: 1;
     min-width: 0;
 }
+
 .cdm-title {
     font-size: 0.95rem;
     font-weight: 600;
@@ -672,6 +654,7 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
     line-height: 1.3;
     color: #0f172a;
 }
+
 .cdm-subtitle {
     font-size: 0.78rem;
     color: #94a3b8;
@@ -689,14 +672,23 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
     border-radius: 4px;
     transition: color 0.15s, background 0.15s;
 }
-.cdm-close-btn:hover:not(:disabled) { color: #475569; background: #f1f5f9; }
-.cdm-close-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.cdm-close-btn:hover:not(:disabled) {
+    color: #475569;
+    background: #f1f5f9;
+}
+
+.cdm-close-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
 
 .cdm-info-list {
     border: 1px solid #e2e8f0;
     border-radius: 8px;
     overflow: hidden;
 }
+
 .cdm-info-row {
     display: flex;
     align-items: baseline;
@@ -705,7 +697,8 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
     padding: 0.5rem 0.875rem;
     font-size: 0.82rem;
 }
-.cdm-info-row + .cdm-info-row {
+
+.cdm-info-row+.cdm-info-row {
     border-top: 1px solid #f1f5f9;
 }
 
@@ -715,18 +708,21 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
     white-space: nowrap;
     flex-shrink: 0;
 }
+
 .cdm-row-icon {
     font-size: 0.7rem;
     width: 0.9rem;
     text-align: center;
     color: #94a3b8;
 }
+
 .cdm-info-value {
     color: #1e293b;
     font-weight: 500;
     text-align: right;
     word-break: break-all;
 }
+
 .cdm-amount-value {
     color: #1576c9;
     font-weight: 800;
@@ -749,9 +745,17 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
     color: #475569;
 }
 
-.deposit-amount-cell__term-icon--cash { color: #00ab55; }
-.deposit-amount-cell__term-icon--bank { color: #027de2; }
-.deposit-amount-cell__term-icon--card { color: #805dca; }
+.deposit-amount-cell__term-icon--cash {
+    color: #00ab55;
+}
+
+.deposit-amount-cell__term-icon--bank {
+    color: #027de2;
+}
+
+.deposit-amount-cell__term-icon--card {
+    color: #805dca;
+}
 
 .deposit-amount-cell__value {
     font-size: 1rem;
@@ -787,6 +791,7 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
     flex-shrink: 0;
     transition: background 0.15s, color 0.15s;
 }
+
 .remarks-info-badge:hover {
     background: #bfdbfe;
     color: #1d4ed8;
@@ -805,16 +810,54 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
 }
 
 /* Dark mode */
-[data-bs-theme="dark"] .cdm-icon-wrap { background: rgba(220,38,38,0.15); }
-[data-bs-theme="dark"] .cdm-title { color: #f1f5f9; }
-[data-bs-theme="dark"] .cdm-close-btn:hover:not(:disabled) { color: #cbd5e1; background: rgba(255,255,255,0.06); }
-[data-bs-theme="dark"] .cdm-info-list { border-color: #334155; }
-[data-bs-theme="dark"] .cdm-info-row + .cdm-info-row { border-color: #1e293b; }
-[data-bs-theme="dark"] .cdm-info-label { color: #94a3b8; }
-[data-bs-theme="dark"] .cdm-info-value { color: #e2e8f0; }
-[data-bs-theme="dark"] .cdm-amount-value { color: #60a5fa; }
-[data-bs-theme="dark"] .deposit-amount-cell__term { color: #94a3b8; }
-[data-bs-theme="dark"] .deposit-amount-cell__value { color: #60a5fa; }
-[data-bs-theme="dark"] .remarks-info-badge { background: rgba(37, 99, 235, 0.2); color: #60a5fa; }
-[data-bs-theme="dark"] .remarks-info-badge:hover { background: rgba(37, 99, 235, 0.35); color: #93c5fd; }
+[data-bs-theme="dark"] .cdm-icon-wrap {
+    background: rgba(220, 38, 38, 0.15);
+}
+
+[data-bs-theme="dark"] .cdm-title {
+    color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .cdm-close-btn:hover:not(:disabled) {
+    color: #cbd5e1;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+[data-bs-theme="dark"] .cdm-info-list {
+    border-color: #334155;
+}
+
+[data-bs-theme="dark"] .cdm-info-row+.cdm-info-row {
+    border-color: #1e293b;
+}
+
+[data-bs-theme="dark"] .cdm-info-label {
+    color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .cdm-info-value {
+    color: #e2e8f0;
+}
+
+[data-bs-theme="dark"] .cdm-amount-value {
+    color: #60a5fa;
+}
+
+[data-bs-theme="dark"] .deposit-amount-cell__term {
+    color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .deposit-amount-cell__value {
+    color: #60a5fa;
+}
+
+[data-bs-theme="dark"] .remarks-info-badge {
+    background: rgba(37, 99, 235, 0.2);
+    color: #60a5fa;
+}
+
+[data-bs-theme="dark"] .remarks-info-badge:hover {
+    background: rgba(37, 99, 235, 0.35);
+    color: #93c5fd;
+}
 </style>
