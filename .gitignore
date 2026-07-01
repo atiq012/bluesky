@@ -18,3 +18,4 @@ yarn-error.log
 /docker
 /public/uploads/agents/
 vite.config.js
+vitest.config.ts

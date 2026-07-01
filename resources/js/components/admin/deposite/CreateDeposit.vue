@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue';
+import { ref, reactive, onMounted, watch, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import axiosInstance from '../../../axiosInstance';
 import AppDatePicker from '../../common/AppDatePicker.vue';
@@ -41,6 +41,11 @@ function recalculate() {
 }
 
 watch(() => form.requested_amount, recalculate);
+
+const showZeroChargeNotice = computed(() => {
+    if (!form.payment_acc) return false;
+    return (parseFloat(form.service_charge) || 0) === 0;
+});
 
 onMounted(() => {
     $('.payment_acc').on('change', function () {
@@ -194,6 +199,12 @@ async function submitForm(type) {
                                                     <label class="form-label">Total Amount</label>
                                                     <input type="text" class="form-control form-control-sm bg-light" :value="form.total_amount || '0.00'" readonly />
                                                 </div>
+                                                <div v-if="showZeroChargeNotice" class="col-12 mt-2">
+                                                    <div class="alert alert-warning d-flex align-items-start gap-2 mb-0 py-2 small" role="alert">
+                                                        <i class="fa-solid fa-circle-info mt-1" aria-hidden="true"></i>
+                                                        <span>Charge is currently 0, but it may still apply as it is subject to bank action. If the bank charges a fee, the charge will be applied on approval.</span>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -282,6 +293,12 @@ async function submitForm(type) {
                                                 <div class="col-md-3 mt-2">
                                                     <label class="form-label">Total Amount</label>
                                                     <input type="text" class="form-control form-control-sm bg-light" :value="form.total_amount || '0.00'" readonly />
+                                                </div>
+                                                <div v-if="showZeroChargeNotice" class="col-12 mt-2">
+                                                    <div class="alert alert-warning d-flex align-items-start gap-2 mb-0 py-2 small" role="alert">
+                                                        <i class="fa-solid fa-circle-info mt-1" aria-hidden="true"></i>
+                                                        <span>Charge is currently 0, but it may still apply as it is subject to bank action. If the bank charges a fee, the charge will be applied on approval.</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -373,6 +390,12 @@ async function submitForm(type) {
                                                 <div class="col-md-3 mt-2">
                                                     <label class="form-label">Total Amount</label>
                                                     <input type="text" class="form-control form-control-sm bg-light" :value="form.total_amount || '0.00'" readonly />
+                                                </div>
+                                                <div v-if="showZeroChargeNotice" class="col-12 mt-2">
+                                                    <div class="alert alert-warning d-flex align-items-start gap-2 mb-0 py-2 small" role="alert">
+                                                        <i class="fa-solid fa-circle-info mt-1" aria-hidden="true"></i>
+                                                        <span>Charge is currently 0, but it may still apply as it is subject to bank action. If the bank charges a fee, the charge will be applied on approval.</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -468,6 +491,12 @@ async function submitForm(type) {
                                                 <div class="col-md-3 mt-2">
                                                     <label class="form-label">Total Amount</label>
                                                     <input type="text" class="form-control form-control-sm bg-light" :value="form.total_amount || '0.00'" readonly />
+                                                </div>
+                                                <div v-if="showZeroChargeNotice" class="col-12 mt-2">
+                                                    <div class="alert alert-warning d-flex align-items-start gap-2 mb-0 py-2 small" role="alert">
+                                                        <i class="fa-solid fa-circle-info mt-1" aria-hidden="true"></i>
+                                                        <span>Charge is currently 0, but it may still apply as it is subject to bank action. If the bank charges a fee, the charge will be applied on approval.</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
