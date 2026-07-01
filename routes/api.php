@@ -164,6 +164,7 @@ Route::middleware(['auth:api'])->group(function () {
     //agets wise extrenal users
     Route::get('getAgentExternalUsers', [UserController::class, 'getAgentExternalUsers'])->name('user.getAgentExternalUsers');
     Route::post('/agent-external-user/save', [UserController::class, 'agntUserstore'])->name('user.agntUserstore');
+    Route::post('/agent/change-password', [UserController::class, 'changePassword'])->name('user.changePassword');
 
     // traveler section
     Route::get('getTraveler', [TravelerController::class, 'index'])->name('traveler.getTraveler');

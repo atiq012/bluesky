@@ -49,64 +49,6 @@ onUnmounted(() => {
 });
 
 useRealtimeList('deposits', loadBalance);
-
-/* ───────────────────── Change Password modal ───────────────────── */
-const oldPassword = ref('');
-const newPassword = ref('');
-const confirmPassword = ref('');
-const showOld = ref(false);
-const showNew = ref(false);
-const showConfirm = ref(false);
-const changePwdLoading = ref(false);
-const changePwdError = ref('');
-
-function resetPasswordForm() {
-    oldPassword.value = '';
-    newPassword.value = '';
-    confirmPassword.value = '';
-    showOld.value = false;
-    showNew.value = false;
-    showConfirm.value = false;
-    changePwdError.value = '';
-}
-
-async function submitChangePassword() {
-    changePwdError.value = '';
-
-    if (!oldPassword.value || !newPassword.value || !confirmPassword.value) {
-        changePwdError.value = 'All fields are required.';
-        return;
-    }
-    if (newPassword.value.length < 6) {
-        changePwdError.value = 'New password must be at least 6 characters.';
-        return;
-    }
-    if (newPassword.value !== confirmPassword.value) {
-        changePwdError.value = 'New password and confirm password do not match.';
-        return;
-    }
-
-    changePwdLoading.value = true;
-    try {
-        await axiosInstance.post('agent/change-password', {
-            old_password: oldPassword.value,
-            new_password: newPassword.value,
-            new_password_confirmation: confirmPassword.value,
-        });
-
-        resetPasswordForm();
-
-        const modalEl = document.getElementById('changePasswordModal');
-        if (modalEl && window.bootstrap) {
-            const instance = window.bootstrap.Modal.getInstance(modalEl) || new window.bootstrap.Modal(modalEl);
-            instance.hide();
-        }
-    } catch (err) {
-        changePwdError.value = err?.response?.data?.message || 'Failed to update password. Please try again.';
-    } finally {
-        changePwdLoading.value = false;
-    }
-}
 </script>
 <template>
     <header>
@@ -212,6 +154,156 @@ async function submitChangePassword() {
 
                         </li>
 
+                        <!-- <li class="nav-item dropdown dropdown-large">
+
+                            <a v-wave class="nav-link dropdown-toggle dropdown-toggle-nocaret position-relative"
+                                href="#" data-bs-toggle="dropdown"><span class="alert-count">7</span>
+                                <i class='bx bx-bell'></i>
+                            </a>
+
+                            <div class="dropdown-menu dropdown-menu-end">
+                                <a href="javascript:;">
+                                    <div class="msg-header">
+                                        <p class="msg-header-title">Notifications</p>
+                                        <p class="msg-header-badge">8 New</p>
+                                    </div>
+                                </a>
+                                <Scrollbar height="100%">
+                                    <div class="header-notifications-list">
+                                        <a class="dropdown-item" href="javascript:;">
+                                            <div class="d-flex align-items-center">
+                                                <div class="user-online">
+                                                    <img src="../../themeassets/images/avatars/avatar-1.png"
+                                                        class="msg-avatar" alt="user avatar">
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <h6 class="msg-name">Daisy Anderson<span
+                                                            class="msg-time float-end">5
+                                                            sec
+                                                            ago</span></h6>
+                                                    <p class="msg-info">The standard chunk of lorem</p>
+                                                </div>
+                                            </div>
+                                        </a>
+                                        <a class="dropdown-item" href="javascript:;">
+                                            <div class="d-flex align-items-center">
+                                                <div class="notify bg-light-danger text-danger">dc
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <h6 class="msg-name">New Orders <span class="msg-time float-end">2
+                                                            min
+                                                            ago</span></h6>
+                                                    <p class="msg-info">You have recived new orders</p>
+                                                </div>
+                                            </div>
+                                        </a>
+                                        <a class="dropdown-item" href="javascript:;">
+                                            <div class="d-flex align-items-center">
+                                                <div class="user-online">
+                                                    <img src="../../themeassets/images/avatars/avatar-2.png"
+                                                        class="msg-avatar" alt="user avatar">
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <h6 class="msg-name">Althea Cabardo <span
+                                                            class="msg-time float-end">14
+                                                            sec ago</span></h6>
+                                                    <p class="msg-info">Many desktop publishing packages</p>
+                                                </div>
+                                            </div>
+                                        </a>
+                                        <a class="dropdown-item" href="javascript:;">
+                                            <div class="d-flex align-items-center">
+                                                <div class="notify bg-light-success text-success">
+                                                    <img src="../../themeassets/images/app/outlook.png" width="25"
+                                                        alt="user avatar">
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <h6 class="msg-name">Account Created<span
+                                                            class="msg-time float-end">28
+                                                            min
+                                                            ago</span></h6>
+                                                    <p class="msg-info">Successfully created new email</p>
+                                                </div>
+                                            </div>
+                                        </a>
+                                        <a class="dropdown-item" href="javascript:;">
+                                            <div class="d-flex align-items-center">
+                                                <div class="notify bg-light-info text-info">Ss
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <h6 class="msg-name">New Product Approved <span
+                                                            class="msg-time float-end">2 hrs ago</span></h6>
+                                                    <p class="msg-info">Your new product has approved</p>
+                                                </div>
+                                            </div>
+                                        </a>
+                                        <a class="dropdown-item" href="javascript:;">
+                                            <div class="d-flex align-items-center">
+                                                <div class="user-online">
+                                                    <img src="../../themeassets/images/avatars/avatar-4.png"
+                                                        class="msg-avatar" alt="user avatar">
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <h6 class="msg-name">Katherine Pechon <span
+                                                            class="msg-time float-end">15
+                                                            min ago</span></h6>
+                                                    <p class="msg-info">Making this the first true generator</p>
+                                                </div>
+                                            </div>
+                                        </a>
+                                        <a class="dropdown-item" href="javascript:;">
+                                            <div class="d-flex align-items-center">
+                                                <div class="notify bg-light-success text-success"><i
+                                                        class='bx bx-check-square'></i>
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <h6 class="msg-name">Your item is shipped <span
+                                                            class="msg-time float-end">5 hrs
+                                                            ago</span></h6>
+                                                    <p class="msg-info">Successfully shipped your item</p>
+                                                </div>
+                                            </div>
+                                        </a>
+                                        <a class="dropdown-item" href="javascript:;">
+                                            <div class="d-flex align-items-center">
+                                                <div class="notify bg-light-primary">
+                                                    <img src="../../themeassets/images/app/github.png" width="25"
+                                                        alt="user avatar">
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <h6 class="msg-name">New 24 authors<span
+                                                            class="msg-time float-end">1
+                                                            day
+                                                            ago</span></h6>
+                                                    <p class="msg-info">24 new authors joined last week</p>
+                                                </div>
+                                            </div>
+                                        </a>
+                                        <a class="dropdown-item" href="javascript:;">
+                                            <div class="d-flex align-items-center">
+                                                <div class="user-online">
+                                                    <img src="../../themeassets/images/avatars/avatar-8.png"
+                                                        class="msg-avatar" alt="user avatar">
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <h6 class="msg-name">Peter Costanzo <span
+                                                            class="msg-time float-end">6
+                                                            hrs
+                                                            ago</span></h6>
+                                                    <p class="msg-info">It was popularised in the 1960s</p>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </div>
+                                </Scrollbar>
+                                <a href="javascript:;">
+                                    <div class="text-center msg-footer">
+                                        <button class="btn btn-primary w-100">View All Notifications</button>
+                                    </div>
+                                </a>
+                            </div>
+                        </li> -->
+
                     </ul>
                 </div>
                 <div v-wave class="user-box dropdown px-3">
@@ -235,11 +327,22 @@ async function submitChangePassword() {
                             </a>
                         </li>
                         <li>
-                            <a class="dropdown-item d-flex align-items-center" href="javascript:;"
-                                data-bs-toggle="modal" data-bs-target="#changePasswordModal"><i
+                            <a class="dropdown-item d-flex align-items-center" href="javascript:;"><i
                                     class="bx bx-key fs-5"></i><span>Change Password</span>
                             </a>
                         </li>
+                        <!-- <li><a class="dropdown-item d-flex align-items-center" href="javascript:;"><i
+                                    class="bx bx-cog fs-5"></i><span>Settings</span></a>
+                        </li>
+                        <li><a class="dropdown-item d-flex align-items-center" href="javascript:;"><i
+                                    class="bx bx-home-circle fs-5"></i><span>Dashboard</span></a>
+                        </li>
+                        <li><a class="dropdown-item d-flex align-items-center" href="javascript:;"><i
+                                    class="bx bx-dollar-circle fs-5"></i><span>Earnings</span></a>
+                        </li>
+                        <li><a class="dropdown-item d-flex align-items-center" href="javascript:;"><i
+                                    class="bx bx-download fs-5"></i><span>Downloads</span></a>
+                        </li> -->
                         <li>
                             <div class="dropdown-divider mb-0"></div>
                         </li>
@@ -251,65 +354,6 @@ async function submitChangePassword() {
             </nav>
         </div>
     </header>
-
-    <!-- ───────────────────── Change Password Modal ───────────────────── -->
-    <div class="modal fade cp-modal" id="changePasswordModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Change Password</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
-                        @click="resetPasswordForm"></button>
-                </div>
-                <div class="modal-body">
-                    <div v-if="changePwdError" class="cp-error">{{ changePwdError }}</div>
-
-                    <div class="cp-field-group">
-                        <label class="cp-label">Old Password</label>
-                        <div class="cp-input-wrap">
-                            <i class="bx bx-lock-alt cp-icon cp-icon-old"></i>
-                            <input :type="showOld ? 'text' : 'password'" class="cp-input"
-                                placeholder="Current Password" v-model="oldPassword" autocomplete="current-password" />
-                            <i class="bx cp-eye" :class="showOld ? 'bx-show' : 'bx-hide'"
-                                @click="showOld = !showOld"></i>
-                        </div>
-                    </div>
-
-                    <div class="cp-field-group">
-                        <label class="cp-label">New Password</label>
-                        <div class="cp-input-wrap">
-                            <i class="bx bx-lock-alt cp-icon cp-icon-new"></i>
-                            <input :type="showNew ? 'text' : 'password'" class="cp-input" placeholder="New Password"
-                                v-model="newPassword" autocomplete="new-password" />
-                            <i class="bx cp-eye" :class="showNew ? 'bx-show' : 'bx-hide'"
-                                @click="showNew = !showNew"></i>
-                        </div>
-                    </div>
-
-                    <div class="cp-field-group">
-                        <label class="cp-label">Confirm Password</label>
-                        <div class="cp-input-wrap">
-                            <i class="bx bx-lock-alt cp-icon cp-icon-confirm"></i>
-                            <input :type="showConfirm ? 'text' : 'password'" class="cp-input"
-                                placeholder="Confirm Password" v-model="confirmPassword"
-                                autocomplete="new-password" />
-                            <i class="bx cp-eye" :class="showConfirm ? 'bx-show' : 'bx-hide'"
-                                @click="showConfirm = !showConfirm"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer cp-footer">
-                    <button type="button" class="btn cp-btn-cancel" data-bs-dismiss="modal"
-                        @click="resetPasswordForm">Cancel</button>
-                    <button type="button" class="btn cp-btn-update" :disabled="changePwdLoading"
-                        @click="submitChangePassword">
-                        <span v-if="changePwdLoading" class="spinner-border spinner-border-sm me-1"></span>
-                        Update
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
 </template>
 <style>
 .agent-balance-strip {
@@ -612,153 +656,5 @@ async function submitChangePassword() {
 
 .wallet-footer a:hover {
     text-decoration: underline;
-}
-
-/* ───────────────────── Change Password modal ───────────────────── */
-.cp-modal .modal-content {
-    border: none;
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, .14);
-}
-
-.cp-modal .modal-header {
-    border-bottom: 1px solid #eef0f3;
-    padding: 18px 22px;
-}
-
-.cp-modal .modal-title {
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: #1f2937;
-}
-
-.cp-modal .modal-body {
-    padding: 22px;
-}
-
-.cp-error {
-    background: #FCEBEB;
-    border: 1px solid #F7C1C1;
-    color: #791F1F;
-    font-size: .8rem;
-    padding: 9px 12px;
-    border-radius: 8px;
-    margin-bottom: 16px;
-}
-
-.cp-field-group {
-    margin-bottom: 18px;
-}
-
-.cp-field-group:last-child {
-    margin-bottom: 0;
-}
-
-.cp-label {
-    display: block;
-    font-size: .85rem;
-    font-weight: 600;
-    color: #374151;
-    margin-bottom: 8px;
-}
-
-.cp-input-wrap {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    padding: 11px 14px;
-    transition: border-color .15s, box-shadow .15s;
-}
-
-.cp-input-wrap:focus-within {
-    border-color: #93b4f7;
-    box-shadow: 0 0 0 3px rgba(74, 124, 246, .12);
-}
-
-.cp-icon {
-    font-size: 1.05rem;
-    flex-shrink: 0;
-}
-
-.cp-icon-old {
-    color: #4A7CF6;
-}
-
-.cp-icon-new {
-    color: #6EA0F5;
-}
-
-.cp-icon-confirm {
-    color: #2FA84F;
-}
-
-.cp-input {
-    flex: 1;
-    border: none;
-    outline: none;
-    font-size: .9rem;
-    color: #1f2937;
-    background: transparent;
-}
-
-.cp-input::placeholder {
-    color: #9ca3af;
-}
-
-.cp-eye {
-    font-size: 1.05rem;
-    color: #9ca3af;
-    cursor: pointer;
-    flex-shrink: 0;
-}
-
-.cp-eye:hover {
-    color: #6b7280;
-}
-
-.cp-footer {
-    border-top: none;
-    padding: 6px 22px 22px;
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-}
-
-.cp-btn-cancel {
-    background: #eef0f2;
-    color: #374151;
-    border: none;
-    border-radius: 10px;
-    padding: 10px 20px;
-    font-weight: 600;
-    font-size: .9rem;
-}
-
-.cp-btn-cancel:hover {
-    background: #e2e5e9;
-    color: #374151;
-}
-
-.cp-btn-update {
-    background: #4A7CF6;
-    color: #fff;
-    border: none;
-    border-radius: 10px;
-    padding: 10px 28px;
-    font-weight: 600;
-    font-size: .9rem;
-}
-
-.cp-btn-update:hover {
-    background: #3865d6;
-    color: #fff;
-}
-
-.cp-btn-update:disabled {
-    opacity: .7;
-    cursor: not-allowed;
 }
 </style>

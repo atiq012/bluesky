@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\BaseController;
@@ -30,7 +29,7 @@ class UserController extends BaseController
         $auth = auth()->user();
 
         $data = DB::table('users as u')->where('type', 2)->where('agent_id', $auth->agent_id)
-            // ->join('roles as r', 'r.id', 'u.user_role')
+        // ->join('roles as r', 'r.id', 'u.user_role')
             ->selectRaw('u.name,u.email,u.img_path as img,u.phone,u.status,u.img_path,u.id as idd,u.created_at,u.updated_at,u.dept_id as dept,u.designation_id as desg,u.emp_id,f_username(u.updated_by) as updated_by,f_username(u.created_by) as created_by')->get();
 
         return DataTables::of($data)->addIndexColumn()->make(true);
@@ -57,7 +56,7 @@ class UserController extends BaseController
     {
         // dd($request->all());
 
-        $auth = User::where('email', $request->useEmail)->first();
+        $auth      = User::where('email', $request->useEmail)->first();
         $validator = validator($request->all(),
             ['name' => 'required'],
             ['phone' => 'required'],
@@ -72,24 +71,24 @@ class UserController extends BaseController
         if ($validator->fails()) {
             return response()->json(['message' => $validator->errors()->all(), 'types' => 'e']);
         }
-        $user = new User;
-        $user->name = $request->name;
-        $user->phone = $request->phone;
-        $user->email = $request->email;
-        $user->emp_id = $request->staff_id;
-        $user->dept_id = $request->dept_name;
+        $user                 = new User;
+        $user->name           = $request->name;
+        $user->phone          = $request->phone;
+        $user->email          = $request->email;
+        $user->emp_id         = $request->staff_id;
+        $user->dept_id        = $request->dept_name;
         $user->designation_id = $request->desg;
-        $user->office_loc_id = $request->off_loct;
-        $user->report_to = $request->report_to;
-        $user->user_role = $request->role_id;
+        $user->office_loc_id  = $request->off_loct;
+        $user->report_to      = $request->report_to;
+        $user->user_role      = $request->role_id;
 
         if ($request->hasFile('profile_picture')) {
 
             $request_image = $request->file('profile_picture');
-            $image_name = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
+            $image_name    = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
 
             $image_path = public_path('/uploads/profile_image/');
-            if (!File::exists($image_path)) {
+            if (! File::exists($image_path)) {
                 File::makeDirectory($image_path, 0777, true);
             }
 
@@ -100,11 +99,11 @@ class UserController extends BaseController
             $profilePicturePath = null;
         }
 
-        $user->type = 2;
-        $user->is_active = 1;
-        $user->status = 1;
+        $user->type       = 2;
+        $user->is_active  = 1;
+        $user->status     = 1;
         $user->created_by = $auth->id;
-        $user->password = Hash::make('Gblue@sky7');
+        $user->password   = Hash::make('Gblue@sky7');
         // $user->agent_id = $auth->agent_id;
         $user->save();
         return response()->json(['message' => 'Successfully User Saved.', 'types' => 's']);
@@ -114,7 +113,7 @@ class UserController extends BaseController
     {
         // dd($request->all());
 
-        $auth = User::where('email', $request->useEmail)->first();
+        $auth      = User::where('email', $request->useEmail)->first();
         $validator = validator($request->all(),
             ['name' => 'required'],
             ['phone' => 'required'],
@@ -129,12 +128,12 @@ class UserController extends BaseController
         if ($validator->fails()) {
             return response()->json(['message' => $validator->errors()->all(), 'types' => 'e']);
         }
-        $user = new User;
-        $user->name = $request->name;
-        $user->email = $request->email;
-        $user->emp_id = $request->staff_id;
-        $user->phone = $request->phone;
-        $user->dept_id = $request->deptment_id;
+        $user                 = new User;
+        $user->name           = $request->name;
+        $user->email          = $request->email;
+        $user->emp_id         = $request->staff_id;
+        $user->phone          = $request->phone;
+        $user->dept_id        = $request->deptment_id;
         $user->designation_id = $request->desg_id;
         // $user->office_loc_id = $request->off_loct;
         // $user->report_to = $request->report_to;
@@ -144,10 +143,10 @@ class UserController extends BaseController
         if ($request->hasFile('profile_picture')) {
 
             $request_image = $request->file('profile_picture');
-            $image_name = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
+            $image_name    = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
 
             $image_path = public_path('/uploads/profile_image/');
-            if (!File::exists($image_path)) {
+            if (! File::exists($image_path)) {
                 File::makeDirectory($image_path, 0777, true);
             }
 
@@ -158,11 +157,11 @@ class UserController extends BaseController
             $profilePicturePath = null;
         }
 
-        $user->type = 2;
-        $user->is_active = 1; // active
-        $user->status = 1; // active
+        $user->type       = 2;
+        $user->is_active  = 1; // active
+        $user->status     = 1; // active
         $user->created_by = $auth->id;
-        $user->password = Hash::make('Gblue@sky7');
+        $user->password   = Hash::make('Gblue@sky7');
         // $user->agent_id = $auth->agent_id;
         $user->save();
         return response()->json(['message' => 'Successfully User Saved.', 'types' => 's']);
@@ -194,24 +193,24 @@ class UserController extends BaseController
         // dd($request->all());
         $auth = User::where('email', $request->useEmail)->first();
 
-        $user = User::where('id', $request->user_id)->first();
-        $user->name = $request->name ? $request->name : $user->name;
-        $user->phone = $request->phone ? $request->phone : $user->phone;
-        $user->email = $request->email ? $request->email : $user->email;
-        $user->emp_id = $request->staff_id ? $request->staff_id : $user->emp_id;
-        $user->dept_id = $request->dept_name ? $request->dept_name : $user->dept_id;
+        $user                 = User::where('id', $request->user_id)->first();
+        $user->name           = $request->name ? $request->name : $user->name;
+        $user->phone          = $request->phone ? $request->phone : $user->phone;
+        $user->email          = $request->email ? $request->email : $user->email;
+        $user->emp_id         = $request->staff_id ? $request->staff_id : $user->emp_id;
+        $user->dept_id        = $request->dept_name ? $request->dept_name : $user->dept_id;
         $user->designation_id = $request->desg ? $request->desg : $user->designation_id;
-        $user->office_loc_id = $request->off_loct ? $request->off_loct : $user->office_loc_id;
-        $user->report_to = $request->report_to ? $request->report_to : $user->report_to;
-        $user->user_role = $request->role_id ? $request->role_id : $user->user_role;
+        $user->office_loc_id  = $request->off_loct ? $request->off_loct : $user->office_loc_id;
+        $user->report_to      = $request->report_to ? $request->report_to : $user->report_to;
+        $user->user_role      = $request->role_id ? $request->role_id : $user->user_role;
 
         if ($request->hasFile('profile_picture')) {
 
             $request_image = $request->file('profile_picture');
-            $image_name = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
+            $image_name    = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
 
             $image_path = public_path('/uploads/profile_image/');
-            if (!File::exists($image_path)) {
+            if (! File::exists($image_path)) {
                 File::makeDirectory($image_path, 0777, true);
             }
 
@@ -235,10 +234,10 @@ class UserController extends BaseController
     public function statusUpdate(Request $request)
     {
         if ($id = $request->useridStatus) {
-            $user = User::where('id', $id)->first();
+            $user         = User::where('id', $id)->first();
             $user->status = $request->status;
             $user->save();
-            $success='';
+            $success = '';
             return $this->SuccessResponse($success, 'Successfully User status updated.');
 
         } else {
@@ -246,6 +245,37 @@ class UserController extends BaseController
             return $this->ErrorResponse($error);
         }
 
+    }
+
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'old_password' => ['required', 'string'],
+            'new_password' => ['required', 'string', 'min:6', 'confirmed']
+        ]);
+
+        $user = $request->user();
+
+        if (! Hash::check($request->old_password, $user->password)) {
+            return response()->json([
+                'message' => 'The current password is incorrect.',
+            ], 422);
+        }
+
+        if (Hash::check($request->new_password, $user->password)) {
+            return response()->json([
+                'message' => 'New password must be different from the current password.',
+            ], 422);
+        }
+
+        $user->password            = Hash::make($request->new_password);
+        $user->password_updated_at = now();
+        $user->login_attamp        = 0;
+        $user->save();
+
+        return response()->json([
+            'message' => 'Password updated successfully.',
+        ]);
     }
 
     /**
@@ -256,10 +286,10 @@ class UserController extends BaseController
         if ($request->id) {
 
             $user = User::where('id', $request->id)->first();
-            if($user->img_path){
+            if ($user->img_path) {
                 if ($user->img_path) {
 
-                    $filePath = public_path().$user->img_path;
+                    $filePath = public_path() . $user->img_path;
                     File::delete($filePath);
                 }
             }
