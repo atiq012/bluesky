@@ -107,10 +107,10 @@ const errors = reactive({
     city: null,
     address: null,
     trade: null,
-    cac: null,
-    iata: null,
-    hajj: null,
-    tin: null,
+    cac: null,      // ← was missing
+    iata: null,     // ← was missing
+    hajj: null,     // ← was missing
+    tin: null,      // ← was missing
     nid: null,
     firstName: null,
     designation: null,
@@ -192,37 +192,34 @@ const userFlag = computed(() => {
     return options[form.userCountryDial] || 'bd';
 });
 
-// ============= FIXED COMPUTED PROPERTIES =============
-
-const showIataField = computed(() => {
-    return form.agencyType === 'IATA';
-});
-
-// IATA  placeholder
 const iataPlaceholder = computed(() => {
-    if (form.agencyType === 'IATA') {
+    if (form.agencyType === 'IATA')
+    {
+        $("#iata_field").show();
         return 'IATA Number';
-    } else if (form.agencyType === 'Non-IATA') {
+    }
+    if (form.agencyType === 'Non-IATA') {
+        $("#iata_field").hide();
         return 'Non-IATA Ref. Number';
-    } else {
+    }else{
+        $("#iata_field").hide();
         return 'Corporate Ref. Number';
     }
 });
 
-
-const showHajjField = computed(() => {
-    return form.hajjType === 'Hajj';
-});
-
-
 const hajjPlaceholder = computed(() => {
-    if (form.hajjType === 'Hajj') {
-        return 'Hajj Number';
-    } else {
-        return 'Non-Hajj Ref. Number';
+    console.log(form.hajjType);
+
+    if (form.hajjType === 'Hajj')
+    {
+        $("#iata_field").show();
+        return 'IATA Number';
+    }
+    if (form.hajjType === 'Non-Hajj') {
+        $("#iata_field").hide();
+        return 'Non-IATA Ref. Number';
     }
 });
-// =====================================================
 
 // Methods
 function validateStep1() {
@@ -315,6 +312,7 @@ function handleLogo(e) {
 
 // File zones logic
 function triggerFile(key) {
+
     if (key === 'trade') fileTradeInput.value?.click();
     else if (key === 'cac') fileCacInput.value?.click();
     else if (key === 'iata') fileIataInput.value?.click();
@@ -443,21 +441,21 @@ async function submitForm() {
         const fd = new FormData();
 
         // Agency Details
-        fd.append('agencyName', form.agencyName);
-        fd.append('establishedDate', form.establishedDate);
-        fd.append('agencyEmail', form.agencyEmail);
-        fd.append('agencyCountryDial', form.agencyCountryDial);
-        fd.append('agencyPhone', form.agencyPhone);
-        fd.append('country', form.country);
-        fd.append('city', form.city);
-        fd.append('address', form.address);
-        fd.append('postalCode', form.postalCode);
-        fd.append('cacNumber', form.cacNumber);
-        fd.append('tradeLicense', form.tradeLicense);
-        fd.append('agencyType', form.agencyType);
-        fd.append('iataNumber', form.iataNumber);
-        fd.append('hajjType', form.hajjType);
-        fd.append('hajjNumber', form.hajjNumber);
+        fd.append('agencyName',       form.agencyName);
+        fd.append('establishedDate',  form.establishedDate);
+        fd.append('agencyEmail',      form.agencyEmail);
+        fd.append('agencyCountryDial',form.agencyCountryDial);
+        fd.append('agencyPhone',      form.agencyPhone);
+        fd.append('country',          form.country);
+        fd.append('city',             form.city);
+        fd.append('address',          form.address);
+        fd.append('postalCode',       form.postalCode);
+        fd.append('cacNumber',        form.cacNumber);
+        fd.append('tradeLicense',     form.tradeLicense);
+        fd.append('agencyType',       form.agencyType);
+        fd.append('iataNumber',       form.iataNumber);
+        fd.append('hajjType',         form.hajjType);
+        fd.append('hajjNumber',       form.hajjNumber);
 
         // Logo
         if (form.logoFile) {
@@ -465,22 +463,22 @@ async function submitForm() {
         }
 
         // Primary User Info
-        fd.append('firstName', form.firstName);
-        fd.append('designation', form.designation || form.lastName || '');
-        fd.append('nidNumber', form.nidNumber);
-        fd.append('birthDate', form.birthDate);
-        fd.append('email', form.email);
+        fd.append('firstName',       form.firstName);
+        fd.append('designation',     form.designation || form.lastName || '');
+        fd.append('nidNumber',       form.nidNumber);
+        fd.append('birthDate',       form.birthDate);
+        fd.append('email',           form.email);
         fd.append('userCountryDial', form.userCountryDial);
-        fd.append('userPhone', form.userPhone);
-        fd.append('agreeTerms', form.agreeTerms ? '1' : '0');
+        fd.append('userPhone',       form.userPhone);
+        fd.append('agreeTerms',      form.agreeTerms ? '1' : '0');
 
         // File uploads — append each file in its array
         tradeFiles.value.forEach((file, i) => fd.append(`tradeFiles[${i}]`, file));
-        cacFiles.value.forEach((file, i) => fd.append(`cacFiles[${i}]`, file));
-        iataFiles.value.forEach((file, i) => fd.append(`iataFiles[${i}]`, file));
-        hajjFiles.value.forEach((file, i) => fd.append(`hajjFiles[${i}]`, file));
-        tinFiles.value.forEach((file, i) => fd.append(`tinFiles[${i}]`, file));
-        nidFiles.value.forEach((file, i) => fd.append(`nidFiles[${i}]`, file));
+        cacFiles.value.forEach((file, i)   => fd.append(`cacFiles[${i}]`,   file));
+        iataFiles.value.forEach((file, i)  => fd.append(`iataFiles[${i}]`,  file));
+        hajjFiles.value.forEach((file, i)  => fd.append(`hajjFiles[${i}]`,  file));
+        tinFiles.value.forEach((file, i)   => fd.append(`tinFiles[${i}]`,   file));
+        nidFiles.value.forEach((file, i)   => fd.append(`nidFiles[${i}]`,   file));
 
         const headers = {
             'Content-Type': 'multipart/form-data',
@@ -556,20 +554,20 @@ function resetForm() {
 }
 
 // Clear field error as soon as user provides a value
-watch(() => form.agencyName, v => { if (v?.trim()) errors.agencyName = false; });
-watch(() => form.establishedDate, v => { if (v) errors.establishedDate = false; });
-watch(() => form.agencyEmail, v => { if (v) errors.agencyEmail = false; });
-watch(() => form.agencyPhone, v => { if (v?.trim()) errors.agencyPhone = false; });
-watch(() => form.country, v => { if (v) errors.country = false; });
-watch(() => form.city, v => { if (v) errors.city = false; });
-watch(() => form.address, v => { if (v?.trim()) errors.address = false; });
-watch(() => form.firstName, v => { if (v?.trim()) errors.firstName = false; });
-watch(() => form.designation, v => { if (v?.trim()) errors.lastName = false; });
-watch(() => form.nidNumber, v => { if (v?.trim()) errors.nidNumber = false; });
-watch(() => form.birthDate, v => { if (v) errors.birthDate = false; });
-watch(() => form.email, v => { if (v) errors.email = false; });
-watch(() => form.userPhone, v => { if (v?.trim()) errors.userPhone = false; });
-watch(() => form.agreeTerms, v => { if (v) errors.agreeTerms = false; });
+watch(() => form.agencyName,     v => { if (v?.trim()) errors.agencyName = false; });
+watch(() => form.establishedDate,v => { if (v) errors.establishedDate = false; });
+watch(() => form.agencyEmail,    v => { if (v) errors.agencyEmail = false; });
+watch(() => form.agencyPhone,    v => { if (v?.trim()) errors.agencyPhone = false; });
+watch(() => form.country,        v => { if (v) errors.country = false; });
+watch(() => form.city,           v => { if (v) errors.city = false; });
+watch(() => form.address,        v => { if (v?.trim()) errors.address = false; });
+watch(() => form.firstName,      v => { if (v?.trim()) errors.firstName = false; });
+watch(() => form.designation,    v => { if (v?.trim()) errors.lastName = false; });
+watch(() => form.nidNumber,      v => { if (v?.trim()) errors.nidNumber = false; });
+watch(() => form.birthDate,      v => { if (v) errors.birthDate = false; });
+watch(() => form.email,          v => { if (v) errors.email = false; });
+watch(() => form.userPhone,      v => { if (v?.trim()) errors.userPhone = false; });
+watch(() => form.agreeTerms,     v => { if (v) errors.agreeTerms = false; });
 
 function init() {
     const saved = parseInt(sessionStorage.getItem(STEP_KEY), 10);
@@ -603,7 +601,6 @@ onUnmounted(() => {
     window.removeEventListener('keydown', handleKeyDown);
 });
 </script>
-
 <template>
     <div class="body">
         <!-- Navbar -->
@@ -681,44 +678,62 @@ onUnmounted(() => {
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Established Date <span class="text-danger">*</span></label>
-                                <AppDatePicker v-model="form.establishedDate" :max-date="todayMaxDate"
+                                <AppDatePicker
+                                    v-model="form.establishedDate"
+                                    :max-date="todayMaxDate"
                                     placeholder="Select established date"
-                                    :input-class="errors.establishedDate === true ? 'form-control is-invalid' : errors.establishedDate === false ? 'form-control' : 'form-control'"
-                                    input-style="border-radius: 10px; padding: 10px 14px 10px 2.25rem; font-size: .9rem; color: #3F4754; border: 1.5px solid #E2E8F0; cursor: pointer;" />
+                                    :input-class="errors.establishedDate === true ? 'form-control is-invalid' : errors.establishedDate === false ? 'form-control is-valid' : 'form-control'"
+                                    input-style="border-radius: 10px; padding: 10px 14px 10px 2.25rem; font-size: .9rem; color: #3F4754; border: 1.5px solid #E2E8F0; cursor: pointer;"
+                                />
                                 <div class="invalid-feedback" v-show="errors.establishedDate === true">Please select a valid established date (today or earlier).</div>
                             </div>
                             <div class="col-md-6">
-                                <EmailInput v-model="form.agencyEmail" label="Email" :required="true"
-                                    placeholder="agency@email.com" input-class="form-control"
+                                <EmailInput
+                                    v-model="form.agencyEmail"
+                                    label="Email"
+                                    :required="true"
+                                    placeholder="agency@email.com"
+                                    input-class="form-control"
                                     input-style="border-radius: 10px; padding: 10px 14px; font-size: .9rem; color: #3F4754; border: 1.5px solid #E2E8F0;"
-                                    :error="errors.agencyEmail === true ? 'Please enter a valid email address.' : ''" />
+                                    :error="errors.agencyEmail === true ? 'Please enter a valid email address.' : ''"
+                                />
                             </div>
                             <div class="col-md-6">
-                                <PhoneInput v-model="form.agencyPhone" v-model:dial-code="form.agencyCountryDial"
-                                    label="Phone" :required="true"
-                                    :error="errors.agencyPhone === true ? 'Please enter a valid phone number.' : ''" />
+                                <PhoneInput
+                                    v-model="form.agencyPhone"
+                                    v-model:dial-code="form.agencyCountryDial"
+                                    label="Phone"
+                                    :required="true"
+                                    :error="errors.agencyPhone === true ? 'Please enter a valid phone number.' : ''"
+                                />
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Country <span class="text-danger">*</span></label>
                                 <div :class="{ 'select2-error': errors.country === true }">
-                                    <Select2 v-model="form.country" :options="countryOptions" :clearable="false"
+                                    <Select2
+                                        v-model="form.country"
+                                        :options="countryOptions"
+                                        :clearable="false"
                                         control-class="form-control"
                                         control-style="border-radius: 10px; padding: 10px 14px; font-size: .9rem; color: #3F4754; border: 1.5px solid #E2E8F0;"
-                                        @update:modelValue="v => { if (v) errors.country = false }" />
+                                        @update:modelValue="v => { if (v) errors.country = false }"
+                                    />
                                 </div>
-                                <div v-if="errors.country === true" class="invalid-feedback d-block">Please select a
-                                    country.</div>
+                                <div v-if="errors.country === true" class="invalid-feedback d-block">Please select a country.</div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">City <span class="text-danger">*</span></label>
                                 <div :class="{ 'select2-error': errors.city === true }">
-                                    <Select2 v-model="form.city" :options="cityOptions" :clearable="false"
+                                    <Select2
+                                        v-model="form.city"
+                                        :options="cityOptions"
+                                        :clearable="false"
                                         control-class="form-control"
                                         control-style="border-radius: 10px; padding: 10px 14px; font-size: .9rem; color: #3F4754; border: 1.5px solid #E2E8F0;"
-                                        @update:modelValue="v => { if (v) errors.city = false }" />
+                                        @update:modelValue="v => { if (v) errors.city = false }"
+                                    />
                                 </div>
-                                <div v-if="errors.city === true" class="invalid-feedback d-block">Please select a city.
-                                </div>
+                                <div v-if="errors.city === true" class="invalid-feedback d-block">Please select a city.</div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Address <span class="text-danger">*</span></label>
@@ -743,7 +758,6 @@ onUnmounted(() => {
                                 <input type="text" class="form-control" placeholder="Trade license number"
                                     v-model="form.tradeLicense">
                             </div>
-                            <!-- Agency Type Radio & IATA Field -->
                             <div class="col-md-6">
                                 <div class="radio-group" id="agencyTypeGroup">
                                     <div class="form-check">
@@ -762,14 +776,11 @@ onUnmounted(() => {
                                         <label class="form-check-label" for="typeCorp">Corporate</label>
                                     </div>
                                 </div>
-
-                                <div class="mt-2" v-if="showIataField">
-                                    <input type="text" id="iata_field" class="form-control"
-                                        :placeholder="iataPlaceholder" v-model="form.iataNumber">
+                                <div class="mt-2">
+                                    <input type="text" id="iata_field" class="form-control" :placeholder="iataPlaceholder"
+                                        v-model="form.iataNumber">
                                 </div>
                             </div>
-
-                            <!-- Hajj Type Radio & Hajj Field -->
                             <div class="col-md-6">
                                 <div class="radio-group" id="hajjTypeGroup">
                                     <div class="form-check">
@@ -783,22 +794,23 @@ onUnmounted(() => {
                                         <label class="form-check-label" for="typeNonHajj">Non Hajj</label>
                                     </div>
                                 </div>
-
-                                <div class="mt-2" v-if="showHajjField">
-                                    <input type="text" id="hajjno_field" class="form-control"
-                                        :placeholder="hajjPlaceholder" v-model="form.hajjNumber">
+                                <div class="mt-2">
+                                    <input type="text" id="hajjno_field" class="form-control" placeholder="Hajj Number"
+                                        v-model="form.hajjNumber" :placeholder="hajjPlaceholder">
                                 </div>
                             </div>
                             <div class="col-12">
-                                <label class="form-label">Company Logo <small class="text-muted fw-normal">(Max 2 MB —
-                                        JPEG or PNG)</small></label>
+                                <label class="form-label">Company Logo <small class="text-muted fw-normal">(Max 2 MB — JPEG or PNG)</small></label>
                                 <div class="d-flex align-items-center gap-3">
-                                    <ImageCropUpload v-model="form.logoFile" :max-file-size-mb="2"
-                                        accept="image/jpeg,image/png" crop-modal-title="Crop Company Logo"
-                                        shape="square" />
+                                    <ImageCropUpload
+                                        v-model="form.logoFile"
+                                        :max-file-size-mb="2"
+                                        accept="image/jpeg,image/png"
+                                        crop-modal-title="Crop Company Logo"
+                                        shape="square"
+                                    />
                                     <span class="text-muted small">
-                                        {{ form.logoFile ? form.logoFile.name : 'Click box to upload logo (JPEG or PNG)'
-                                        }}
+                                        {{ form.logoFile ? form.logoFile.name : 'Click box to upload logo (JPEG or PNG)' }}
                                     </span>
                                 </div>
                             </div>
@@ -818,15 +830,13 @@ onUnmounted(() => {
                             <div class="col-md-6 tdl">
                                 <label class="form-label">Trade License <span class="text-danger">*</span></label>
                                 <div class="upload-zone" id="zone-trade" :style="getZoneStyle('trade')"
-                                    :class="{ 'drag-over': isDragging.trade, 'has-preview': hasFiles('trade') }"
-                                    @click="triggerFile('trade')" @drop.prevent="handleDrop($event, 'trade')"
+                                    :class="{ 'drag-over': isDragging.trade, 'has-preview': hasFiles('trade') }" @click="triggerFile('trade')"
+                                    @drop.prevent="handleDrop($event, 'trade')"
                                     @dragover.prevent="isDragging.trade = true"
                                     @dragleave.prevent="isDragging.trade = false">
                                     <template v-if="hasFiles('trade')">
-                                        <img :src="getDocImagePreview('trade')" alt="Trade License"
-                                            class="upload-preview-image" />
-                                        <button type="button" class="upload-remove-btn"
-                                            @click.stop="removeFile(0, 'trade')">
+                                        <img :src="getDocImagePreview('trade')" alt="Trade License" class="upload-preview-image" />
+                                        <button type="button" class="upload-remove-btn" @click.stop="removeFile(0, 'trade')">
                                             <span aria-hidden="true">&times;</span>
                                         </button>
                                     </template>
@@ -843,16 +853,12 @@ onUnmounted(() => {
                                 <label class="form-label">Civil Aviation Certificate <span
                                         class="text-danger">*</span></label>
                                 <div class="upload-zone" id="zone-cac" :style="getZoneStyle('cac')"
-                                    :class="{ 'drag-over': isDragging.cac, 'has-preview': hasFiles('cac') }"
-                                    @click="triggerFile('cac')" @drop.prevent="handleDrop($event, 'cac')"
-                                    @dragover.prevent="isDragging.cac = true"
+                                    :class="{ 'drag-over': isDragging.cac, 'has-preview': hasFiles('cac') }" @click="triggerFile('cac')"
+                                    @drop.prevent="handleDrop($event, 'cac')" @dragover.prevent="isDragging.cac = true"
                                     @dragleave.prevent="isDragging.cac = false">
                                     <template v-if="hasFiles('cac')">
-                                        <img :src="getDocImagePreview('cac')" alt="Civil Aviation Certificate"
-                                            class="upload-preview-image" />
-                                        <button type="button" class="upload-remove-btn"
-                                            @click.stop="removeFile(0, 'cac')"><span
-                                                aria-hidden="true">&times;</span></button>
+                                        <img :src="getDocImagePreview('cac')" alt="Civil Aviation Certificate" class="upload-preview-image" />
+                                        <button type="button" class="upload-remove-btn" @click.stop="removeFile(0, 'cac')"><span aria-hidden="true">&times;</span></button>
                                     </template>
                                     <template v-else>
                                         <div class="up-icon"><i class="bi bi-image"></i></div>
@@ -866,16 +872,13 @@ onUnmounted(() => {
                             <div class="col-md-6 Iac">
                                 <label class="form-label">IATA Certificate <span class="text-danger">*</span></label>
                                 <div class="upload-zone" id="zone-iata" :style="getZoneStyle('iata')"
-                                    :class="{ 'drag-over': isDragging.iata, 'has-preview': hasFiles('iata') }"
-                                    @click="triggerFile('iata')" @drop.prevent="handleDrop($event, 'iata')"
+                                    :class="{ 'drag-over': isDragging.iata, 'has-preview': hasFiles('iata') }" @click="triggerFile('iata')"
+                                    @drop.prevent="handleDrop($event, 'iata')"
                                     @dragover.prevent="isDragging.iata = true"
                                     @dragleave.prevent="isDragging.iata = false">
                                     <template v-if="hasFiles('iata')">
-                                        <img :src="getDocImagePreview('iata')" alt="IATA Certificate"
-                                            class="upload-preview-image" />
-                                        <button type="button" class="upload-remove-btn"
-                                            @click.stop="removeFile(0, 'iata')"><span
-                                                aria-hidden="true">&times;</span></button>
+                                        <img :src="getDocImagePreview('iata')" alt="IATA Certificate" class="upload-preview-image" />
+                                        <button type="button" class="upload-remove-btn" @click.stop="removeFile(0, 'iata')"><span aria-hidden="true">&times;</span></button>
                                     </template>
                                     <template v-else>
                                         <div class="up-icon"><i class="bi bi-image"></i></div>
@@ -889,16 +892,13 @@ onUnmounted(() => {
                             <div class="col-md-6 Hj">
                                 <label class="form-label">Hajj License</label>
                                 <div class="upload-zone" id="zone-hajj" :style="getZoneStyle('hajj')"
-                                    :class="{ 'drag-over': isDragging.hajj, 'has-preview': hasFiles('hajj') }"
-                                    @click="triggerFile('hajj')" @drop.prevent="handleDrop($event, 'hajj')"
+                                    :class="{ 'drag-over': isDragging.hajj, 'has-preview': hasFiles('hajj') }" @click="triggerFile('hajj')"
+                                    @drop.prevent="handleDrop($event, 'hajj')"
                                     @dragover.prevent="isDragging.hajj = true"
                                     @dragleave.prevent="isDragging.hajj = false">
                                     <template v-if="hasFiles('hajj')">
-                                        <img :src="getDocImagePreview('hajj')" alt="Hajj License"
-                                            class="upload-preview-image" />
-                                        <button type="button" class="upload-remove-btn"
-                                            @click.stop="removeFile(0, 'hajj')"><span
-                                                aria-hidden="true">&times;</span></button>
+                                        <img :src="getDocImagePreview('hajj')" alt="Hajj License" class="upload-preview-image" />
+                                        <button type="button" class="upload-remove-btn" @click.stop="removeFile(0, 'hajj')"><span aria-hidden="true">&times;</span></button>
                                     </template>
                                     <template v-else>
                                         <div class="up-icon"><i class="bi bi-image"></i></div>
@@ -912,16 +912,12 @@ onUnmounted(() => {
                             <div class="col-md-6 tn">
                                 <label class="form-label">TIN</label>
                                 <div class="upload-zone" id="zone-tin" :style="getZoneStyle('tin')"
-                                    :class="{ 'drag-over': isDragging.tin, 'has-preview': hasFiles('tin') }"
-                                    @click="triggerFile('tin')" @drop.prevent="handleDrop($event, 'tin')"
-                                    @dragover.prevent="isDragging.tin = true"
+                                    :class="{ 'drag-over': isDragging.tin, 'has-preview': hasFiles('tin') }" @click="triggerFile('tin')"
+                                    @drop.prevent="handleDrop($event, 'tin')" @dragover.prevent="isDragging.tin = true"
                                     @dragleave.prevent="isDragging.tin = false">
                                     <template v-if="hasFiles('tin')">
-                                        <img :src="getDocImagePreview('tin')" alt="TIN Document"
-                                            class="upload-preview-image" />
-                                        <button type="button" class="upload-remove-btn"
-                                            @click.stop="removeFile(0, 'tin')"><span
-                                                aria-hidden="true">&times;</span></button>
+                                        <img :src="getDocImagePreview('tin')" alt="TIN Document" class="upload-preview-image" />
+                                        <button type="button" class="upload-remove-btn" @click.stop="removeFile(0, 'tin')"><span aria-hidden="true">&times;</span></button>
                                     </template>
                                     <template v-else>
                                         <div class="up-icon"><i class="bi bi-image"></i></div>
@@ -935,16 +931,12 @@ onUnmounted(() => {
                             <div class="col-md-6 nid">
                                 <label class="form-label">NID</label>
                                 <div class="upload-zone" id="zone-nid" :style="getZoneStyle('nid')"
-                                    :class="{ 'drag-over': isDragging.nid, 'has-preview': hasFiles('nid') }"
-                                    @click="triggerFile('nid')" @drop.prevent="handleDrop($event, 'nid')"
-                                    @dragover.prevent="isDragging.nid = true"
+                                    :class="{ 'drag-over': isDragging.nid, 'has-preview': hasFiles('nid') }" @click="triggerFile('nid')"
+                                    @drop.prevent="handleDrop($event, 'nid')" @dragover.prevent="isDragging.nid = true"
                                     @dragleave.prevent="isDragging.nid = false">
                                     <template v-if="hasFiles('nid')">
-                                        <img :src="getDocImagePreview('nid')" alt="NID Document"
-                                            class="upload-preview-image" />
-                                        <button type="button" class="upload-remove-btn"
-                                            @click.stop="removeFile(0, 'nid')"><span
-                                                aria-hidden="true">&times;</span></button>
+                                        <img :src="getDocImagePreview('nid')" alt="NID Document" class="upload-preview-image" />
+                                        <button type="button" class="upload-remove-btn" @click.stop="removeFile(0, 'nid')"><span aria-hidden="true">&times;</span></button>
                                     </template>
                                     <template v-else>
                                         <div class="up-icon"><i class="bi bi-image"></i></div>
@@ -997,13 +989,14 @@ onUnmounted(() => {
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Birth Date <span class="text-danger">*</span></label>
-                                <AppDatePicker v-model="form.birthDate" :max-date="todayMaxDate"
+                                <AppDatePicker
+                                    v-model="form.birthDate"
+                                    :max-date="todayMaxDate"
                                     placeholder="Select birth date"
-                                    :input-class="errors.birthDate === true ? 'form-control is-invalid' : errors.birthDate === false ? 'form-control ' : 'form-control'"
-                                    input-style="border-radius: 10px; padding: 10px 14px 10px 2.25rem; font-size: .9rem; color: #3F4754; border: 1.5px solid #E2E8F0; cursor: pointer;" />
-                                <div class="invalid-feedback" v-show="errors.birthDate === true">Please select a valid
-                                    birth date (today or
-                                    earlier).</div>
+                                    :input-class="errors.birthDate === true ? 'form-control is-invalid' : errors.birthDate === false ? 'form-control is-valid' : 'form-control'"
+                                    input-style="border-radius: 10px; padding: 10px 14px 10px 2.25rem; font-size: .9rem; color: #3F4754; border: 1.5px solid #E2E8F0; cursor: pointer;"
+                                />
+                                <div class="invalid-feedback" v-show="errors.birthDate === true">Please select a valid birth date (today or earlier).</div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Email <span class="text-danger">*</span></label>
@@ -1015,9 +1008,13 @@ onUnmounted(() => {
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <PhoneInput v-model="form.userPhone" v-model:dial-code="form.userCountryDial"
-                                    label="Phone" :required="true"
-                                    :error="errors.userPhone === true ? 'Please enter a valid phone number.' : ''" />
+                                <PhoneInput
+                                    v-model="form.userPhone"
+                                    v-model:dial-code="form.userCountryDial"
+                                    label="Phone"
+                                    :required="true"
+                                    :error="errors.userPhone === true ? 'Please enter a valid phone number.' : ''"
+                                />
                             </div>
                             <div class="col-12">
                                 <div class="section-title">Agreements</div>
@@ -1054,13 +1051,23 @@ onUnmounted(() => {
             </main>
         </div>
 
-        <AgencyLegalModal :is-open="isTermsModalOpen" :title="AGENCY_TERMS_OF_SERVICE.title"
-            :effective-date="AGENCY_TERMS_OF_SERVICE.effectiveDate" :intro="AGENCY_TERMS_OF_SERVICE.intro"
-            :sections="AGENCY_TERMS_OF_SERVICE.sections" @close="closeTermsModal" />
+        <AgencyLegalModal
+            :is-open="isTermsModalOpen"
+            :title="AGENCY_TERMS_OF_SERVICE.title"
+            :effective-date="AGENCY_TERMS_OF_SERVICE.effectiveDate"
+            :intro="AGENCY_TERMS_OF_SERVICE.intro"
+            :sections="AGENCY_TERMS_OF_SERVICE.sections"
+            @close="closeTermsModal"
+        />
 
-        <AgencyLegalModal :is-open="isPrivacyModalOpen" :title="AGENCY_PRIVACY_POLICY.title"
-            :effective-date="AGENCY_PRIVACY_POLICY.effectiveDate" :intro="AGENCY_PRIVACY_POLICY.intro"
-            :sections="AGENCY_PRIVACY_POLICY.sections" @close="closePrivacyModal" />
+        <AgencyLegalModal
+            :is-open="isPrivacyModalOpen"
+            :title="AGENCY_PRIVACY_POLICY.title"
+            :effective-date="AGENCY_PRIVACY_POLICY.effectiveDate"
+            :intro="AGENCY_PRIVACY_POLICY.intro"
+            :sections="AGENCY_PRIVACY_POLICY.sections"
+            @close="closePrivacyModal"
+        />
 
         <!-- ══════════════ SUCCESS MODAL ══════════════ -->
         <div class="success-modal-overlay" :class="{ show: isSuccessModalOpen }" role="dialog" aria-modal="true"
