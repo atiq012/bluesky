@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers\Admin\Agent;
 
 use App\Http\Controllers\BaseController;
@@ -347,18 +346,18 @@ class AgentController extends BaseController
     private function processRegistration(Request $request)
     {
         $request->validate([
-            'agencyName' => 'required|string|max:50',
+            'agencyName'  => 'required|string|max:50',
             'agencyEmail' => 'required|email|max:50',
             'agencyPhone' => 'required|string|max:20',
-            'country' => 'required|string|max:255',
-            'city' => 'required|string|max:255',
-            'address' => 'required|string|max:255',
-            'firstName' => 'required|string|max:50',
+            'country'     => 'required|string|max:255',
+            'city'        => 'required|string|max:255',
+            'address'     => 'required|string|max:255',
+            'firstName'   => 'required|string|max:50',
             'designation' => 'required|string|max:50',
-            'nidNumber' => 'required|string|max:20',
-            'birthDate' => 'required|string',
-            'email' => 'required|email|max:50',
-            'userPhone' => 'required|string|max:20',
+            'nidNumber'   => 'required|string|max:20',
+            'birthDate'   => 'required|string',
+            'email'       => 'required|email|max:50',
+            'userPhone'   => 'required|string|max:20',
         ]);
 
         $nullIfEmpty = static function ($value) {
@@ -378,17 +377,17 @@ class AgentController extends BaseController
             $seq       = $last ? ((int) substr($last->agent_code, strlen($prefix))) + 1 : 1;
             $agentCode = $prefix . str_pad($seq, 4, '0', STR_PAD_LEFT);
 
-            $agent                     = new Agent;
-            $agent->name               = $request->agencyName;
-            $agent->agent_code         = $agentCode;
-            $agent->email              = $request->agencyEmail;
-            $agent->phone              = $request->agencyPhone;
-            $agent->country            = $request->country;
-            $agent->city               = $request->city;
-            $agent->zone               = '';
-            $agent->address            = $request->address;
-            $agent->established_date   = null;
-            if (!empty($request->establishedDate)) {
+            $agent                   = new Agent;
+            $agent->name             = $request->agencyName;
+            $agent->agent_code       = $agentCode;
+            $agent->email            = $request->agencyEmail;
+            $agent->phone            = $request->agencyPhone;
+            $agent->country          = $request->country;
+            $agent->city             = $request->city;
+            $agent->zone             = '';
+            $agent->address          = $request->address;
+            $agent->established_date = null;
+            if (! empty($request->establishedDate)) {
                 try {
                     $agent->established_date = Carbon::parse($request->establishedDate)->format('Y-m-d');
                 } catch (\Throwable $e) {
@@ -404,6 +403,7 @@ class AgentController extends BaseController
             $agent->status             = 'Pending';
             $agent->account_ledger_id  = 1;
             $agent->created_by         = 1;
+            $agent->remarks            = 'Agency registration submitted via online registration form.';
 
             /** @var ImageService $imageService */
             $imageService = app(ImageService::class);
@@ -436,7 +436,7 @@ class AgentController extends BaseController
                 }
 
                 $requestFiles = $request->file($field);
-                $files = is_array($requestFiles) ? $requestFiles : [$requestFiles];
+                $files        = is_array($requestFiles) ? $requestFiles : [$requestFiles];
 
                 foreach ($files as $singleImage) {
                     if (! $singleImage) {
@@ -472,12 +472,12 @@ class AgentController extends BaseController
         ?int $approverId = null,
         ?int $createdBy = null
     ): void {
-        $agentApprovalLog = new AgentApprovalLog;
-        $agentApprovalLog->agent_id = $agent->id;
-        $agentApprovalLog->status = $status;
-        $agentApprovalLog->remarks = $remarks;
+        $agentApprovalLog              = new AgentApprovalLog;
+        $agentApprovalLog->agent_id    = $agent->id;
+        $agentApprovalLog->status      = $status;
+        $agentApprovalLog->remarks     = $remarks;
         $agentApprovalLog->approver_id = $approverId;
-        $agentApprovalLog->created_by = $createdBy ?? (int) auth()->id();
+        $agentApprovalLog->created_by  = $createdBy ?? (int) auth()->id();
         $agentApprovalLog->save();
     }
 
