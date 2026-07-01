@@ -301,6 +301,11 @@ class DepositController extends BaseController
         $depo->updated_by = auth()->user()->id;
         $depo->save();
 
+        BroadcastResourceEvent::dispatch('deposits', 'Updated', [
+            'id'       => $depo->id,
+            'actor_id' => auth()->user()->id,
+        ]);
+
         return $this->SuccessResponse('', 'Deposit request cancelled successfully.');
     }
 }

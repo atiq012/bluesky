@@ -62,14 +62,16 @@ function handleSubmit() {
                 authStore.isLogged = true;
             }
 
-            if (res.data.message == 'Your password must be change.') {
-                authStore.forcePassChange = true;
+            authStore.forcePassChange = res.data.message == 'Your password must be change.';
+            if (authStore.forcePassChange) {
                 Notification.showToast("i", res.data.message);
             }
 
             authStore.runTaskWithTimer(res.data.data.expires_in_sec);
 
-            if (res.data.data.require_2fa == 0) {
+            if (authStore.forcePassChange) {
+                router.push({ name: "ForcePassChange" });
+            } else if (res.data.data.require_2fa == 0) {
                 router.push({ name: "Home" });
             } else {
                 router.push({ name: "register2fa" });

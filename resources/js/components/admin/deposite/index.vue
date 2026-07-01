@@ -91,6 +91,7 @@ async function confirmCancel() {
     try {
         cancelLoading.value = true;
         await axiosInstance.post('/deposit/cancel', { id: selectedDeposit.value.idd });
+        cancelLoading.value = false;
         closeCancelModal();
         getListValues();
         Notification.showToast('s', 'Deposit request cancelled successfully.');
@@ -322,9 +323,19 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
                     <h5 class="cdm-title">Cancel Deposit Request</h5>
                     <p class="cdm-subtitle">This action cannot be undone.</p>
                 </div>
-                <button class="cdm-close-btn" :disabled="cancelLoading" @click="closeCancelModal">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
+                <AppButton
+                    variant="close"
+                    size="sm"
+                    custom-class="cdm-header-close-btn"
+                    :disabled="cancelLoading"
+                    title="Close"
+                    @click="closeCancelModal"
+                >
+                    <template #icon>
+                        <i class="fa-solid fa-xmark"></i>
+                    </template>
+                    <template #default></template>
+                </AppButton>
             </div>
 
             <!-- Info rows -->
@@ -382,13 +393,16 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
 
             <!-- Footer -->
             <div class="cdm-footer">
-                <AppButton variant="close" :block="true" :disabled="cancelLoading" @click="closeCancelModal" />
-                <AppButton variant="delete" label="Cancel Request" loading-text="Cancelling..." :loading="cancelLoading"
-                    :block="true" @click="confirmCancel">
-                    <template #icon>
-                        <i class="fa-solid fa-ban"></i>
-                    </template>
-                </AppButton>
+                <AppButton variant="close" size="md" :block="true" :disabled="cancelLoading" @click="closeCancelModal" />
+                <AppButton
+                    variant="void"
+                    size="md"
+                    label="Cancel Request"
+                    loading-text="Cancelling..."
+                    :loading="cancelLoading"
+                    :block="true"
+                    @click="confirmCancel"
+                />
             </div>
         </div>
     </AppModal>
@@ -661,26 +675,10 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
     margin: 0;
 }
 
-.cdm-close-btn {
+.cdm-header-close-btn {
     flex-shrink: 0;
-    background: none;
-    border: none;
-    padding: 0.25rem;
-    color: #94a3b8;
-    cursor: pointer;
-    line-height: 1;
-    border-radius: 4px;
-    transition: color 0.15s, background 0.15s;
-}
-
-.cdm-close-btn:hover:not(:disabled) {
-    color: #475569;
-    background: #f1f5f9;
-}
-
-.cdm-close-btn:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
+    padding: 0.25rem 0.4rem;
+    min-width: auto;
 }
 
 .cdm-info-list {
@@ -816,11 +814,6 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
 
 [data-bs-theme="dark"] .cdm-title {
     color: #f1f5f9;
-}
-
-[data-bs-theme="dark"] .cdm-close-btn:hover:not(:disabled) {
-    color: #cbd5e1;
-    background: rgba(255, 255, 255, 0.06);
 }
 
 [data-bs-theme="dark"] .cdm-info-list {
