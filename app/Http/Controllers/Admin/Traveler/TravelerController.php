@@ -15,8 +15,10 @@ class TravelerController extends Controller
      */
     public function index()
     {
+        $auth = auth()->user();
         $data = DB::table('travellers')
             ->selectRaw('id as idd,full_name,pax_type,first_name,last_name,dob,email,gender,phone,passport_number,passport_expiry_date,nationality,dob,f_username(travellers.created_by) as created_by,created_at,f_username(travellers.updated_by) as updated_by,updated_at')
+            ->where('agent_id', $auth->agent_id)
             ->get();
         return DataTables::of($data)->addIndexColumn()->make(true);
     }
@@ -83,6 +85,7 @@ class TravelerController extends Controller
         $traveler->passport_number      = $request->passport_no;
         $traveler->passport_expiry_date = date('Y-m-d', strtotime($request->p_expiry_date));
         $traveler->nationality          = $request->nationality;
+        $traveler->agent_id             = $user->agent_id;
         $traveler->created_by           = $user->id;
 
         if ($request->hasFile('passport_picture')) {
