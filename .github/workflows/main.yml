@@ -25,6 +25,8 @@ jobs:
 
       - name: Build assets
         run: npm run build
+        env:
+          VITE_ABLY_KEY: ${{ secrets.VITE_ABLY_KEY }}
 
       # Avoid running artisan in CI: app env/services (DB/Redis) may be unavailable here.
       # Run cache/config optimize commands on cPanel after deployment.

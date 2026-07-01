@@ -9,6 +9,7 @@ const props = defineProps({
     placeholderSrc: { type: String, default: '' },
     sizeClass: { type: String, default: 'company-logo-preview' },
     shape: { type: String, default: 'square' },
+    freeAspect: { type: Boolean, default: false },
     maxFileSizeMb: { type: Number, default: 5 },
     maxOutputSize: { type: Number, default: 512 },
     jpegQuality: { type: Number, default: 0.85 },
@@ -29,6 +30,7 @@ let estimateSizeTimeout = null;
 
 const shapeClass = props.shape === 'circle' ? 'rounded-circle' : 'rounded';
 const stencilComponent = computed(() => (props.shape === 'circle' ? CircleStencil : RectangleStencil));
+const stencilProps = computed(() => (props.freeAspect ? {} : { aspectRatio: 1 }));
 const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
 const previewSrc = computed(() => croppedPreviewUrl.value || props.displayUrl || '');
@@ -213,7 +215,7 @@ onUnmounted(() => {
                             ref="cropperRef"
                             :src="cropImageSrc"
                             :stencil-component="stencilComponent"
-                            :stencil-props="{ aspectRatio: 1 }"
+                            :stencil-props="stencilProps"
                             class="cropper"
                             @change="onCropChange"
                         />

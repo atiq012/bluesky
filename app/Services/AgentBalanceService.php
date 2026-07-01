@@ -23,10 +23,22 @@ class AgentBalanceService
         $net = (float) ($agent->net_balance ?? 0);
         $credit = (float) ($agent->credit_balance ?? 0);
 
+        $creditTakenTotal = (float) AgentBalanceLedger::query()
+            ->where('agent_id', $agentId)
+            ->where('event_type', self::EVENT_CREDIT_APPROVED)
+            ->sum('amount');
+
+        $cashDepositedTotal = (float) AgentBalanceLedger::query()
+            ->where('agent_id', $agentId)
+            ->whereIn('event_type', [self::EVENT_DEPOSIT_APPROVED, self::EVENT_DEPOSIT_CREDIT_ADJUST])
+            ->sum('amount');
+
         return [
             'net_balance' => $net,
             'credit_balance' => $credit,
             'cash_portion' => $net - $credit,
+            'credit_taken_total' => $creditTakenTotal,
+            'cash_deposited_total' => $cashDepositedTotal,
         ];
     }
 

@@ -55,7 +55,7 @@ function close() {
 </script>
 
 <template>
-    <div class="fhm-body">
+    <div class="fhm-body financial-history-modal">
         <div class="fhm-header">
             <div>
                 <h5 class="fhm-title mb-0">Financial History</h5>
@@ -67,20 +67,20 @@ function close() {
         <div class="row g-2 mb-3">
             <div class="col-md-4">
                 <div class="fhm-stat">
-                    <div class="small text-muted">Current Balance</div>
-                    <div class="fw-bold text-primary">৳ {{ formatMoney(balance.net_balance) }}</div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="fhm-stat">
-                    <div class="small text-muted">Credit Due</div>
-                    <div class="fw-bold text-danger">৳ {{ formatMoney(balance.credit_balance) }}</div>
+                    <div class="small text-muted">Total Credit Taken</div>
+                    <div class="fw-bold text-danger">৳ {{ formatMoney(balance.credit_taken_total) }}</div>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="fhm-stat">
                     <div class="small text-muted">Cash Portion</div>
-                    <div class="fw-bold text-success">৳ {{ formatMoney(balance.cash_portion) }}</div>
+                    <div class="fw-bold text-success">৳ {{ formatMoney(balance.cash_deposited_total) }}</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="fhm-stat text-md-end">
+                    <div class="small text-muted">Current Balance</div>
+                    <div class="fw-bold text-primary">৳ {{ formatMoney(balance.net_balance) }}</div>
                 </div>
             </div>
         </div>
@@ -145,5 +145,28 @@ function close() {
     margin-top: 1rem;
     padding-top: 0.75rem;
     border-top: 1px solid #eef0f3;
+}
+</style>
+
+<style>
+[data-bs-theme="dark"] .financial-history-modal .fhm-header {
+    border-bottom-color: #495057;
+}
+
+[data-bs-theme="dark"] .financial-history-modal .fhm-title {
+    color: #f8f9fa;
+}
+
+[data-bs-theme="dark"] .financial-history-modal .fhm-subtitle {
+    color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .financial-history-modal .fhm-stat {
+    background: #2b3035;
+    border-color: #495057;
+}
+
+[data-bs-theme="dark"] .financial-history-modal .fhm-footer {
+    border-top-color: #495057;
 }
 </style>

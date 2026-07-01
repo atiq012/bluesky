@@ -5,6 +5,8 @@ import axiosInstance from '../../../axiosInstance';
 import AppDatePicker from '../../common/AppDatePicker.vue';
 import ImageCropUpload from '../../common/ImageCropUpload.vue';
 import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
+import { formatNumberWithCommas } from '../../../utils/numberFormat';
+import { amountToTakaWords } from '../../../utils/numberToWords';
 
 const router = useRouter();
 
@@ -41,6 +43,9 @@ function recalculate() {
 }
 
 watch(() => form.requested_amount, recalculate);
+
+const totalAmountDisplay = computed(() => formatNumberWithCommas(form.total_amount, 0) || '0');
+const requestedAmountWords = computed(() => amountToTakaWords(form.requested_amount));
 
 const showZeroChargeNotice = computed(() => {
     if (!form.payment_acc) return false;
@@ -190,6 +195,7 @@ async function submitForm(type) {
                                                 <div class="col-md-4 mt-2">
                                                     <label class="form-label">Request Amount</label>
                                                     <NumberInput v-model="form.requested_amount" placeholder="0.00" />
+                                                    <small v-if="requestedAmountWords" class="text-muted d-block mt-2">{{ requestedAmountWords }}</small>
                                                 </div>
                                                 <div class="col-md-3 mt-2">
                                                     <label class="form-label">Charge</label>
@@ -197,7 +203,7 @@ async function submitForm(type) {
                                                 </div>
                                                 <div class="col-md-3 mt-2">
                                                     <label class="form-label">Total Amount</label>
-                                                    <input type="text" class="form-control form-control-sm bg-light" :value="form.total_amount || '0.00'" readonly />
+                                                    <input type="text" class="form-control form-control-sm bg-light" :value="totalAmountDisplay" readonly />
                                                 </div>
                                                 <div v-if="showZeroChargeNotice" class="col-12 mt-2">
                                                     <div class="alert alert-warning d-flex align-items-start gap-2 mb-0 py-2 small" role="alert">
@@ -236,6 +242,7 @@ async function submitForm(type) {
                                                             accept="image/jpeg,image/png,image/webp"
                                                             crop-modal-title="Crop Reference Image"
                                                             shape="square"
+                                                            :free-aspect="true"
                                                         />
                                                         <span class="text-muted small">
                                                             <template v-if="refFile"><i class="fa fa-circle-check text-success me-1"></i>Image selected — uploads on submit.</template>
@@ -285,6 +292,7 @@ async function submitForm(type) {
                                                 <div class="col-md-4 mt-2">
                                                     <label class="form-label">Request Amount</label>
                                                     <NumberInput v-model="form.requested_amount" placeholder="0.00" />
+                                                    <small v-if="requestedAmountWords" class="text-muted d-block mt-2">{{ requestedAmountWords }}</small>
                                                 </div>
                                                 <div class="col-md-3 mt-2">
                                                     <label class="form-label">Charge</label>
@@ -292,7 +300,7 @@ async function submitForm(type) {
                                                 </div>
                                                 <div class="col-md-3 mt-2">
                                                     <label class="form-label">Total Amount</label>
-                                                    <input type="text" class="form-control form-control-sm bg-light" :value="form.total_amount || '0.00'" readonly />
+                                                    <input type="text" class="form-control form-control-sm bg-light" :value="totalAmountDisplay" readonly />
                                                 </div>
                                                 <div v-if="showZeroChargeNotice" class="col-12 mt-2">
                                                     <div class="alert alert-warning d-flex align-items-start gap-2 mb-0 py-2 small" role="alert">
@@ -333,6 +341,7 @@ async function submitForm(type) {
                                                             accept="image/jpeg,image/png,image/webp"
                                                             crop-modal-title="Crop Reference Image"
                                                             shape="square"
+                                                            :free-aspect="true"
                                                         />
                                                         <span class="text-muted small">
                                                             <template v-if="refFile"><i class="fa fa-circle-check text-success me-1"></i>Image selected — uploads on submit.</template>
@@ -382,6 +391,7 @@ async function submitForm(type) {
                                                 <div class="col-md-4 mt-2">
                                                     <label class="form-label">Request Amount</label>
                                                     <NumberInput v-model="form.requested_amount" placeholder="0.00" />
+                                                    <small v-if="requestedAmountWords" class="text-muted d-block mt-2">{{ requestedAmountWords }}</small>
                                                 </div>
                                                 <div class="col-md-3 mt-2">
                                                     <label class="form-label">Charge</label>
@@ -389,7 +399,7 @@ async function submitForm(type) {
                                                 </div>
                                                 <div class="col-md-3 mt-2">
                                                     <label class="form-label">Total Amount</label>
-                                                    <input type="text" class="form-control form-control-sm bg-light" :value="form.total_amount || '0.00'" readonly />
+                                                    <input type="text" class="form-control form-control-sm bg-light" :value="totalAmountDisplay" readonly />
                                                 </div>
                                                 <div v-if="showZeroChargeNotice" class="col-12 mt-2">
                                                     <div class="alert alert-warning d-flex align-items-start gap-2 mb-0 py-2 small" role="alert">
@@ -434,6 +444,7 @@ async function submitForm(type) {
                                                             accept="image/jpeg,image/png,image/webp"
                                                             crop-modal-title="Crop Reference Image"
                                                             shape="square"
+                                                            :free-aspect="true"
                                                         />
                                                         <span class="text-muted small">
                                                             <template v-if="refFile"><i class="fa fa-circle-check text-success me-1"></i>Image selected — uploads on submit.</template>
@@ -483,6 +494,7 @@ async function submitForm(type) {
                                                 <div class="col-md-4 mt-2">
                                                     <label class="form-label">Request Amount</label>
                                                     <NumberInput v-model="form.requested_amount" placeholder="0.00" />
+                                                    <small v-if="requestedAmountWords" class="text-muted d-block mt-2">{{ requestedAmountWords }}</small>
                                                 </div>
                                                 <div class="col-md-3 mt-2">
                                                     <label class="form-label">Charge</label>
@@ -490,7 +502,7 @@ async function submitForm(type) {
                                                 </div>
                                                 <div class="col-md-3 mt-2">
                                                     <label class="form-label">Total Amount</label>
-                                                    <input type="text" class="form-control form-control-sm bg-light" :value="form.total_amount || '0.00'" readonly />
+                                                    <input type="text" class="form-control form-control-sm bg-light" :value="totalAmountDisplay" readonly />
                                                 </div>
                                                 <div v-if="showZeroChargeNotice" class="col-12 mt-2">
                                                     <div class="alert alert-warning d-flex align-items-start gap-2 mb-0 py-2 small" role="alert">
@@ -531,6 +543,7 @@ async function submitForm(type) {
                                                             accept="image/jpeg,image/png,image/webp"
                                                             crop-modal-title="Crop Reference Image"
                                                             shape="square"
+                                                            :free-aspect="true"
                                                         />
                                                         <span class="text-muted small">
                                                             <template v-if="refFile"><i class="fa fa-circle-check text-success me-1"></i>Image selected — uploads on submit.</template>
@@ -578,6 +591,7 @@ async function submitForm(type) {
                                                 <div class="col-md-4">
                                                     <label class="form-label">Request Amount</label>
                                                     <NumberInput v-model="form.requested_amount" placeholder="0.00" />
+                                                    <small v-if="requestedAmountWords" class="text-muted d-block mt-2">{{ requestedAmountWords }}</small>
                                                 </div>
                                                 <div class="col-md-3">
                                                     <label class="form-label">Charge</label>
@@ -585,7 +599,7 @@ async function submitForm(type) {
                                                 </div>
                                                 <div class="col-md-3">
                                                     <label class="form-label">Total Amount</label>
-                                                    <input type="text" class="form-control form-control-sm bg-light" :value="form.total_amount || '0.00'" readonly />
+                                                    <input type="text" class="form-control form-control-sm bg-light" :value="totalAmountDisplay" readonly />
                                                 </div>
                                             </div>
                                         </div>
@@ -620,6 +634,7 @@ async function submitForm(type) {
                                                             accept="image/jpeg,image/png,image/webp"
                                                             crop-modal-title="Crop Reference Image"
                                                             shape="square"
+                                                            :free-aspect="true"
                                                         />
                                                         <span class="text-muted small">
                                                             <template v-if="refFile"><i class="fa fa-circle-check text-success me-1"></i>Image selected — uploads on submit.</template>

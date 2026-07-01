@@ -28,6 +28,7 @@ class DepositController extends BaseController
             ->leftJoin('payment_accounts as pa', 'dpt.paid_account_no', 'pa.id')
             ->selectRaw('dpt.id as idd,dpt.type as name, dpt.paid_account_no, dpt.reference_no,dpt.reference_date,dpt.agent_id, dpt.total,dpt.status,dpt.issued_bank,dpt.remarks,dpt.updated_at,f_username(dpt.updated_by) updated_by,f_username(dpt.created_by) created_by,dpt.created_at,dpt.updated_at,agt.name as agent,pa.bank_name as bank,pa.acc_no as acct_no,dpt.id as dep_id')
             ->where('dpt.agent_id', $agent?->id)
+            ->orderByDesc('dpt.id')
             ->get();
 
         return DataTables::of($data)

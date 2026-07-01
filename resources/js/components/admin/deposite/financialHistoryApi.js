@@ -8,7 +8,13 @@ export function formatStatementMoney(v) {
 
 export async function fetchAgentBalance() {
     const res = await axiosInstance.get('agent/balance');
-    return res.data?.data || { net_balance: 0, credit_balance: 0, cash_portion: 0 };
+    return res.data?.data || {
+        net_balance: 0,
+        credit_balance: 0,
+        cash_portion: 0,
+        credit_taken_total: 0,
+        cash_deposited_total: 0,
+    };
 }
 
 export async function fetchAgentStatement(fromDate = '', toDate = '') {

@@ -5,6 +5,7 @@ import axiosInstance from '../../../axiosInstance';
 import moment from 'moment';
 import { resolveUploadUrl } from '../../../utils/resolveUploadUrl';
 import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
+import ZoomImagePreview from '../../common/ZoomImagePreview.vue';
 
 const props = defineProps({
     id: { type: String, required: true },
@@ -20,10 +21,8 @@ const planePlaceholder = new URL('../../../../../public/theme/appimages/Plane_or
 const logoUrl = computed(() => resolveUploadUrl(deposit.value?.logo_path) || planePlaceholder);
 const referenceUrl = computed(() => resolveUploadUrl(deposit.value?.reference_file));
 const logoBroken = ref(false);
-const referenceBroken = ref(false);
 
 watch(() => deposit.value?.logo_path, () => { logoBroken.value = false; });
-watch(() => deposit.value?.reference_file, () => { referenceBroken.value = false; });
 
 const displayLogoUrl = computed(() => (logoBroken.value ? planePlaceholder : logoUrl.value));
 
@@ -158,19 +157,15 @@ onMounted(loadDeposit);
 
                     <hr v-if="referenceUrl" class="my-3">
 
-                    <div v-if="referenceUrl && !referenceBroken" class="text-center">
+                    <div v-if="referenceUrl" class="text-center">
                         <div class="small text-muted mb-2">Reference File</div>
-                        <a :href="referenceUrl" target="_blank" rel="noopener noreferrer">
-                            <img
-                                :src="referenceUrl"
-                                alt="Reference"
-                                class="rounded border reference-thumb"
-                                @error="referenceBroken = true"
-                            >
-                        </a>
-                    </div>
-                    <div v-else-if="deposit.reference_file && referenceBroken" class="text-center text-muted small">
-                        Reference file unavailable
+                        <ZoomImagePreview
+                            :src="referenceUrl"
+                            alt="Reference"
+                            :thumb-width="220"
+                            :thumb-height="160"
+                            rounded
+                        />
                     </div>
                 </div>
             </div>
@@ -289,9 +284,4 @@ onMounted(loadDeposit);
     border-top: 1px solid #1d1d1d4d !important;
 }
 
-.reference-thumb {
-    max-width: 100%;
-    max-height: 180px;
-    object-fit: contain;
-}
 </style>
