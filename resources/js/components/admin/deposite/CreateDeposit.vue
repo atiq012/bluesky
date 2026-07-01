@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import axiosInstance from '../../../axiosInstance';
 import AppDatePicker from '../../common/AppDatePicker.vue';
@@ -30,9 +30,25 @@ const form = reactive({
 
 const refFile    = ref(null);
 const submitting = ref(false);
+const chargeRate = ref(0); // % rate from selected payment account
+
+function recalculate() {
+    const amt  = parseFloat(form.requested_amount) || 0;
+    const rate = parseFloat(chargeRate.value) || 0;
+    const charge = Math.round(amt * rate / 100);
+    form.service_charge = amt ? charge : '';
+    form.total_amount   = amt ? Math.round(amt - charge) : '';
+}
+
+watch(() => form.requested_amount, recalculate);
 
 onMounted(() => {
-    $('.payment_acc').on('change', function () { form.payment_acc  = $(this).val(); });
+    $('.payment_acc').on('change', function () {
+        form.payment_acc = $(this).val();
+        var selected = $(this).select2('data')[0];
+        chargeRate.value = (selected && selected.service_charge != null) ? selected.service_charge : 0;
+        recalculate();
+    });
     $('.issued_bank').on('change', function () { form.issued_bank  = $(this).val(); });
     loadPaymentAccounts();
 });
@@ -40,11 +56,37 @@ onMounted(() => {
 async function loadPaymentAccounts() {
     try {
         const response = await axiosInstance.get('getAllPaymentAccount');
-        const options  = response.data.map(v => ({
+        const options = response.data.map(v => ({
             id: v.id,
-            text: `${v.name} [${v.acc_no},${v.branch}]`,
+            text: `${v.name} ${v.branch} ${v.acc_no}`,
+            bank_name: v.name,
+            acc_no: v.acc_no,
+            branch: v.branch,
+            service_charge: v.service_charge,
         }));
-        $('.payment_acc').select2({ placeholder: '=Select=', theme: 'bootstrap-5', width: '100%', allowClear: true, data: options });
+
+        function paymentAccTemplate(option) {
+            if (!option.id) return option.text;
+            return $(`<div class="pa-option">
+                <div><strong>${option.bank_name}</strong> <span class="pa-sep">|</span> <span class="pa-branch">${option.branch ?? '—'}</span></div>
+                <small>${option.acc_no} <span class="pa-sep">|</span> Charge: <strong>${option.service_charge ?? 0}%</strong></small>
+            </div>`);
+        }
+
+        function paymentAccSelection(option) {
+            if (!option.id) return option.text;
+            return $(`<span><strong>${option.bank_name}</strong> — ${option.acc_no} | Charge: ${option.service_charge ?? 0}%</span>`);
+        }
+
+        $('.payment_acc').select2({
+            placeholder: '=Select=',
+            theme: 'bootstrap-5',
+            width: '100%',
+            allowClear: true,
+            data: options,
+            templateResult: paymentAccTemplate,
+            templateSelection: paymentAccSelection,
+        });
     } catch {}
 }
 
@@ -146,11 +188,11 @@ async function submitForm(type) {
                                                 </div>
                                                 <div class="col-md-3 mt-2">
                                                     <label class="form-label">Charge</label>
-                                                    <NumberInput v-model="form.service_charge" placeholder="0.00" />
+                                                    <input type="text" class="form-control form-control-sm bg-light" :value="form.service_charge || '0.00'" readonly />
                                                 </div>
                                                 <div class="col-md-3 mt-2">
                                                     <label class="form-label">Total Amount</label>
-                                                    <NumberInput v-model="form.total_amount" placeholder="0.00" />
+                                                    <input type="text" class="form-control form-control-sm bg-light" :value="form.total_amount || '0.00'" readonly />
                                                 </div>
                                             </div>
                                         </div>
@@ -235,11 +277,11 @@ async function submitForm(type) {
                                                 </div>
                                                 <div class="col-md-3 mt-2">
                                                     <label class="form-label">Charge</label>
-                                                    <NumberInput v-model="form.service_charge" placeholder="0.00" />
+                                                    <input type="text" class="form-control form-control-sm bg-light" :value="form.service_charge || '0.00'" readonly />
                                                 </div>
                                                 <div class="col-md-3 mt-2">
                                                     <label class="form-label">Total Amount</label>
-                                                    <NumberInput v-model="form.total_amount" placeholder="0.00" />
+                                                    <input type="text" class="form-control form-control-sm bg-light" :value="form.total_amount || '0.00'" readonly />
                                                 </div>
                                             </div>
                                         </div>
@@ -326,11 +368,11 @@ async function submitForm(type) {
                                                 </div>
                                                 <div class="col-md-3 mt-2">
                                                     <label class="form-label">Charge</label>
-                                                    <NumberInput v-model="form.service_charge" placeholder="0.00" />
+                                                    <input type="text" class="form-control form-control-sm bg-light" :value="form.service_charge || '0.00'" readonly />
                                                 </div>
                                                 <div class="col-md-3 mt-2">
                                                     <label class="form-label">Total Amount</label>
-                                                    <NumberInput v-model="form.total_amount" placeholder="0.00" />
+                                                    <input type="text" class="form-control form-control-sm bg-light" :value="form.total_amount || '0.00'" readonly />
                                                 </div>
                                             </div>
                                         </div>
@@ -421,11 +463,11 @@ async function submitForm(type) {
                                                 </div>
                                                 <div class="col-md-3 mt-2">
                                                     <label class="form-label">Charge</label>
-                                                    <NumberInput v-model="form.service_charge" placeholder="0.00" />
+                                                    <input type="text" class="form-control form-control-sm bg-light" :value="form.service_charge || '0.00'" readonly />
                                                 </div>
                                                 <div class="col-md-3 mt-2">
                                                     <label class="form-label">Total Amount</label>
-                                                    <NumberInput v-model="form.total_amount" placeholder="0.00" />
+                                                    <input type="text" class="form-control form-control-sm bg-light" :value="form.total_amount || '0.00'" readonly />
                                                 </div>
                                             </div>
                                         </div>
@@ -510,11 +552,11 @@ async function submitForm(type) {
                                                 </div>
                                                 <div class="col-md-3">
                                                     <label class="form-label">Charge</label>
-                                                    <NumberInput v-model="form.service_charge" placeholder="0.00" />
+                                                    <input type="text" class="form-control form-control-sm bg-light" :value="form.service_charge || '0.00'" readonly />
                                                 </div>
                                                 <div class="col-md-3">
                                                     <label class="form-label">Total Amount</label>
-                                                    <NumberInput v-model="form.total_amount" placeholder="0.00" />
+                                                    <input type="text" class="form-control form-control-sm bg-light" :value="form.total_amount || '0.00'" readonly />
                                                 </div>
                                             </div>
                                         </div>
