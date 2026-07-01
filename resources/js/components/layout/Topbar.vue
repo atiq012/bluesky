@@ -88,11 +88,14 @@ async function submitChangePassword() {
 
     changePwdLoading.value = true;
     try {
-        await axiosInstance.post('agent/change-password', {
+        const res = await axiosInstance.post('agent/change-password', {
             old_password: oldPassword.value,
             new_password: newPassword.value,
             new_password_confirmation: confirmPassword.value,
         });
+
+        Notification.showToast('s', res.data.message);
+
 
         resetPasswordForm();
 
