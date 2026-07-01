@@ -2,6 +2,7 @@
 import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
 
 import { ref, computed, onMounted, provide } from 'vue'
+import { useRouter } from 'vue-router'
 import axiosInstance from '../../../axiosInstance'
 import { runAction } from '../../../utils/runAction'
 import { buildReceiptFromAttemptDetail } from '../../../utils/buildReceiptFromCommit'
@@ -51,6 +52,7 @@ const ticketErrorData = ref({ pnr: null, message: null })
 const { issueTicket } = useTpV2Ticket()
 const { cancelBooking } = useTpV2Cancel()
 const { voidTicket } = useTpV2Void()
+const router = useRouter()
 
 const tableRows = computed(() =>
     rows.value.map(row => ({
@@ -60,7 +62,7 @@ const tableRows = computed(() =>
 )
 
 const columns = [
-    { field: 'code_name', title: 'Code & Name', sort: false },
+    { field: 'code_name', title: 'Booking ID & User', sort: false },
     { field: 'sector', title: 'Sector', sort: false },
     { field: 'date', title: 'Date', sort: false },
     { field: 'pax', title: 'No. of PAX', sort: false },
@@ -337,6 +339,18 @@ function onHistory(row) {
     showHistoryModal.value = true
 }
 
+function onLogs(row) {
+    runAction(async () => {
+        if (!row?.id) return
+        await router.push({ name: 'bookingAttemptDetail', params: { id: row.id } })
+    }, {
+        setLoading: (val) => {
+            loadingItemId.value = val ? row?.id ?? null : null
+            loadingAction.value = val ? 'logs' : null
+        },
+    })
+}
+
 function handleHistoryClose() {
     showHistoryModal.value = false
     historyTargetRow.value = null
@@ -525,8 +539,8 @@ onMounted(() => load())
                                 <span>{{ row?.booking_code || '—' }}</span>
                             </div>
                             <div class="bl-line bl-name">
-                                <i class="fa-solid fa-building bl-ico bl-ico-building" aria-hidden="true" />
-                                <span>{{ row?.agency_name || '—' }}</span>
+                                <i class="fa-solid fa-user bl-ico bl-ico-user" aria-hidden="true" />
+                                <span class="bl-name-text">{{ row?.created_by || '—' }}</span>
                             </div>
                         </div>
                     </template>
@@ -670,6 +684,7 @@ onMounted(() => load())
                             :show-cancel-booking="isBookingConfirmed(row)"
                             :show-void-ticket="canVoidTicket(row)"
                             :show-history="true"
+                            :show-logs="true"
                             :loading-item-id="row._loadingAction ? row.id : null"
                             :loading-action="row._loadingAction"
                             @view="onView"
@@ -677,6 +692,7 @@ onMounted(() => load())
                             @cancel-booking="onCancelBooking"
                             @void-ticket="onVoidTicket"
                             @history="onHistory"
+                            @logs="onLogs"
                         />
                     </template>
                 </DataTable>
@@ -773,6 +789,7 @@ onMounted(() => load())
 }
 
 .bl-ico-building { color: #2563eb; }
+.bl-ico-user { color: #2563eb; }
 .bl-ico-barcode { color: #7c3aed; }
 .bl-ico-cal { color: #0d9488; }
 .bl-ico-time { color: #ea580c; }
@@ -785,6 +802,10 @@ onMounted(() => load())
 }
 
 .bl-name {
+    align-items: center;
+}
+
+.bl-name-text {
     font-weight: 500;
     color: #334155;
 }
@@ -1475,5 +1496,9 @@ onMounted(() => load())
     --bs-btn-disabled-bg: transparent;
     --bs-btn-disabled-border-color: #1ba3f0;
     --bs-gradient: none;
+}
+
+html[data-bs-theme='dark'] .booking-list-card .bl-name-text {
+    color: #cbd5e1;
 }
 </style>

@@ -18,6 +18,9 @@ return [
 
     'name' => env('APP_NAME', 'BlueSky'),
 
+    // Agency portal: own agency only; admin panel (BlueSky) sets this true
+    'booking_list_all_users' => (bool) env('BOOKING_LIST_ALL_USERS', false),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment

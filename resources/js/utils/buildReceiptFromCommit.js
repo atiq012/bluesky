@@ -5,8 +5,8 @@ import { loadAirportMap, resolveAirport, mergeAirportHintsFromFlight } from './a
 
 export function formatBookingCode(attemptId) {
     const id = Number(attemptId)
-    if (!id) return 'BLU000000'
-    return `BLU${String(id).padStart(6, '0')}`
+    if (!id) return 'BS00000000000'
+    return `BS${String(id).padStart(11, '0')}`
 }
 
 const REFUND_LABELS = {

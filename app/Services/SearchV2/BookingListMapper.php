@@ -2,6 +2,7 @@
 
 namespace App\Services\SearchV2;
 
+use App\Models\Agent\Agent;
 use App\Models\BookingAttempt;
 use App\Models\BookingSession;
 use App\Models\User;
@@ -80,7 +81,7 @@ class BookingListMapper
 
     public static function bookingCode(int $id): string
     {
-        return 'BLU' . str_pad((string) $id, 6, '0', STR_PAD_LEFT);
+        return 'BS' . str_pad((string) $id, 11, '0', STR_PAD_LEFT);
     }
 
     public static function extractLocators(?array $commitResponse): array
@@ -532,7 +533,8 @@ class BookingListMapper
             'id'                     => hashid_encode(HashIdService::BOOKING_ATTEMPT, (int) $row->id),
             'attempt_ref'            => (int) $row->id,
             'booking_code'           => self::bookingCode((int) $row->id),
-            'agency_name'            => 'BlueSky Travel',
+            'agency_name'            => $row->agency_name ?? '—',
+            'agency_code'            => $row->agency_code ?? null,
             'journey_lines'          => $journeyLines,
             'sector'                 => collect($journeyLines)->pluck('sector')->implode(' / '),
             'dep_date'               => optional($search?->dep_date)->format('d-M-Y'),
@@ -556,8 +558,8 @@ class BookingListMapper
             'way_type'               => $wayBadge,
             'way_badge_class'        => self::wayBadgeClass($wayBadge),
             'ticket_no'              => is_array($row->ticket_numbers) && !empty($row->ticket_numbers)
-                                            ? implode(', ', $row->ticket_numbers)
-                                            : null,
+                ? implode(', ', $row->ticket_numbers)
+                : null,
             'ticket_numbers'         => is_array($row->ticket_numbers) ? $row->ticket_numbers : [],
             'ticket_pax_map'         => self::buildTicketPaxMap($row),
             'ticket_date'            => optional($row->ticketed_at)->toIso8601String(),
@@ -657,6 +659,113 @@ class BookingListMapper
             $user = $byId->get($row->created_by);
             $row->creator_name = $user?->name ?? '—';
             $row->creator_avatar = $user?->img_path;
+        }
+    }
+
+    public static function resolveAgencyIdForUser(?User $user): ?int
+    {
+        if (!$user) {
+            return null;
+        }
+
+        if (!empty($user->agent_id)) {
+            return (int) $user->agent_id;
+        }
+
+        $agentId = Agent::where('user_id', $user->id)->value('id');
+
+        return $agentId ? (int) $agentId : null;
+    }
+
+    public static function agencyUserIds(?int $agencyId): array
+    {
+        if (!$agencyId) {
+            return [];
+        }
+
+        $ids = User::query()->where('agent_id', $agencyId)->pluck('id')->all();
+        $ownerId = Agent::where('id', $agencyId)->value('user_id');
+
+        if ($ownerId) {
+            $ids[] = (int) $ownerId;
+        }
+
+        return array_values(array_unique(array_filter($ids)));
+    }
+
+    public static function applyAgencyScope($query, ?User $user): void
+    {
+        if (config('app.booking_list_all_users', false) || !$user) {
+            return;
+        }
+
+        $agencyId = self::resolveAgencyIdForUser($user);
+
+        if ($agencyId) {
+            $query->whereIn('user_id', self::agencyUserIds($agencyId));
+
+            return;
+        }
+
+        $query->where('user_id', $user->id);
+    }
+
+    public static function userCanAccessAttempt(BookingAttempt $attempt, ?User $user): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        if (config('app.booking_list_all_users', false)) {
+            return true;
+        }
+
+        $agencyId = self::resolveAgencyIdForUser($user);
+
+        if ($agencyId) {
+            return in_array((int) $attempt->user_id, self::agencyUserIds($agencyId), true);
+        }
+
+        return (int) $attempt->user_id === (int) $user->id;
+    }
+
+    public static function attachAgencyNames($rows): void
+    {
+        $userIds = collect($rows)
+            ->map(fn($row) => $row->user_id ?: $row->created_by)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($userIds->isEmpty()) {
+            return;
+        }
+
+        $users = User::query()->whereIn('id', $userIds)->get(['id', 'agent_id']);
+        $agentsByUserId = Agent::query()
+            ->whereIn('user_id', $userIds)
+            ->get(['id', 'user_id', 'name', 'agent_code'])
+            ->keyBy('user_id');
+
+        $agentIds = $users->pluck('agent_id')->filter()->unique()->values();
+        $agentsById = Agent::query()
+            ->whereIn('id', $agentIds)
+            ->get(['id', 'user_id', 'name', 'agent_code'])
+            ->keyBy('id');
+
+        $usersById = $users->keyBy('id');
+
+        foreach ($rows as $row) {
+            $userId = $row->user_id ?: $row->created_by;
+            $agent = $userId ? $agentsByUserId->get($userId) : null;
+
+            if (!$agent && $userId) {
+                $user = $usersById->get($userId);
+                $agent = $user?->agent_id ? $agentsById->get($user->agent_id) : null;
+            }
+
+            $row->agency_name = $agent?->name;
+            $row->agency_code = $agent?->agent_code;
         }
     }
 }
