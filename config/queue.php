@@ -37,7 +37,9 @@ return [
         'database' => [
             'driver' => 'database',
             'table' => 'jobs',
-            'queue' => 'default',
+            // Bluesky and blueskyb2b share this database; a distinct queue name per app
+            // keeps each app's worker from dequeuing jobs whose classes live in the other's codebase.
+            'queue' => env('DB_QUEUE', 'default'),
             'retry_after' => 90,
             'after_commit' => false,
         ],
