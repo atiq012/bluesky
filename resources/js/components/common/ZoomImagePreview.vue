@@ -99,7 +99,11 @@ onUnmounted(() => {
 </script>
 
 <template>
+    <span v-if="$slots.trigger" style="cursor: zoom-in;" @click="openPreview">
+        <slot name="trigger" />
+    </span>
     <img
+        v-else
         :src="displaySrc"
         :alt="alt"
         :width="thumbWidth"

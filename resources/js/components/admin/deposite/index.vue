@@ -11,6 +11,8 @@ import { fetchFinancialHistory } from './financialHistoryApi';
 import { runAction } from '../../../utils/runAction';
 import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
 import AppTooltip from '../../common/AppTooltip.vue';
+import ZoomImagePreview from '../../common/ZoomImagePreview.vue';
+import { resolveUploadUrl } from '../../../utils/resolveUploadUrl';
 import { useRealtimeList } from '../../../composables/useRealtimeList';
 
 const router = useRouter();
@@ -255,11 +257,19 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
                         <div>
                             <i class="fa-solid fa-receipt me-1 text-muted"></i>
                             {{ row.reference_no }}
-                            <AppTooltip :content="remarkText(row)" placement="top">
-                                <span class="remarks-info-badge" aria-label="View remarks">
-                                    <i class="fa-solid fa-download"></i>
-                                </span>
-                            </AppTooltip>
+                            <ZoomImagePreview
+                                v-if="row.reference_file"
+                                :src="resolveUploadUrl(row.reference_file)"
+                                alt="Deposit Slip"
+                            >
+                                <template #trigger>
+                                    <AppTooltip content="Click to show slip" placement="top">
+                                        <span class="remarks-info-badge" aria-label="View attachment">
+                                            <i class="fa-solid fa-tag"></i>
+                                        </span>
+                                    </AppTooltip>
+                                </template>
+                            </ZoomImagePreview>
                             <br />
                             <small class="text-primary">
                                 <i class="fa-regular fa-calendar me-1" style="font-size: 0.65rem;"></i>
