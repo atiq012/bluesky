@@ -251,7 +251,8 @@ function validateStep1() {
 function validateStep2() {
     errors.trade = tradeFiles.value.length === 0;
     errors.cac = cacFiles.value.length === 0;
-    errors.iata = iataFiles.value.length === 0;
+    // errors.iata = iataFiles.value.length === 0;
+    errors.iata = false;
     errors.hajj = false;
     errors.tin = false;
     errors.nid = false;
@@ -295,6 +296,8 @@ function goNext(step) {
 }
 
 function goPrev(step) {
+    isSubmitting.value = false;
+
     showPane(step - 1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -435,10 +438,10 @@ watch(isSuccessModalOpen, (isOpen) => {
     }
 });
 
-
+const isSubmitting = ref(false);
 async function submitForm() {
     if (!validateStep3()) return;
-
+    isSubmitting.value = true;
     try {
         const fd = new FormData();
 
@@ -685,7 +688,8 @@ onUnmounted(() => {
                                     placeholder="Select established date"
                                     :input-class="errors.establishedDate === true ? 'form-control is-invalid' : errors.establishedDate === false ? 'form-control' : 'form-control'"
                                     input-style="border-radius: 10px; padding: 10px 14px 10px 2.25rem; font-size: .9rem; color: #3F4754; border: 1.5px solid #E2E8F0; cursor: pointer;" />
-                                <div class="invalid-feedback" v-show="errors.establishedDate === true">Please select a valid established date (today or earlier).</div>
+                                <div class="invalid-feedback" v-show="errors.establishedDate === true">Please select a
+                                    valid established date (today or earlier).</div>
                             </div>
                             <div class="col-md-6">
                                 <EmailInput v-model="form.agencyEmail" label="Email" :required="true"
@@ -864,7 +868,9 @@ onUnmounted(() => {
                                     accept=".jpg,.jpeg,.png" @change="handleFileChange($event, 'cac')">
                             </div>
                             <div class="col-md-6 Iac">
-                                <label class="form-label">IATA Certificate <span class="text-danger">*</span></label>
+                                <label class="form-label">IATA Certificate
+                                    <!-- <span class="text-danger">*</span> -->
+                                </label>
                                 <div class="upload-zone" id="zone-iata" :style="getZoneStyle('iata')"
                                     :class="{ 'drag-over': isDragging.iata, 'has-preview': hasFiles('iata') }"
                                     @click="triggerFile('iata')" @drop.prevent="handleDrop($event, 'iata')"
@@ -1043,8 +1049,14 @@ onUnmounted(() => {
                             <button type="button" class="btn-back" @click="goPrev(3)"><i
                                     class="bi bi-arrow-left me-1"></i>
                                 Back</button>
-                            <button type="button" class="btn-submit" :disabled="!form.agreeTerms" @click="submitForm">
+                            <!-- <button type="button" class="btn-submit" :disabled="!form.agreeTerms" @click="submitForm">
                                 <i class="bi bi-send-check me-1"></i> Submit Registration
+                            </button> -->
+                            <button type="button" class="btn-submit" :disabled="!form.agreeTerms || isSubmitting"
+                                @click="submitForm">
+                                <i v-if="!isSubmitting" class="bi bi-send-check me-1"></i>
+                                <i v-else class="bi bi-spinner bi-spin me-1"></i>
+                                {{ isSubmitting ? 'Submitting...' : 'Submit Registration' }}
                             </button>
                         </div>
                     </div>
