@@ -6,6 +6,7 @@ import axiosInstance from "../../axiosInstance"
 import ability from '../../services/ability';
 import { AbilityBuilder, createMongoAbility } from '@casl/ability';
 import { useAbility } from '@casl/vue';
+import SearchWingsLoader from '../search/SearchWingsLoader.vue';
 
 // const can  = useAbility();
 
@@ -43,8 +44,8 @@ onMounted(() => {
     <!-- main script -->
     <div class="sidebar-wrapper">
         <div class="sidebar-header">
-            <div>
-                <img src="../../../../public/theme/appimages/blueskywings.png" class="logo-icon" alt="logo icon">
+            <div class="logo-icon-wrap">
+                <SearchWingsLoader variant="brand" id-prefix="sidebar" />
             </div>
             <div>
                 <h4 class="logo-text tx">BlueSky</h4>
@@ -174,5 +175,15 @@ onMounted(() => {
     background: linear-gradient(to right, #02b9af, #4e86f4, #9c54f0);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+}
+
+.logo-icon-wrap {
+    width: 40px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: visible;
 }
 </style>

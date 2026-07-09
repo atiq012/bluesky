@@ -337,6 +337,38 @@
     background: rgba(147, 168, 235, 0.4) !important;
 }
 
+[data-bs-theme="dark"] .fare-drawer {
+    background:
+        linear-gradient(165deg, rgba(5, 183, 178, 0.08) 0%, rgba(124, 58, 237, 0.12) 100%),
+        var(--bs-body-bg) !important;
+    border-left-color: rgba(147, 168, 235, 0.2) !important;
+    box-shadow: -10px 0 36px rgba(0, 0, 0, 0.35) !important;
+}
+
+[data-bs-theme="dark"] .fare-drawer-backdrop {
+    background: rgba(0, 0, 0, 0.35) !important;
+}
+
+[data-bs-theme="dark"] .fare-drawer__dismiss {
+    color: rgba(196, 181, 253, 0.5) !important;
+}
+
+[data-bs-theme="dark"] .fare-drawer__dismiss:hover {
+    color: #e9d5ff !important;
+}
+
+[data-bs-theme="dark"] .fare-drawer__fare-card .fare-card__features {
+    scrollbar-color: rgba(147, 168, 235, 0.4) transparent !important;
+}
+
+[data-bs-theme="dark"] .fare-drawer__fare-card .fare-card__features::-webkit-scrollbar-thumb {
+    background: rgba(147, 168, 235, 0.4) !important;
+}
+
+[data-bs-theme="dark"] .fare-drawer__empty {
+    color: var(--bs-secondary-color) !important;
+}
+
 /* ── Fare rules panel ──────────────────────────────────────── */
 [data-bs-theme="dark"] .fare-rules-container {
     background: var(--bs-body-bg) !important;

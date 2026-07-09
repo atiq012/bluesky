@@ -14,8 +14,8 @@ import { useSearchStore } from '../../stores/searchStore';
 import '../../../css/searchpanel.css'
 import '../../../css/search-dark.css'
 import FlightPricePanel from './FlightPricePanel.vue'
+import SearchWingsLoader from './SearchWingsLoader.vue'
 import AppTooltip from '../common/AppTooltip.vue'
-import AppModal from '../common/AppModal.vue'
 import AgencyPayableBreakdownModal from '../common/AgencyPayableBreakdownModal.vue'
 import { completePriceAttempt, completeSearchAttempt } from '../../utils/bookingAttemptSession'
 import {
@@ -55,6 +55,13 @@ const filteredOriginAirports = ref([]);
 const filteredDestinationAirports = ref([]);
 
 const loadging = ref(false);
+const showSearchResults = ref(true);
+const loaderRunKey = ref(0);
+const LOADER_MIN_MS = 1000;
+const LOADER_FADE_MS = 220;
+let loaderFadeResolve = null;
+// Loader test tag: 'wings' | 'gif'
+const SEARCH_LOADER_TAG = 'wings';
 
 const fareRulesData           = ref({})
 const fareRulesLoading        = ref({})
@@ -77,6 +84,30 @@ function isDualPrice(flightIndex, brandIndex) {
 function toggleDualPrice(flightIndex, brandIndex) {
     const key = farePriceKey(flightIndex, brandIndex)
     dualPricingToggles[key] = !dualPricingToggles[key]
+}
+
+const openFareFlightIndex = ref(null)
+const FARE_DRAWER_CARD_WIDTH = 320
+const FARE_DRAWER_GAP = 12
+const FARE_DRAWER_PAD_X = 18
+
+function toggleFarePanel(index) {
+    openFareFlightIndex.value = openFareFlightIndex.value === index ? null : index
+}
+
+function closeFarePanel() {
+    openFareFlightIndex.value = null
+}
+
+function fareDrawerWidthPx(flight) {
+    const count = flight.outbound?.brand_options?.length ?? 0
+    if (!count) return 280
+    return FARE_DRAWER_PAD_X * 2 + count * FARE_DRAWER_CARD_WIDTH + (count - 1) * FARE_DRAWER_GAP
+}
+
+function fareDrawerStyle(flight) {
+    const w = fareDrawerWidthPx(flight)
+    return { width: `min(${w}px, 100%)` }
 }
 
 const payableBreakdownOpen = ref(false)
@@ -106,6 +137,7 @@ function selectFare(flight, brand) {
     selectedFlightForPrice.value = flight
     selectedBrandForPrice.value  = brand
     showPricePanel.value         = true
+    closeFarePanel()
 }
 
 const bookingTimerMinutes = ref(30)
@@ -200,6 +232,7 @@ const filteredAirlineList = computed(() => {
 })
 
 const filteredFlights = computed(() => {
+    if (!showSearchResults.value) return [];
     return flights.value.filter(f => {
         const price = calcOutboundPriceRaw(f)
         const airlineOk = !selectedAirlines.value.length || selectedAirlines.value.includes(f.outbound?.first_airline_name)
@@ -222,6 +255,11 @@ const filteredFlights = computed(() => {
         }
         return airlineOk && priceOk && stopOk && refundOk && layoverOk && scheduleOk
     })
+})
+
+const openFareFlight = computed(() => {
+    if (openFareFlightIndex.value === null) return null
+    return filteredFlights.value[openFareFlightIndex.value] ?? null
 })
 
 const form = reactive({
@@ -751,65 +789,125 @@ function clearDestination() {
     showDestinationList.value = false;
 }
 
+function stageSearchResult(searchResult) {
+    const incomingFlights = searchResult.flights ?? [];
+    totalFlights.value = incomingFlights.length;
+    searchLogId.value = searchResult.search_log_id ?? null;
+    activeSearchAttemptId.value = searchResult.booking_attempt_id ?? null;
+    catalogIdentifier.value = searchResult.catalog_identifier ?? null;
+    selectedAirlines.value = [];
+    airlineSearch.value = '';
+    selectedStops.value = [];
+    selectedRefundTypes.value = [];
+    selectedLayovers.value = [];
+    layoverSearch.value = '';
+    selectedScheduleSegment.value = null;
+    startBookingTimer();
+
+    if (incomingFlights.length) {
+        const prices = incomingFlights.map(f => calcOutboundPriceRaw(f));
+        const minP = Math.floor(Math.min(...prices));
+        const maxP = Math.ceil(Math.max(...prices));
+        sliderMin.value = minP;
+        sliderMax.value = maxP;
+        priceRangeMin.value = minP;
+        priceRangeMax.value = maxP;
+    }
+
+    return incomingFlights;
+}
+
+function revealSearchResult(incomingFlights) {
+    flights.value = incomingFlights;
+    showSearchResults.value = true;
+}
+
+function onLoaderFadeAfterLeave() {
+    loaderFadeResolve?.();
+    loaderFadeResolve = null;
+}
+
+function waitForLoaderFadeOut() {
+    return new Promise(resolve => {
+        loaderFadeResolve = resolve;
+        setTimeout(() => {
+            if (!loaderFadeResolve) return;
+            loaderFadeResolve();
+            loaderFadeResolve = null;
+        }, LOADER_FADE_MS + 80);
+    });
+}
+
+function schedulePersistSearchResult() {
+    const run = () => { void persistSearchResult(); };
+    if (typeof requestIdleCallback === 'function') {
+        requestIdleCallback(run, { timeout: 1200 });
+    } else {
+        setTimeout(run, 0);
+    }
+}
+
+// Fade loader out first while results stay off-DOM, then reveal immediately after fade
+async function finishSearchLoading(searchResult, loaderStartedAt) {
+    const wait = loaderStartedAt
+        ? Math.max(0, LOADER_MIN_MS - (Date.now() - loaderStartedAt))
+        : 0;
+    if (wait) await new Promise(resolve => setTimeout(resolve, wait));
+
+    if (!searchResult) {
+        loadging.value = false;
+        showSearchResults.value = true;
+        return;
+    }
+
+    const incomingFlights = stageSearchResult(searchResult);
+    loadging.value = false;
+    await waitForLoaderFadeOut();
+    revealSearchResult(incomingFlights);
+    await nextTick();
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    if (incomingFlights.length) searchCollapsed.value = true;
+    schedulePersistSearchResult();
+}
+
+async function persistSearchResult() {
+    await nextTick();
+    searchStore.saveSearch({
+        form:                    { ...form },
+        flights:                 flights.value,
+        totalFlights:            totalFlights.value,
+        catalogIdentifier:       catalogIdentifier.value,
+        searchLogId:             searchLogId.value,
+        activeSearchAttemptId:   activeSearchAttemptId.value,
+        sliderMin:               sliderMin.value,
+        sliderMax:               sliderMax.value,
+        priceRangeMin:           priceRangeMin.value,
+        priceRangeMax:           priceRangeMax.value,
+        selectedOriginDetails:   selectedOriginDetails.value,
+        selectedDestinationDetails: selectedDestinationDetails.value,
+    });
+}
+
 async function Lowfaresearch() {
+    let loaderStartedAt = 0;
+    let searchResult = null;
     try {
         await finalizeSearchSession();
         showPricePanel.value = false;
         flights.value = [];
         totalFlights.value = 0;
+        showSearchResults.value = false;
+        loaderRunKey.value += 1;
+        loaderStartedAt = Date.now();
         loadging.value = true;
 
         const response = await axiosInstance.post("v2/search", form);
-
-        flights.value = response?.data?.flights ?? [];
-        totalFlights.value = flights.value.length;
-        searchLogId.value = response?.data?.search_log_id ?? null;
-        activeSearchAttemptId.value = response?.data?.booking_attempt_id ?? null;
-        catalogIdentifier.value = response?.data?.catalog_identifier ?? null;
-        selectedAirlines.value = [];
-        airlineSearch.value = '';
-        selectedStops.value = [];
-        selectedRefundTypes.value = [];
-        selectedLayovers.value = [];
-        layoverSearch.value = '';
-        selectedScheduleSegment.value = null;
-        startBookingTimer();
-        if (flights.value.length) searchCollapsed.value = true;
-
-        if (flights.value.length) {
-            const prices = flights.value.map(f => calcOutboundPriceRaw(f))
-            const minP = Math.floor(Math.min(...prices))
-            const maxP = Math.ceil(Math.max(...prices))
-            sliderMin.value = minP
-            sliderMax.value = maxP
-            priceRangeMin.value = minP
-            priceRangeMax.value = maxP
-        }
-
-        // Persist search state — survives navigation + hard refresh
-        searchStore.saveSearch({
-            form:                    { ...form },
-            flights:                 flights.value,
-            totalFlights:            totalFlights.value,
-            catalogIdentifier:       catalogIdentifier.value,
-            searchLogId:             searchLogId.value,
-            activeSearchAttemptId:   activeSearchAttemptId.value,
-            sliderMin:               sliderMin.value,
-            sliderMax:               sliderMax.value,
-            priceRangeMin:           priceRangeMin.value,
-            priceRangeMax:           priceRangeMax.value,
-            selectedOriginDetails:   selectedOriginDetails.value,
-            selectedDestinationDetails: selectedDestinationDetails.value,
-        })
-
-        await nextTick();
+        searchResult = response?.data ?? null;
     } catch (error) {
         console.log(error);
         Notification.showToast("e", error?.response?.data?.message ?? "Token generation failed.");
     } finally {
-        setTimeout(() => {
-            loadging.value = false;
-        }, 1000);
+        void finishSearchLoading(searchResult, loaderStartedAt);
     }
 }
 
@@ -1769,66 +1867,27 @@ const openReturnPicker = () => {
         <!-- left filter panel end -->
 
         <!-- result panel start -->
-        <div class="col-md-9 search-results-column">
+        <div
+            class="col-md-9 search-results-column"
+            :class="{ 'search-results-column--fares-open': openFareFlightIndex !== null }"
+        >
+            <Transition name="search-loader-fade" @after-leave="onLoaderFadeAfterLeave">
+                <div v-show="loadging" class="search-cooking-overlay" aria-hidden="true">
+                    <div :key="`${SEARCH_LOADER_TAG}-${loaderRunKey}`" class="search-cooking-loader-shell">
+                        <SearchWingsLoader v-if="SEARCH_LOADER_TAG === 'wings'" id-prefix="search" />
+                        <div v-else class="search-cooking-gif"></div>
+                    </div>
+                </div>
+            </Transition>
             <div
                 class="search-results-scroll"
                 :class="{ 'is-scroll-hover': isResultsScrollHover }"
                 @mouseenter="isResultsScrollHover = true"
                 @mouseleave="isResultsScrollHover = false"
             >
-            <div class="row search-results-inner-row">
-                <!-- skeleton loader: shown while waiting for API -->
-                <template v-if="loadging">
-                    <div v-for="n in 5" :key="'sk-'+n" class="col-md-12 mb-3">
-                        <div class="card" style="border-radius:8px; overflow:hidden;">
-                            <div class="card-body p-3">
-                                <div class="row align-items-center">
-                                    <div class="col-md-2 col-3">
-                                        <div class="skeleton-box" style="width:50px;height:50px;border-radius:6px;"></div>
-                                        <div class="skeleton-box mt-2" style="width:80px;height:12px;border-radius:4px;"></div>
-                                    </div>
-                                    <div class="col-md-3 col-4">
-                                        <div class="skeleton-box" style="width:60px;height:18px;border-radius:4px;"></div>
-                                        <div class="skeleton-box mt-2" style="width:90px;height:12px;border-radius:4px;"></div>
-                                    </div>
-                                    <div class="col-md-3 col-3 text-center">
-                                        <div class="skeleton-box mx-auto" style="width:70px;height:12px;border-radius:4px;"></div>
-                                        <div class="skeleton-box mx-auto mt-2" style="width:40px;height:12px;border-radius:4px;"></div>
-                                    </div>
-                                    <div class="col-md-2 col-4">
-                                        <div class="skeleton-box" style="width:60px;height:18px;border-radius:4px;"></div>
-                                        <div class="skeleton-box mt-2" style="width:80px;height:12px;border-radius:4px;"></div>
-                                    </div>
-                                    <div class="col-md-2 col-4">
-                                        <div class="skeleton-box" style="width:100%;height:48px;border-radius:6px;"></div>
-                                    </div>
-                                </div>
-                                <hr class="my-2">
-                                <div class="row align-items-center">
-                                    <div class="col-md-2 col-3">
-                                        <div class="skeleton-box" style="width:50px;height:50px;border-radius:6px;"></div>
-                                        <div class="skeleton-box mt-2" style="width:80px;height:12px;border-radius:4px;"></div>
-                                    </div>
-                                    <div class="col-md-3 col-4">
-                                        <div class="skeleton-box" style="width:60px;height:18px;border-radius:4px;"></div>
-                                        <div class="skeleton-box mt-2" style="width:90px;height:12px;border-radius:4px;"></div>
-                                    </div>
-                                    <div class="col-md-3 col-3 text-center">
-                                        <div class="skeleton-box mx-auto" style="width:70px;height:12px;border-radius:4px;"></div>
-                                        <div class="skeleton-box mx-auto mt-2" style="width:40px;height:12px;border-radius:4px;"></div>
-                                    </div>
-                                    <div class="col-md-2 col-4">
-                                        <div class="skeleton-box" style="width:60px;height:18px;border-radius:4px;"></div>
-                                        <div class="skeleton-box mt-2" style="width:80px;height:12px;border-radius:4px;"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </template>
-
+            <div class="row search-results-inner-row" :class="{ 'search-results-reveal': showSearchResults }">
                 <div v-for="(flight, index) in filteredFlights" :key="index" class="col-md-12">
-                    <div class="card">
+                    <div class="card search-result-flight-card">
                         <div class="card-body">
                             <div class="d-flex align-items-stretch">
                                 <div class="flex-grow-1 min-w-0">
@@ -2057,8 +2116,12 @@ const openReturnPicker = () => {
                                 </div>
                                 <!-- price button: spans full height of both rows, centered -->
                                 <div class="price-cta-col d-flex align-items-center justify-content-center" style="width:190px;flex-shrink:0;padding:0 10px 0 22px;">
-                                    <button class="price-cta-btn w-100" data-bs-toggle="collapse"
-                                        :data-bs-target="`#flight-package-${index}`" :aria-controls="`flight-package-${index}`">
+                                    <button
+                                        class="price-cta-btn w-100"
+                                        :class="{ 'price-cta-btn--open': openFareFlightIndex === index }"
+                                        :aria-expanded="openFareFlightIndex === index"
+                                        @click="toggleFarePanel(index)"
+                                    >
                                         <div class="price-cta-btn__top">
                                             <span class="price-cta-btn__from-label">from</span>
                                             <i class="fa-solid text-info fa-layer-group price-cta-btn__layers"></i>
@@ -2079,7 +2142,7 @@ const openReturnPicker = () => {
                                             <span class="price-cta-btn__cabin">{{ flight.outbound.cabin || 'Economy' }}</span>
                                             <span class="price-cta-btn__hint text-info"><i class="fa-solid fa-tags me-1"></i>View fares</span>
                                         </div>
-                                        <div class="price-cta-btn__chevron">
+                                        <div class="price-cta-btn__chevron" :class="{ 'price-cta-btn__chevron--open': openFareFlightIndex === index }">
                                             <i class="fa-solid fa-chevron-down"></i>
                                         </div>
                                     </button>
@@ -3011,131 +3074,144 @@ const openReturnPicker = () => {
                     <!-- ./ end flight details2 -->
 
 
-                    <!-- Price Details -->
-                    <div :id="`flight-package-${index}`" class="accordion-collapse collapse m-0"
-                                    aria-labelledby="flush-headingpackage" data-bs-parent="#accordionFlushExample"
-                                    style="">
-                                    <div class="accordion-body">
-                                        <div class="card">
-                                            <div class="card-body">
-                                                <div class="brand-cards-scroll">
-                                                    <template v-if="flight.outbound.brand_options && flight.outbound.brand_options.length">
-                                                        <div v-for="(brand, bIdx) in flight.outbound.brand_options" :key="bIdx"
-                                                            class="brand-card-item">
-                                                            <div class="fare-card" style="height:100%;" :class="['fare-card--eco','fare-card--flex','fare-card--first'][bIdx] ?? 'fare-card--eco'">
-                                                                <!-- Header -->
-                                                                <div class="fare-card__header fare-card__header--slim">
-                                                                    <div class="fare-card__header-row">
-                                                                        <div class="fare-card__title-block">
-                                                                            <span class="fare-card__title">{{ brand.label }}</span>
-                                                                            <span class="fare-card__meta-inline">
-                                                                                <span>Class {{ brand.class_of_service }}</span>
-                                                                                <span v-if="brand.fare_basis_code">{{ brand.fare_basis_code }}</span>
-                                                                                <span v-if="brand.is_default_brand" class="fare-card__meta-tag">Default</span>
-                                                                            </span>
-                                                                        </div>
-                                                                        <label
-                                                                            v-if="brandHasAgentPricing(brand)"
-                                                                            class="fare-card__price-toggle fare-card__price-toggle--sm"
-                                                                            :title="isDualPrice(index, bIdx) ? 'Show selling price only' : 'Show selling and payable'"
-                                                                        >
-                                                                            <input
-                                                                                type="checkbox"
-                                                                                class="fare-card__price-toggle-input"
-                                                                                :checked="isDualPrice(index, bIdx)"
-                                                                                @change="toggleDualPrice(index, bIdx)"
-                                                                            />
-                                                                            <span class="fare-card__price-toggle-ui" aria-hidden="true"></span>
-                                                                        </label>
-                                                                    </div>
-                                                                    <div class="fare-card__header-row fare-card__header-row--price">
-                                                                        <template v-if="!isDualPrice(index, bIdx)">
-                                                                            <div class="fare-card__price-single">
-                                                                                <span class="fare-card__currency">{{ brand.currency }}</span>
-                                                                                <span class="fare-card__amount">{{ formatFareAmount(brandGrossFare(brand)) }}</span>
-                                                                            </div>
-                                                                        </template>
-                                                                        <template v-else>
-                                                                            <div class="fare-card__price-stack">
-                                                                                <div class="fare-card__price-line">
-                                                                                    <span class="fare-card__price-label">Selling</span>
-                                                                                    <span class="fare-card__price-value">
-                                                                                        <span class="fare-card__price-currency">{{ brand.currency }}</span>
-                                                                                        {{ formatFareAmount(brandGrossFare(brand)) }}
-                                                                                    </span>
-                                                                                </div>
-                                                                                <button
-                                                                                    type="button"
-                                                                                    class="fare-card__price-line fare-card__price-line--payable"
-                                                                                    :class="{ 'fare-card__price-line--interactive': canShowPayableBreakdown(brand) }"
-                                                                                    :title="canShowPayableBreakdown(brand) ? 'View payable breakdown' : undefined"
-                                                                                    @click.stop="openPayableBreakdown(brand)"
-                                                                                >
-                                                                                    <span class="fare-card__price-label">
-                                                                                        Payable
-                                                                                        <i
-                                                                                            v-if="canShowPayableBreakdown(brand)"
-                                                                                            class="fa-solid fa-circle-info fare-card__price-hint"
-                                                                                            aria-hidden="true"
-                                                                                        ></i>
-                                                                                    </span>
-                                                                                    <span class="fare-card__price-value">
-                                                                                        <span class="fare-card__price-currency">{{ brand.currency }}</span>
-                                                                                        {{ formatFareAmount(brandTotalPayable(brand)) }}
-                                                                                    </span>
-                                                                                </button>
-                                                                            </div>
-                                                                        </template>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="fare-card__divider"></div>
-                                                                <!-- Features -->
-                                                                <div class="fare-card__features">
-                                                                    <div v-for="(attr, aIdx) in brand.attributes" :key="aIdx" class="fare-card__feature">
-                                                                        <span class="fare-card__status-dot" :class="{
-                                                                            'fare-card__status-dot--ok':  attr.inclusion === 'Included',
-                                                                            'fare-card__status-dot--fee': attr.inclusion === 'Chargeable',
-                                                                            'fare-card__status-dot--no':  attr.inclusion === 'Not Offered',
-                                                                        }">
-                                                                            <i :class="{
-                                                                                'fa-solid fa-check':       attr.inclusion === 'Included',
-                                                                                'fa-solid fa-dollar-sign': attr.inclusion === 'Chargeable',
-                                                                                'fa-solid fa-xmark':       attr.inclusion === 'Not Offered',
-                                                                            }"></i>
-                                                                        </span>
-                                                                        <span class="fare-card__cat-icon">
-                                                                            <i :class="classIcon(attr.classification)"></i>
-                                                                        </span>
-                                                                        <span class="fare-card__feature-text" :class="{
-                                                                            'fare-card__feature-text--fee': attr.inclusion === 'Chargeable',
-                                                                            'fare-card__feature-text--no':  attr.inclusion === 'Not Offered',
-                                                                        }">
-                                                                            {{ classLabel(attr.classification) }} ({{ attr.inclusion }})
-                                                                        </span>
-                                                                    </div>
-                                                                </div>
-                                                                <!-- Book button -->
-                                                                <div class="fare-card__footer">
-                                                                    <button class="fare-card__book-btn" @click="selectFare(flight, brand)">
-                                                                        Select fare <i class="fa-solid fa-arrow-right ms-1"></i>
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </template>
-                                                    <div v-else class="col-12 text-center text-muted py-3">No brand options available.</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                    <!-- ./end Price Details -->
-
                 </div>
 
             </div>
-
             </div>
+
+            <Transition name="fare-drawer-fade">
+                <div
+                    v-if="openFareFlightIndex !== null"
+                    class="fare-drawer-backdrop"
+                    @click="closeFarePanel"
+                ></div>
+            </Transition>
+
+            <Transition name="fare-drawer-slide">
+                <div
+                    v-if="openFareFlight"
+                    class="fare-drawer"
+                    :style="fareDrawerStyle(openFareFlight)"
+                >
+                    <button
+                        type="button"
+                        class="fare-drawer__dismiss"
+                        @click="closeFarePanel"
+                        aria-label="Close fares"
+                    >
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                    <div class="fare-drawer__body">
+                        <div class="brand-cards-scroll fare-drawer__cards">
+                            <template v-if="openFareFlight.outbound.brand_options && openFareFlight.outbound.brand_options.length">
+                                <div
+                                    v-for="(brand, bIdx) in openFareFlight.outbound.brand_options"
+                                    :key="bIdx"
+                                    class="brand-card-item fare-drawer__card-item"
+                                >
+                                    <div class="fare-card fare-drawer__fare-card" :class="['fare-card--eco','fare-card--flex','fare-card--first'][bIdx] ?? 'fare-card--eco'">
+                                        <div class="fare-card__header fare-card__header--slim">
+                                            <div class="fare-card__header-row">
+                                                <div class="fare-card__title-block">
+                                                    <span class="fare-card__title">{{ brand.label }}</span>
+                                                    <span class="fare-card__meta-inline">
+                                                        <span>Class {{ brand.class_of_service }}</span>
+                                                        <span v-if="brand.fare_basis_code">{{ brand.fare_basis_code }}</span>
+                                                        <span v-if="brand.is_default_brand" class="fare-card__meta-tag">Default</span>
+                                                    </span>
+                                                </div>
+                                                <label
+                                                    v-if="brandHasAgentPricing(brand)"
+                                                    class="fare-card__price-toggle fare-card__price-toggle--sm"
+                                                    :title="isDualPrice(openFareFlightIndex, bIdx) ? 'Show selling price only' : 'Show selling and payable'"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        class="fare-card__price-toggle-input"
+                                                        :checked="isDualPrice(openFareFlightIndex, bIdx)"
+                                                        @change="toggleDualPrice(openFareFlightIndex, bIdx)"
+                                                    />
+                                                    <span class="fare-card__price-toggle-ui" aria-hidden="true"></span>
+                                                </label>
+                                            </div>
+                                            <div class="fare-card__header-row fare-card__header-row--price">
+                                                <template v-if="!isDualPrice(openFareFlightIndex, bIdx)">
+                                                    <div class="fare-card__price-single">
+                                                        <span class="fare-card__currency">{{ brand.currency }}</span>
+                                                        <span class="fare-card__amount">{{ formatFareAmount(brandGrossFare(brand)) }}</span>
+                                                    </div>
+                                                </template>
+                                                <template v-else>
+                                                    <div class="fare-card__price-stack">
+                                                        <div class="fare-card__price-line">
+                                                            <span class="fare-card__price-label">Selling</span>
+                                                            <span class="fare-card__price-value">
+                                                                <span class="fare-card__price-currency">{{ brand.currency }}</span>
+                                                                {{ formatFareAmount(brandGrossFare(brand)) }}
+                                                            </span>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            class="fare-card__price-line fare-card__price-line--payable"
+                                                            :class="{ 'fare-card__price-line--interactive': canShowPayableBreakdown(brand) }"
+                                                            :title="canShowPayableBreakdown(brand) ? 'View payable breakdown' : undefined"
+                                                            @click.stop="openPayableBreakdown(brand)"
+                                                        >
+                                                            <span class="fare-card__price-label">
+                                                                Payable
+                                                                <i
+                                                                    v-if="canShowPayableBreakdown(brand)"
+                                                                    class="fa-solid fa-circle-info fare-card__price-hint"
+                                                                    aria-hidden="true"
+                                                                ></i>
+                                                            </span>
+                                                            <span class="fare-card__price-value">
+                                                                <span class="fare-card__price-currency">{{ brand.currency }}</span>
+                                                                {{ formatFareAmount(brandTotalPayable(brand)) }}
+                                                            </span>
+                                                        </button>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+                                        <div class="fare-card__divider"></div>
+                                        <div class="fare-card__features">
+                                            <div v-for="(attr, aIdx) in brand.attributes" :key="aIdx" class="fare-card__feature">
+                                                <span class="fare-card__status-dot" :class="{
+                                                    'fare-card__status-dot--ok':  attr.inclusion === 'Included',
+                                                    'fare-card__status-dot--fee': attr.inclusion === 'Chargeable',
+                                                    'fare-card__status-dot--no':  attr.inclusion === 'Not Offered',
+                                                }">
+                                                    <i :class="{
+                                                        'fa-solid fa-check':       attr.inclusion === 'Included',
+                                                        'fa-solid fa-dollar-sign': attr.inclusion === 'Chargeable',
+                                                        'fa-solid fa-xmark':       attr.inclusion === 'Not Offered',
+                                                    }"></i>
+                                                </span>
+                                                <span class="fare-card__cat-icon">
+                                                    <i :class="classIcon(attr.classification)"></i>
+                                                </span>
+                                                <span class="fare-card__feature-text" :class="{
+                                                    'fare-card__feature-text--fee': attr.inclusion === 'Chargeable',
+                                                    'fare-card__feature-text--no':  attr.inclusion === 'Not Offered',
+                                                }">
+                                                    {{ classLabel(attr.classification) }} ({{ attr.inclusion }})
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div class="fare-card__footer">
+                                            <button class="fare-card__book-btn" @click="selectFare(openFareFlight, brand)">
+                                                Select fare <i class="fa-solid fa-arrow-right ms-1"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                            <div v-else class="fare-drawer__empty">No brand options available.</div>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
         </div>
         <!-- result panel end -->
     </div>
@@ -3159,25 +3235,24 @@ const openReturnPicker = () => {
         @close="closePayableBreakdown"
     />
 
-    <AppModal
-        :is-open="loadging"
-        :show-header="false"
-        :close-on-backdrop="false"
-        size="md"
-        max-width="440px"
-    >
-        <div class="search-cooking-modal">
-            <div class="search-cooking-animation" aria-hidden="true"></div>
-            <p class="search-cooking-text mb-0">Cooking..</p>
-        </div>
-    </AppModal>
-
 </template>
 
 <style>
-.page-content:has(.search-page-layout) {
+// Lock shell height so only filter/results panes scroll (no body/page-wrapper bar)
+body:has(.search-page-layout) {
+    overflow: hidden;
+}
+
+.page-wrapper:has(.search-page-layout) {
+    padding-bottom: 0;
     overflow: hidden;
     height: calc(100dvh - 60px);
+    box-sizing: border-box;
+}
+
+.page-content:has(.search-page-layout) {
+    overflow: hidden;
+    height: 100%;
     box-sizing: border-box;
     background: #eef1f7 !important;
 }
@@ -3262,18 +3337,18 @@ const openReturnPicker = () => {
 .search-filter-scroll,
 .search-results-scroll {
     scrollbar-gutter: stable;
-    scrollbar-width: thin;
+    scrollbar-width: auto;
     scrollbar-color: transparent transparent;
 }
 
 .search-filter-scroll.is-scroll-hover,
 .search-results-scroll.is-scroll-hover {
-    scrollbar-color: rgba(168, 156, 210, 0.75) transparent;
+    scrollbar-color: rgba(168, 156, 210, 0.85) transparent;
 }
 
 .search-filter-scroll::-webkit-scrollbar,
 .search-results-scroll::-webkit-scrollbar {
-    width: 6px;
+    width: 10px;
 }
 
 .search-filter-scroll::-webkit-scrollbar-track,
@@ -3285,7 +3360,7 @@ const openReturnPicker = () => {
 .search-results-scroll::-webkit-scrollbar-thumb {
     background: transparent;
     border-radius: 999px;
-    border: 2px solid transparent;
+    border: 1px solid transparent;
     background-clip: padding-box;
 }
 
@@ -3293,9 +3368,9 @@ const openReturnPicker = () => {
 .search-results-scroll.is-scroll-hover::-webkit-scrollbar-thumb {
     background: linear-gradient(
         180deg,
-        rgba(147, 168, 235, 0.72) 0%,
-        rgba(186, 168, 228, 0.78) 52%,
-        rgba(130, 210, 205, 0.72) 100%
+        rgba(147, 168, 235, 0.8) 0%,
+        rgba(186, 168, 228, 0.85) 52%,
+        rgba(130, 210, 205, 0.8) 100%
     );
     border-color: transparent;
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
@@ -3501,18 +3576,6 @@ const openReturnPicker = () => {
 .airline-filter-row--active .airline-filter-count {
     background: #4a90e2;
     color: #fff;
-}
-
-/* Skeleton shimmer */
-.skeleton-box {
-    background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.4s infinite;
-    display: block;
-}
-@keyframes shimmer {
-    0%   { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
 }
 
 /* Leading */
@@ -3800,6 +3863,169 @@ const openReturnPicker = () => {
     0%, 100% { transform: translateY(0); }
     50%       { transform: translateY(3px); }
 }
+.price-cta-btn--open {
+    box-shadow: 0 6px 24px rgba(78,84,200,0.35), 0 3px 12px rgba(5,183,178,0.25);
+}
+.price-cta-btn__chevron--open {
+    animation: none;
+}
+.price-cta-btn__chevron--open i {
+    transform: rotate(180deg);
+    transition: transform 0.3s ease;
+}
+
+/* ── Fare drawer (full-height results sidebar) ─────────────── */
+.search-results-column--fares-open .search-results-scroll {
+    overflow: hidden;
+}
+.fare-drawer-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 8;
+    background: rgba(15, 23, 42, 0.16);
+    backdrop-filter: blur(1px);
+}
+.fare-drawer {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background:
+        linear-gradient(165deg, rgba(5, 183, 178, 0.06) 0%, rgba(124, 58, 237, 0.08) 100%),
+        #f8fafc;
+    border-left: 1px solid rgba(124, 58, 237, 0.14);
+    box-shadow: -12px 0 40px rgba(41, 51, 81, 0.16);
+    max-width: 100%;
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+}
+.fare-drawer__dismiss {
+    position: absolute;
+    top: 6px;
+    right: 4px;
+    z-index: 2;
+    width: 18px;
+    height: 22px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: rgba(91, 62, 168, 0.55);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+.fare-drawer__dismiss:hover {
+    color: #43287f;
+}
+.fare-drawer__body {
+    flex: 1;
+    min-height: 0;
+    padding: 10px 16px 18px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+.fare-drawer__cards {
+    flex: 1;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: hidden;
+    padding-bottom: 0;
+    align-items: stretch;
+}
+.fare-drawer__card-item {
+    flex: 0 0 320px;
+    min-width: 320px;
+    max-width: 320px;
+    min-height: 0;
+    display: flex;
+}
+.fare-drawer__fare-card {
+    flex: 1;
+    min-height: 0;
+    max-height: 100%;
+}
+.fare-drawer__fare-card .fare-card__header,
+.fare-drawer__fare-card .fare-card__divider {
+    flex-shrink: 0;
+}
+.fare-drawer__fare-card .fare-card__features {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #c5cae9 transparent;
+}
+.fare-drawer__fare-card .fare-card__features::-webkit-scrollbar {
+    width: 4px;
+}
+.fare-drawer__fare-card .fare-card__features::-webkit-scrollbar-thumb {
+    background: #c5cae9;
+    border-radius: 2px;
+}
+.fare-drawer__fare-card .fare-card__footer {
+    flex-shrink: 0;
+}
+.fare-drawer__empty {
+    width: 100%;
+    text-align: center;
+    color: #6b7280;
+    font-size: 13px;
+    padding: 24px 12px;
+}
+.fare-drawer-fade-enter-active {
+    transition: opacity 0.45s ease;
+}
+.fare-drawer-fade-leave-active {
+    transition: opacity 0.32s ease 0.04s;
+}
+.fare-drawer-fade-enter-from,
+.fare-drawer-fade-leave-to {
+    opacity: 0;
+}
+/* Smooth glide — no end shake / overshoot */
+.fare-drawer-slide-enter-active {
+    animation: fareDrawerSpringIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.fare-drawer-slide-leave-active {
+    animation: fareDrawerSpringOut 0.38s cubic-bezier(0.4, 0.05, 0.2, 1) both;
+}
+@keyframes fareDrawerSpringIn {
+    0% {
+        transform: translateX(104%);
+        opacity: 0.55;
+    }
+    100% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+@keyframes fareDrawerSpringOut {
+    0% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    100% {
+        transform: translateX(104%);
+        opacity: 0.3;
+    }
+}
+@media (max-width: 767px) {
+    .fare-drawer {
+        width: 100% !important;
+    }
+    .fare-drawer__cards {
+        overflow-x: auto;
+    }
+}
 
 /* ── Fare tier cards ───────────────────────────────────────── */
 .fare-card {
@@ -4082,6 +4308,7 @@ const openReturnPicker = () => {
 .fare-card__feature-text {
     color: #3a4563;
     flex: 1;
+    white-space: nowrap;
 }
 .fare-card__feature-text--fee { color: #d97706; }
 .fare-card__feature-text--no  { color: #b0b8c8; }
@@ -4310,6 +4537,11 @@ const openReturnPicker = () => {
     flex-direction: column;
     min-height: 0;
     max-height: 100%;
+}
+
+.search-results-column {
+    position: relative;
+    overflow: hidden;
 }
 
 .search-filter-scroll,
@@ -4640,38 +4872,55 @@ const openReturnPicker = () => {
     display: none !important;
 }
 
-.app-modal-dialog:has(.search-cooking-modal) .app-modal-content {
-    background: #ffffff;
-    border: 1px solid #e8e4f8;
-}
-
-.search-cooking-modal {
+.search-cooking-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 25;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-width: 400px;
-    min-height: 360px;
-    padding: 2.5rem 2rem 2rem;
-    text-align: center;
-    background: #ffffff;
+    overflow: visible;
+    background: transparent;
+    pointer-events: auto;
 }
 
-.search-cooking-animation {
-    width: 240px;
-    height: 240px;
+.search-loader-fade-enter-active,
+.search-loader-fade-leave-active {
+    transition: opacity 0.22s ease;
+}
+
+.search-loader-fade-enter-from,
+.search-loader-fade-leave-to {
+    opacity: 0;
+}
+
+.search-results-reveal {
+    animation: search-results-in 0.18s ease-out;
+}
+
+@keyframes search-results-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.search-cooking-loader-shell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.search-cooking-gif {
+    width: 340px;
+    height: 340px;
     background: url('/theme/appimages/pp.gif') no-repeat center;
     background-size: contain;
-    border: 1px solid #8adfdb;
-    border-radius: 50%;
-}
-
-.search-cooking-text {
-    margin-top: 1.25rem;
-    color: #875ae9;
-    font-size: 1.25rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
+    filter: drop-shadow(0 10px 28px rgba(0, 0, 0, 0.28));
 }
 
 </style>
