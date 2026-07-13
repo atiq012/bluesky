@@ -1,3 +1,4 @@
+import { Group } from 'lucide-vue-next'
 import { createRouter, createWebHistory } from 'vue-router'
 
 const Home = () => import('./components/pages/Home.vue')
@@ -115,6 +116,10 @@ const requestEdit = () => import('./components/admin/helpdesk/edit.vue')
 const categoryList = () => import('./components/admin/category/index.vue')
 const categoryCreate = () => import('./components/admin/category/create.vue')
 
+// /Group
+const groupList = () => import('./components/admin/group/index.vue');
+const createGroupRequest = () => import('./components/admin/group/create.vue');
+
 const routes = [
     { path: '/', component: Login, name: 'Login', meta: { guest: true } },
     { path: '/sendResetLinkEmail', component: sendResetLinkEmail, name: 'sendResetLinkEmail', meta: { guest: true } },
@@ -226,6 +231,11 @@ const routes = [
     { path: '/create-traveler', component: CreateTraveller, name: 'CreateTraveller', meta: { auth: true } },
     { path: '/edit-traveler/:ids', component: TravelerEdit, name: 'TravelerEdit', meta: { auth: true }, props: true },
     { path: '/view-traveler/:ids', component: TravelerView, name: 'TravelerView', meta: { auth: true }, props: true },
+
+    // group
+    { path: '/all-b2b-group-list', component: groupList, name: 'groupList', meta: { auth: true } },
+    { path: '/create-new-group-request', component: createGroupRequest, name: 'createGroupRequest', meta: { auth: true } },
+
 ]
 
 const router = createRouter({

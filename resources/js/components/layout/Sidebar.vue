@@ -88,7 +88,8 @@ onMounted(() => {
                                 <i class='bx bx-radio-circle'></i> Booking & Ticketing
                             </router-link>
                         </li>
-                        <li :class="{ 'mm-active': ['bookingAttemptList', 'bookingAttemptDetail'].includes(route.name) }">
+                        <li
+                            :class="{ 'mm-active': ['bookingAttemptList', 'bookingAttemptDetail'].includes(route.name) }">
                             <router-link v-wave :to="{ name: 'bookingAttemptList' }">
                                 <i class='bx bx-radio-circle'></i> Booking Attempts
                             </router-link>
@@ -98,6 +99,29 @@ onMounted(() => {
                                 <i class='bx bx-radio-circle'></i> Flight PNR
                             </router-link>
                         </li>
+                    </ul>
+                </li>
+                <li class="menu-label">GROUPS</li>
+                <li>
+                    <a v-wave class="has-arrow" href="javascript:;">
+                        <div class="parent-icon">
+
+                            <img src="../../../../public/theme/Sidebar_icons/teamwork_1.svg" alt="">
+                        </div>
+                        <div class="menu-title">B2B Group</div>
+                    </a>
+                    <ul>
+                        <li>
+                            <router-link v-wave :to="{ name: 'groupList' }">
+                                <i class='bx bx-radio-circle'></i> Group Booking
+                            </router-link>
+                        </li>
+                        <li>
+                            <router-link v-wave :to="{ name: 'flightSearch' }">
+                                <i class='bx bx-radio-circle'></i> Payments
+                            </router-link>
+                        </li>
+
                     </ul>
                 </li>
                 <li class="menu-label">Finance</li>

@@ -32,14 +32,27 @@ const emit = defineEmits(['update:modelValue']);
 function parseDisplayToDate(str) {
     if (!str || typeof str !== 'string') return null;
     const s = str.trim();
-    const parts = s.split('-');
-    if (parts.length !== 3) return null;
-    const [dStr, mStr, yStr] = parts;
+    const parts = s.split(' ');
+    const dateParts = parts[0].split('-');
+    if (dateParts.length !== 3) return null;
+
+    const [dStr, mStr, yStr] = dateParts;
     const day = parseInt(dStr, 10);
     const monthIdx = MONTHS.indexOf(mStr);
     const year = parseInt(yStr, 10);
+
     if (Number.isNaN(day) || monthIdx < 0 || Number.isNaN(year)) return null;
-    const d = new Date(year, monthIdx, day);
+
+    let hours = 0, minutes = 0;
+    if (parts.length > 1 && parts[1]) {
+        const timeParts = parts[1].split(':');
+        if (timeParts.length === 2) {
+            hours = parseInt(timeParts[0], 10) || 0;
+            minutes = parseInt(timeParts[1], 10) || 0;
+        }
+    }
+
+    const d = new Date(year, monthIdx, day, hours, minutes);
     return Number.isNaN(d.getTime()) ? null : d;
 }
 
@@ -48,6 +61,13 @@ function dateToDisplay(d) {
     const day = String(d.getDate()).padStart(2, '0');
     const month = MONTHS[d.getMonth()];
     const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+
+    // Only include time if enableTimePicker is true or if time is not 00:00
+    if (props.enableTimePicker || (d.getHours() !== 0 || d.getMinutes() !== 0)) {
+        return `${day}-${month}-${year} ${hours}:${minutes}`;
+    }
     return `${day}-${month}-${year}`;
 }
 
@@ -111,6 +131,17 @@ watch(
     () => props.modelValue,
     () => modelToInternal(),
     { immediate: true, deep: true }
+);
+
+// Watch enableTimePicker changes to update display
+watch(
+    () => props.enableTimePicker,
+    () => {
+        // Re-emit current value to update display format
+        if (internalModel.value) {
+            internalToModel(internalModel.value);
+        }
+    }
 );
 
 function onInternalUpdate(val) {
