@@ -16,8 +16,51 @@ class GroupController extends BaseController
      */
     public function index()
     {
-        $data = DB::table('group_requests')->get();
-        return DataTables::of($data)->addIndexColumn()->make(true);
+        $data = DB::table('group_requests')
+            ->leftJoin('group_request_segments', 'group_requests.id', '=', 'group_request_segments.group_request_id')
+            ->select('group_requests.*',
+                DB::raw('f_username(NULLIF(group_requests.assigned_to, "")) as assigned_to_kam'),
+                DB::raw('GROUP_CONCAT(
+                CONCAT_WS("- ",
+                    group_request_segments.origin,
+                    group_request_segments.destination
+                )
+                ORDER BY group_request_segments.segment_order
+                SEPARATOR " | "
+            ) as segments_info'),
+                DB::raw('GROUP_CONCAT(
+                CONCAT_WS("- ",
+                    DATE_FORMAT(group_request_segments.departure_date, "%d-%b-%Y %l:%i %p")
+                )
+                ORDER BY group_request_segments.segment_order
+                SEPARATOR " | "
+            ) as segments_date')
+            )
+            ->groupBy('group_requests.id');
+
+        return DataTables::of($data)
+            ->addIndexColumn()
+            ->addColumn('route_display', function ($row) {
+                if ($row->request_type === 'multicity' && $row->segments_info) {
+                    return $row->segments_info;
+                }
+                $route = $row->origin . ' -> ' . $row->destination;
+                if ($row->request_type === 'roundway' && $row->return_origin) {
+                    $route .= ' | ' . $row->return_origin . ' -> ' . $row->return_destination;
+                }
+
+                return $route;
+            })
+            ->addColumn('route_date_display', function ($row) {
+                if ($row->request_type === 'multicity' && $row->segments_date) {
+                    return $row->segments_date;
+                }
+
+                $route = "<i class='fa-regular fa-calendar me-1' style='font-size: 0.65rem;'></i> " . $row->departure_date;
+
+                return $route;
+            })
+            ->make(true);
     }
 
     /**
@@ -34,53 +77,53 @@ class GroupController extends BaseController
 
     public function store(Request $request)
     {
-        // dd($request->all());
+
         $groupCode = $this->generateGroupCode();
 
         $groupRequest = GroupRequest::create([
-            'agent_code'             => $request->agent_code ?? auth()->user()->agent_code ?? null,
-            'group_code'             => $groupCode,
-            'status'                 => 'New Request',
-            'request_type'           => $request->tripType,
-            'group_type'             => $request->groupType,
-            'class_type'             => $request->preferredClass ?? null,
-            'class_code'             => $request->code ?? null,
+            'agent_code'              => $request->agent_code ?? auth()->user()->agent->agent_code ?? null,
+            'group_code'              => $groupCode,
+            'status'                  => 'New Request',
+            'request_type'            => $request->tripType,
+            'group_type'              => $request->groupType,
+            'class_type'              => $request->preferredClass ?? null,
+            'class_code'              => $request->code ?? null,
 
             // One-way / Round-way
-            'origin'                 => $request->from ?? null,
-            'destination'            => $request->to ?? null,
-            'departure_date'         => $request->departureDate ?? null,
-            'return_origin'          => $request->returnFrom ?? null,
-            'return_destination'     => $request->returnTo ?? null,
-            'return_date'            => $request->returnDate ?? null,
-            'preferred_flight'       => $request->preferredAirlines ?? null,
-            'flight_no'              => $request->flightNo ?? null,
+            'origin'                  => $request->from ?? null,
+            'destination'             => $request->to ?? null,
+            'departure_date'          => $request->departureDate ?? null,
+            'return_origin'           => $request->returnFrom ?? null,
+            'return_destination'      => $request->returnTo ?? null,
+            'return_date'             => $request->returnDate ?? null,
+            'preferred_flight'        => $request->preferredAirlines ?? null,
+            'flight_no'               => $request->flightNo ?? null,
 
             // Multi-city airline stored here
             'preferred_return_flight' => $request->tripType === 'multicity'
-                                         ? ($request->preferredAirline ?? null)
-                                         : null,
+                ? ($request->preferredAirline ?? null)
+                : null,
 
             // Passengers
-            'adult_traveler'         => $request->adult ?? 0,
-            'child_traveler'         => $request->children ?? 0,
-            'infant_traveler'        => $request->infants ?? 0,
-            'total_traveler'         => ($request->adult ?? 0)
-                                         + ($request->children ?? 0)
-                                         + ($request->infants ?? 0),
+            'adult_traveler'          => $request->adult ?? 0,
+            'child_traveler'          => $request->children ?? 0,
+            'infant_traveler'         => $request->infants ?? 0,
+            'total_traveler'          => ($request->adult ?? 0)
+             + ($request->children ?? 0)
+             + ($request->infants ?? 0),
 
             // Fare
-            'per_person_fare'        => $request->perPersonFare ?? null,
-            'currency'               => $request->currency ?? 'BDT',
+            'per_person_fare'         => $request->perPersonFare ?? null,
+            'currency'                => $request->currency ?? 'BDT',
 
             // Requirements
-            'special_requirements'   => $request->specialRequirements ?? null,
-            'details_requirements'   => $request->detailsRequirements ?? null,
-            'remarks'                => $request->remarks ?? null,
+            'special_requirements'    => $request->specialRequirements ?? null,
+            'details_requirements'    => $request->detailsRequirements ?? null,
+            'remarks'                 => $request->remarks ?? null,
 
             // Audit
-            'created_by'             => auth()->id(),
-            'updated_by'             => auth()->id(),
+            'created_by'              => auth()->id(),
+            'updated_by'              => auth()->id(),
         ]);
 
         // Multi-city segments
@@ -108,13 +151,9 @@ class GroupController extends BaseController
 
     private function generateGroupCode()
     {
-                                                               // Assuming you have a 'groups' table with an auto-increment 'id'
-                                                               // Get the next auto-increment value
-        $nextId = \DB::table('group_requests')->max('id') + 1; // Or use your ORM
-
-        // Pad with zeros to make it 8 digits
+        // Get the highest ID
+        $nextId = \DB::table('group_requests')->max('id') + 1;
         $sequentialNumber = str_pad($nextId, 8, '0', STR_PAD_LEFT);
-
         return 'GR' . $sequentialNumber;
     }
 
@@ -129,9 +168,20 @@ class GroupController extends BaseController
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id)
+    public function edit(Request $request)
     {
-        //
+        $groupId = $request->id;
+
+        if (!$groupId) {
+            return $this->ErrorResponse('Group ID is required for editing.', 'Group PNR ID is required for editing.');
+        }
+
+        $groupData = GroupRequest::with(['segments'])->find($groupId);
+        if (!$groupData) {
+            return $this->ErrorResponse('Group not found.', 'Group PNR not found.');
+        }
+
+        return $this->SuccessResponse($groupData, 'Group retrieved successfully for editing.');
     }
 
     /**

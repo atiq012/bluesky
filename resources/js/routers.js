@@ -119,6 +119,7 @@ const categoryCreate = () => import('./components/admin/category/create.vue')
 // /Group
 const groupList = () => import('./components/admin/group/index.vue');
 const createGroupRequest = () => import('./components/admin/group/create.vue');
+const requestGroupView = () => import('./components/admin/group/view.vue');
 
 const routes = [
     { path: '/', component: Login, name: 'Login', meta: { guest: true } },
@@ -235,6 +236,7 @@ const routes = [
     // group
     { path: '/all-b2b-group-list', component: groupList, name: 'groupList', meta: { auth: true } },
     { path: '/create-new-group-request', component: createGroupRequest, name: 'createGroupRequest', meta: { auth: true } },
+    { path: '/view-request-group-request/:id', component: requestGroupView, name: 'requestGroupView', meta: { auth: true } },
 
 ]
 

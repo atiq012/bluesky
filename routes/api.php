@@ -189,6 +189,8 @@ Route::middleware(['auth:api'])->group(function () {
     //get-groups
     Route::get('get-groups', [GroupController::class, 'index'])->name('group.getGroups');
     Route::post('group-requests', [GroupController::class, 'store'])->name('group.groupRequests');
+    Route::post('edit-group-request/data', [GroupController::class, 'edit'])->name('group.edit');
+
     //Internal API
     Route::post('/Lowfaresearch', [APIController::class, 'Lowfaresearch']);
     Route::post('/farerules', [APIController::class, 'getFareRules']);

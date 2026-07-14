@@ -35,7 +35,7 @@ const columns = [
     { field: 'seats', title: 'No. Of PAX' },
     { field: 'fare', title: 'Total Fare and Payment Sequence' },
     { field: 'paid', title: 'Total Paid & Due' },
-    { field: 'status', title: 'KAM' },
+    { field: 'kam', title: 'KAM' },
     { field: 'status', title: 'Status' },
     { field: 'action', title: 'Action' },
 ];
@@ -62,13 +62,19 @@ function wayTypeConfig(wayType) {
 }
 
 function statusConfig(status) {
-    switch ((status || '').toLowerCase()) {
-        case 'active':
-            return { cls: 'status-pill status-active', icon: 'fa-solid fa-circle', label: 'Active' };
-        case 'inactive':
-            return { cls: 'status-pill status-inactive', icon: 'fa-solid fa-circle', label: 'In Active' };
-        case 'expired':
-            return { cls: 'status-pill status-expired', icon: 'fa-solid fa-circle', label: 'Expired' };
+    switch ((status || '')) {
+        case 'New Request':
+            return { cls: 'status-pill status-inactive', icon: 'fa-solid fa-circle', label: 'New Request' };
+        case 'On Process':
+            return { cls: 'status-pill status-inactive', icon: 'fa-solid fa-circle', label: 'On Process' };
+        case 'Price Offered':
+            return { cls: 'status-pill status-expired', icon: 'fa-solid fa-circle', label: 'Price Offered' };
+        case 'Decline':
+            return { cls: 'status-pill status-expired', icon: 'fa-solid fa-circle', label: 'Decline' };
+        case 'Confirmed':
+            return { cls: 'status-pill status-active', icon: 'fa-solid fa-circle', label: 'Confirmed' };
+        case 'Approved':
+            return { cls: 'status-pill status-active', icon: 'fa-solid fa-circle', label: 'Approved' };
         default:
             return { cls: 'status-pill status-active', icon: 'fa-solid fa-circle', label: 'Active' };
     }
@@ -96,7 +102,7 @@ async function getListValues() {
 }
 
 function handleView(item) {
-    // router.push({ name: 'myGroupView', params: { id: item.id } });
+    router.push({ name: 'requestGroupView', params: { id: item.id } });
 }
 
 function handleEdit(item) {
@@ -281,10 +287,7 @@ getListValues();
                                 {{ row.airline || 'Qatar Airline' }}
                             </div>
                             <div class="cell-link">PNR : {{ row.pnr || '-' }}</div>
-                            <div class="cell-sub">
-                                <i class="fa-regular fa-calendar me-1" style="font-size: 0.65rem;"></i>
-                                <!-- {{ moment(row.last_payment_date || new Date()).format('DD-MMM-YYYY') }} -->
-                            </div>
+
                         </div>
                     </template>
 
@@ -292,50 +295,91 @@ getListValues();
                     <template #sector="{ value: row }">
                         <div class="sector-cell">
                             <div class="cell-main">
-                                <template v-for="(segment, idx) in (row.segments || [])" :key="idx">
-                                    <div>{{ segment.departure_from }} - {{ segment.arrival_to }}</div>
-                                    <div v-if="idx < (row.segments || []).length - 1" style="height: 5px;"></div>
-                                </template>
+
+                                <div v-if="row.request_type == 'multicity'"
+                                    v-html="row.route_display.replaceAll(' | ', '<br>').replaceAll('|', '<br>')"></div>
+
+                                <div v-else-if="row.request_type == 'oneway'">
+                                    {{ row.origin }} - {{ row.destination }}
+                                </div>
+                                <div v-else>
+                                    {{ row.origin }} - {{ row.destination }} <br>
+                                    {{ row.return_origin }} - {{ row.return_destination }}
+                                </div>
                             </div>
-                            <div class="cell-link">{{ row.class_type }} ({{ row.code_rbd }})</div>
+                            <div class="cell-link">{{ row.class_type }} ({{ row.class_code }})</div>
                         </div>
                     </template>
 
                     <!-- Departure & Return Date -->
                     <template #dates="{ value: row }">
-                        <div class="dates-cell">
-                            <div v-for="(segment, idx) in (row.segments || [])" :key="idx" class="segment-item">
-                                <div class="cell-main">
-                                    <i class="fa-solid fa-plane-departure me-1 table-icon"></i>
-                                    {{ moment(segment.departure_datetime).format('DD-MMM-YYYY') }} |
-                                    {{ moment(segment.departure_datetime).format('hh:mm A') }}
-                                </div>
-                                <div class="cell-sub mt-1">
-                                    <i class="fa-solid fa-plane-arrival me-1 table-icon"></i>
-                                    {{ moment(segment.arrival_datetime).format('hh:mm A') }}
-                                </div>
-                            </div>
+                        <div class="cell-main" v-if="row.request_type == 'multicity'">
+                            <div v-if="row.request_type == 'multicity'" v-html="`<i class='fa-regular fa-calendar me-1' style='font-size: 0.65rem;'></i>${row.route_date_display.replaceAll(' | ', `<br> <i class='fa-regular fa-calendar me-1' style='font-size: 0.65rem;'></i>`).replaceAll('|', `<br> <i class='fa-regular fa-calendar me-1' style='font-size: 0.65rem;'></i>`)}`"></div>
+                        </div>
+                        <div class="cell-main" v-else-if="row.request_type == 'oneway'">
+                            <i class="fa-regular fa-calendar me-1" style="font-size: 0.65rem;">
+                            </i> {{ row.departure_date ? moment(row.departure_date).format('DD-MMM-YYYY h:mm A') : '-'
+                            }}
+                        </div>
+                        <div class="cell-main" v-else>
+                            <i class="fa-regular fa-calendar me-1" style="font-size: 0.65rem;"></i>
+                            {{ row.departure_date ? moment(row.departure_date).format('DD-MMM-YYYY h:mm A') : '-' }}
+                            <br>
+                            <i class="fa-regular fa-calendar me-1" style="font-size: 0.65rem;"></i>
+                            {{ row.return_date ? moment(row.return_date).format('DD-MMM-YYYY h:mm A') : '-' }}
                         </div>
                     </template>
 
+                    <!-- no of pax -->
+                    <template #seats="{ value: row }">
+                        <div class="fare-cell">
+                            <div class="cell-main amount-text">
+                                <i class="fa fa-users me-1"></i>
+                                {{ row.adult_traveler + row.child_traveler + row.infant_traveler }}
+                            </div>
+                            <div class="cell-main cell-link">
+                                <i class="fa fa-person me-1"></i> {{ row.adult_traveler }} | <i
+                                    class="fa fa-child me-1"></i>
+                                {{ row.child_traveler }} | <i class="fa fa-baby me-1"></i>
+                                {{ row.infant_traveler }}
+                            </div>
+                        </div>
+                    </template>
                     <!-- Estimate Fare & Payment Sequence -->
                     <template #fare="{ value: row }">
-                        <div class="fare-cell">
-                            <div class="cell-main amount-text">BDT {{ formatAmount(row.estimate_fare_bdt) }}</div>
-                            <div v-for="(seq, idx) in (row.payment_sequences || [])" :key="idx" class="cell-sub">
-                                {{ seq.term }}: BDT {{ formatAmount(seq.amount) }}
+                        <div class="fare-cell" v-if="row.status != 'New Request'">
+                            <div class="cell-main amount-text">
+                                {{ row.currency }} {{ formatAmount(row.per_person_fare) }}
                             </div>
+                        </div>
+                        <div v-else>
+                            -
                         </div>
                     </template>
 
                     <!-- Paid Amount -->
                     <template #paid="{ value: row }">
-                        <div class="paid-cell">
-                            <div class="cell-main amount-text">BDT {{ formatAmount(row.total_paid_from_sequences) }}
+                        <div class="paid-cell" v-if="row.status != 'New Request'">
+                            <div class="cell-main amount-text">
+                                {{ row.currency }} {{ formatAmount(row.total_paid_from_sequences) }}
                             </div>
                         </div>
+                        <div v-else>
+                            -
+                        </div>
                     </template>
-
+                    <!-- KAM -->
+                    <template #kam="{ value: row }">
+                        <div class="status-cell" v-if="row.assigned_to">
+                            <span class="cell-link">
+                                <i class="fa-regular fa-user"></i>
+                                {{ row.assigned_to_kam ?? '-' }}
+                            </span>
+                        </div>
+                        <div v-else>
+                            -
+                        </div>
+                    </template>
                     <!-- Status -->
                     <template #status="{ value: row }">
                         <div class="status-cell">
@@ -348,7 +392,7 @@ getListValues();
 
                     <!-- Action -->
                     <template #action="{ value: row }">
-                        <ActionButtons :item="row" :show-edit="true" :show-view="true" :show-copy="true"
+                        <ActionButtons :item="row" :show-edit="false" :show-view="true" :show-copy="true"
                             :show-delete="true" :show-authorize="false" copy-label="PNR" @edit="handleEdit"
                             @view="handleView" @copy="handlePnr" @delete="handleDelete" />
                     </template>

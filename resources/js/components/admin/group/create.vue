@@ -237,13 +237,12 @@ async function submitForm() {
                                         </div>
                                         <div class="col-md-4">
 
-                                            <SingleSectorPickerField v-model="form.returreturnTonFrom" label="Return To"
+                                            <SingleSectorPickerField v-model="form.returnTo" label="Return To"
                                                 all-label="Return From" entity-name="airports"
-                                                :options="airportOptions" />
+                                                :options="airportOptions"/>
                                         </div>
                                         <div class="col-md-4">
                                             <label class="field-label">Return Date</label>
-
                                             <AppDatePicker v-model="form.returnDate" :options="datePickerOptions" :enableTimePicker="true"  :inputClass="`form-control form-control-md`"/>
                                         </div>
                                     </div>

@@ -105,7 +105,6 @@ onMounted(() => {
                 <li>
                     <a v-wave class="has-arrow" href="javascript:;">
                         <div class="parent-icon">
-
                             <img src="../../../../public/theme/Sidebar_icons/teamwork_1.svg" alt="">
                         </div>
                         <div class="menu-title">B2B Group</div>
