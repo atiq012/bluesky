@@ -40,6 +40,8 @@ export const useBookingStore = defineStore('tpV2Booking', () => {
     const reviewSnapshot = ref(null)
     const reviewConfirmed = ref(false)
     const commitResult = ref(null)
+    // Fare rules kept across /flight-booking so panel can reopen without re-call
+    const fareRulesSegments = ref([])
 
     function setBookingSession(data) {
         workbenchIdentifier.value = data.workbenchIdentifier ?? null
@@ -142,6 +144,10 @@ export const useBookingStore = defineStore('tpV2Booking', () => {
         agencyApiResponse.value = response
     }
 
+    function setFareRulesSegments(segments) {
+        fareRulesSegments.value = Array.isArray(segments) ? segments : []
+    }
+
     function clearBookingSession() {
         workbenchIdentifier.value = null
         sessionId.value = null
@@ -181,6 +187,7 @@ export const useBookingStore = defineStore('tpV2Booking', () => {
         reviewSnapshot.value = null
         reviewConfirmed.value = false
         commitResult.value = null
+        fareRulesSegments.value = []
     }
 
     return {
@@ -193,7 +200,8 @@ export const useBookingStore = defineStore('tpV2Booking', () => {
         ssrApiResponse, agencyApiResponse,
         workbenchApiResponse, addOfferApiResponse, addTravelerApiResponse,
         reviewSnapshot, reviewConfirmed, commitResult,
-        setBookingSession, clearBookingSession, setPaxes,
+        fareRulesSegments,
+        setBookingSession, clearBookingSession, setPaxes, setFareRulesSegments,
         setReviewSnapshot, setReviewConfirmed, setCommitResult,
         setContentSource, setAncillaryShopData, addBookedAncillaryId,
         setSsrApplied, setAgencyForm, setAgencySubmitted,

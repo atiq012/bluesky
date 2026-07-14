@@ -4,6 +4,7 @@ import axiosInstance from '../axiosInstance'
 import { useBookingStore } from '../stores/bookingStore'
 import { useSearchStore } from '../stores/searchStore'
 import { buildSelectionJson } from '../utils/bookingSelectionJson'
+import Notification from '../Helpers/Notification.js'
 
 export function useTpV2Workbench() {
     const isInitiating = ref(false)
@@ -71,7 +72,9 @@ export function useTpV2Workbench() {
             router.push({ name: 'bookingCreate' })
 
         } catch (e) {
+            // Toast so user sees failure even when footer shows retry actions
             error.value = e?.response?.data?.message ?? 'Failed to initiate reservation. Please try again.'
+            Notification.showToast('e', error.value)
         } finally {
             isInitiating.value = false
         }

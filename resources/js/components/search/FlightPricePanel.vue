@@ -1,8 +1,9 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import axiosInstance from '../../axiosInstance'
 import { useSearchStore } from '../../stores/searchStore'
+import { useBookingStore } from '../../stores/bookingStore'
 import { useTpV2Workbench } from '../../composables/useTpV2Workbench'
 import { buildSelectionJson } from '../../utils/bookingSelectionJson'
 import { completePriceAttempt } from '../../utils/bookingAttemptSession'
@@ -23,7 +24,11 @@ const emit = defineEmits(['close'])
 
 const { isInitiating, error: workbenchError, initiateAndNavigate } = useTpV2Workbench()
 const searchStore = useSearchStore()
+const bookingStore = useBookingStore()
 const router = useRouter()
+const route = useRoute()
+// Already on /flight-booking — proceed CTA would loop same page
+const showProceedButton = computed(() => route.name !== 'bookingCreate')
 const isAutoRetryingBrand = ref(false)
 const currentBrand = ref(null)
 
@@ -46,6 +51,10 @@ const bookingAttemptId = ref(null)
 const offerId          = ref(null)
 const isDownloading    = ref(false)
 const priceChanged     = ref(false)
+const fareRulesLoading = ref(false)
+const fareRulesError   = ref(null)
+const fareRulesSegments = ref([])
+const fareInfoTab = ref('breakdown')
 
 const dynamicPricing = computed(() => priceData.value?.dynamic_pricing ?? null)
 const hasDynamicPricing = computed(() => !!dynamicPricing.value?.rule_applied)
@@ -61,6 +70,8 @@ watch(
         currentBrand.value = props.selectedBrand ?? null
         if (props.cachedPriceData) {
             priceData.value = props.cachedPriceData
+            // Booking route: no new price call — restore fare rules from store/DB
+            hydrateFareRules()
         } else {
             fetchPrice()
         }
@@ -76,6 +87,10 @@ function reset() {
     offerId.value       = null
     priceChanged.value  = false
     isAutoRetryingBrand.value = false
+    fareRulesLoading.value = false
+    fareRulesError.value = null
+    fareRulesSegments.value = []
+    fareInfoTab.value = 'breakdown'
 }
 
 async function finishPriceAttempt() {
@@ -126,8 +141,8 @@ async function fetchPrice() {
         searchStore.activeSearchAttemptId = bookingAttemptId.value
         offerId.value    = res.data?.offer_identifier
 
-        const confirmedPrice = priceData.value?.total_price ?? 0
-        const searchPrice    = currentBrand.value?.price ?? 0
+        const confirmedPrice = priceData.value?.gross_payment ?? priceData.value?.total_price ?? 0
+        const searchPrice    = currentBrand.value?.gross_payment ?? currentBrand.value?.price ?? 0
         priceChanged.value   = Math.abs(confirmedPrice - searchPrice) > 1
 
         fetchFareRules()
@@ -139,22 +154,87 @@ async function fetchPrice() {
     }
 }
 
+function withRouteLabels(segments) {
+    const outLabel = props.flight?.outbound
+        ? `${props.flight.outbound.origin ?? ''}→${props.flight.outbound.destination ?? ''}`
+        : ''
+    const inLabel = props.flight?.inbound
+        ? `${props.flight.inbound.origin ?? ''}→${props.flight.inbound.destination ?? ''}`
+        : ''
+
+    return (segments ?? []).map(seg => ({
+        ...seg,
+        displayLabel: seg.displayLabel
+            || (seg.direction === 'inbound' ? inLabel : outLabel)
+            || seg.flightRef
+            || 'Segment',
+    }))
+}
+
+function applyFareRulesSegments(segments) {
+    const labeled = withRouteLabels(segments)
+    fareRulesSegments.value = labeled
+    bookingStore.setFareRulesSegments(labeled)
+}
+
+async function hydrateFareRules() {
+    fareRulesError.value = null
+
+    // 1) Memory / sessionStorage (same booking flow)
+    if (bookingStore.fareRulesSegments?.length) {
+        fareRulesSegments.value = withRouteLabels(bookingStore.fareRulesSegments)
+        return
+    }
+
+    const attemptId = bookingStore.bookingAttemptId
+    if (!attemptId) return
+
+    // 2) DB booking_sessions fallback (refresh / reopen)
+    fareRulesLoading.value = true
+    try {
+        const res = await axiosInstance.get('v2/fare-rules/saved', {
+            params: { booking_attempt_id: attemptId },
+        })
+        const segments = res?.data?.data?.fare_rules?.segments
+            ?? res?.data?.fare_rules?.segments
+            ?? []
+        applyFareRulesSegments(segments)
+        if (!segments.length) {
+            fareRulesError.value = null
+        }
+    } catch {
+        fareRulesError.value = 'Fare rules unavailable right now.'
+    } finally {
+        fareRulesLoading.value = false
+    }
+}
+
 function fetchFareRules() {
     if (!bookingAttemptId.value) return
 
     const attemptId = bookingAttemptId.value
+    fareRulesLoading.value = true
+    fareRulesError.value = null
+    fareRulesSegments.value = []
 
-    // outbound — fire independently
-    axiosInstance.get('v2/fare-rules', { params: {
-        catalogProductOfferingsIdentifier: props.catalogIdentifier,
-        catalogProductOfferingID:          props.flight?.outbound?._offering_id,
-        productIDs:                        currentBrand.value?._productRef ?? props.flight?.outbound?._selected_productRef,
-        fareRuleType:                      'Structured',
-        direction:                         'outbound',
-        booking_attempt_id:                attemptId,
-    }}).catch(() => {})
+    const requests = []
 
-    // inbound — fire independently if round trip
+    // Outbound + inbound fire in parallel; merge for panel ledger UI
+    requests.push(
+        axiosInstance.get('v2/fare-rules', { params: {
+            catalogProductOfferingsIdentifier: props.catalogIdentifier,
+            catalogProductOfferingID:          props.flight?.outbound?._offering_id,
+            productIDs:                        currentBrand.value?._productRef ?? props.flight?.outbound?._selected_productRef,
+            fareRuleType:                      'Structured',
+            direction:                         'outbound',
+            booking_attempt_id:                attemptId,
+        }}).then(res => ({
+            direction: 'outbound',
+            label: `${props.flight?.outbound?.origin ?? ''}→${props.flight?.outbound?.destination ?? ''}`,
+            segments: res?.data?.fare_rules?.segments ?? [],
+        }))
+    )
+
     const inboundOfferingId = props.flight?.inbound?._offering_id
     if (inboundOfferingId) {
         const outCodes = currentBrand.value?._combinabilityCode ?? []
@@ -163,16 +243,66 @@ function fetchFareRules() {
         )
         const inboundProductRef = matchedInbound?._productRef ?? props.flight?.inbound?._selected_productRef
         if (inboundProductRef) {
-            axiosInstance.get('v2/fare-rules', { params: {
-                catalogProductOfferingsIdentifier: props.catalogIdentifier,
-                catalogProductOfferingID:          inboundOfferingId,
-                productIDs:                        inboundProductRef,
-                fareRuleType:                      'Structured',
-                direction:                         'inbound',
-                booking_attempt_id:                attemptId,
-            }}).catch(() => {})
+            requests.push(
+                axiosInstance.get('v2/fare-rules', { params: {
+                    catalogProductOfferingsIdentifier: props.catalogIdentifier,
+                    catalogProductOfferingID:          inboundOfferingId,
+                    productIDs:                        inboundProductRef,
+                    fareRuleType:                      'Structured',
+                    direction:                         'inbound',
+                    booking_attempt_id:                attemptId,
+                }}).then(res => ({
+                    direction: 'inbound',
+                    label: `${props.flight?.inbound?.origin ?? ''}→${props.flight?.inbound?.destination ?? ''}`,
+                    segments: res?.data?.fare_rules?.segments ?? [],
+                }))
+            )
         }
     }
+
+    Promise.all(requests)
+        .then(results => {
+            const merged = results.flatMap(r =>
+                (r.segments ?? []).map(seg => ({
+                    ...seg,
+                    direction: r.direction,
+                    displayLabel: r.label,
+                }))
+            )
+            applyFareRulesSegments(merged)
+        })
+        .catch(() => {
+            fareRulesError.value = 'Fare rules unavailable right now.'
+        })
+        .finally(() => {
+            fareRulesLoading.value = false
+        })
+}
+
+function formatRuleTiming(timing) {
+    if (!timing) return '—'
+    return String(timing)
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .replace(/_/g, ' ')
+}
+
+function formatRuleAmount(amount) {
+    if (!amount) return '—'
+    const code = amount.code ?? ''
+    const value = Number(amount.value ?? 0)
+    return `${code} ${value.toLocaleString()}`.trim()
+}
+
+function paxTone(type) {
+    if (type === 'Child') return 'child'
+    if (type === 'Infant') return 'infant'
+    return 'adult'
+}
+
+function paxIcon(type) {
+    if (type === 'Child') return 'fa-solid fa-child'
+    if (type === 'Infant') return 'fa-solid fa-baby'
+    return 'fa-solid fa-person'
 }
 
 const alternativeBrands = computed(() => {
@@ -327,6 +457,16 @@ const CLASSIFICATION_ICON = {
 const classificationIcon = (cls) => CLASSIFICATION_ICON[cls] ?? 'fa-solid fa-circle-question'
 const classLabel = (cls) => CLASSIFICATION_LABEL[cls] ?? cls
 const attrLabel = (attr) => `${classLabel(attr.classification)} (${attr.inclusion})`
+
+const agencyPricingLineCount = computed(() => dynamicPricing.value?.pricing_breakdown?.length ?? 0)
+
+const agencyTotalPayable = computed(() =>
+    Number(dynamicPricing.value?.total_payable ?? priceData.value?.total_price ?? 0)
+)
+
+const footerGrossFare = computed(() =>
+    Number(priceData.value?.gross_fare ?? priceData.value?.gross_payment ?? priceData.value?.total_price ?? 0)
+)
 </script>
 
 <template>
@@ -468,88 +608,6 @@ const attrLabel = (attr) => `${classLabel(attr.classification)} (${attr.inclusio
                             </div>
                         </div>
 
-                        <!-- Price Breakdown -->
-                        <div class="fp-section">
-                            <div class="fp-section-label">
-                                <i class="fa-solid fa-receipt me-2"></i>Price Breakdown
-                            </div>
-
-                            <div v-for="bd in priceData.price_breakdown" :key="bd.passenger_type_code" class="fp-price-pax-block">
-                                <div class="fp-pax-header">
-                                    <i :class="{
-                                        'fa-solid fa-person text-primary': bd.type === 'Adult',
-                                        'fa-solid fa-child text-success': bd.type === 'Child',
-                                        'fa-solid fa-baby text-warning': bd.type === 'Infant',
-                                    }" style="font-size:13px;"></i>
-                                    <span class="fp-pax-type">{{ bd.type }}</span>
-                                    <span class="fp-pax-qty">× {{ paxCount(bd.type) }}</span>
-                                    <span class="fp-pax-total ms-auto">
-                                        {{ priceData.currency }} {{ (paxCount(bd.type) * bd.total_price).toLocaleString() }}
-                                    </span>
-                                </div>
-
-                                <div class="fp-pax-rows">
-                                    <div class="fp-pax-row">
-                                        <span>Base Fare</span>
-                                        <span>{{ priceData.currency }} {{ bd.base_fare.toLocaleString() }}</span>
-                                    </div>
-                                    <div class="fp-pax-row">
-                                        <span>Total Taxes</span>
-                                        <span>{{ priceData.currency }} {{ bd.total_taxes.toLocaleString() }}</span>
-                                    </div>
-                                </div>
-
-                                <!-- Tax detail accordion -->
-                                <details class="fp-tax-details" v-if="bd.taxes?.length">
-                                    <summary class="fp-tax-summary">View tax breakdown ({{ bd.taxes.length }} items)</summary>
-                                    <div class="fp-tax-table">
-                                        <div v-for="tax in bd.taxes" :key="tax.code" class="fp-tax-row">
-                                            <span class="fp-tax-code">{{ tax.code }}</span>
-                                            <span class="fp-tax-desc">{{ tax.description || '—' }}</span>
-                                            <span class="fp-tax-amt">{{ priceData.currency }} {{ tax.amount.toLocaleString() }}</span>
-                                        </div>
-                                    </div>
-                                </details>
-
-                                <!-- <div v-if="bd.fare_calculation" class="fp-fare-calc">
-                                    <span class="fp-fare-calc-label">Fare Calc:</span>
-                                    {{ bd.fare_calculation }}
-                                    <span v-if="bd.filed_amount?.value" class="fp-filed-amt">
-                                        (Filed: {{ bd.filed_amount.currency }} {{ bd.filed_amount.value }})
-                                    </span>
-                                </div> -->
-                            </div>
-
-                            <!-- Gross Total -->
-                            <div class="fp-gross-total">
-                                <div class="fp-gross-row">
-                                    <span>Base Fare</span>
-                                    <span>{{ priceData.currency }} {{ priceData.base_fare.toLocaleString() }}</span>
-                                </div>
-                                <div class="fp-gross-row">
-                                    <span>Total Taxes</span>
-                                    <span>{{ priceData.currency }} {{ priceData.total_taxes.toLocaleString() }}</span>
-                                </div>
-                                <div class="fp-gross-row fp-gross-row--total">
-                                    <span>Gross Fare</span>
-                                    <span>{{ priceData.currency }} {{ formatFareAmount(priceData.gross_fare ?? priceData.total_price) }}</span>
-                                </div>
-                            </div>
-
-                            <div v-if="hasDynamicPricing" class="fp-dynamic-pricing">
-                                <div class="fp-section-label">
-                                    <i class="fa-solid fa-calculator me-2"></i>Agency Pricing
-                                </div>
-                                <div class="fp-gross-total">
-                                    <AgencyPricingBreakdown
-                                        :pricing="dynamicPricing"
-                                        :currency="priceData.currency"
-                                        :gross-payment="priceData.gross_payment ?? priceData.total_price"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
                         <!-- Brand & Attributes -->
                         <div v-if="priceData.brand" class="fp-section">
                             <div class="fp-section-label">
@@ -580,6 +638,233 @@ const attrLabel = (attr) => `${classLabel(attr.classification)} (${attr.inclusio
                                             {{ attrLabel(attr) }}
                                         </span>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Fare Breakdown / Fare Rules — shadcn in-cell tab style -->
+                        <div class="fp-section fp-fare-tabs-section">
+                            <div class="fp-fare-tabs-scroll">
+                                <div class="fp-fare-tabs" role="tablist">
+                                    <button
+                                        type="button"
+                                        role="tab"
+                                        class="fp-fare-tab"
+                                        :class="{ 'fp-fare-tab--active': fareInfoTab === 'breakdown' }"
+                                        :aria-selected="fareInfoTab === 'breakdown'"
+                                        @click="fareInfoTab = 'breakdown'"
+                                    >
+                                        <i class="fa-solid fa-receipt fp-fare-tab__ico" aria-hidden="true"></i>
+                                        <span>Fare Breakdown</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        role="tab"
+                                        class="fp-fare-tab"
+                                        :class="{ 'fp-fare-tab--active': fareInfoTab === 'rules' }"
+                                        :aria-selected="fareInfoTab === 'rules'"
+                                        @click="fareInfoTab = 'rules'"
+                                    >
+                                        <i class="fa-solid fa-file-contract fp-fare-tab__ico" aria-hidden="true"></i>
+                                        <span>Fare Rules</span>
+                                        <span
+                                            v-if="fareRulesLoading"
+                                            class="fp-fare-tab__pulse"
+                                            aria-hidden="true"
+                                        ></span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Tab: Fare Breakdown -->
+                            <div v-show="fareInfoTab === 'breakdown'" class="fp-fare-tab-panel" role="tabpanel">
+                                <div
+                                    v-for="bd in priceData.price_breakdown"
+                                    :key="bd.passenger_type_code"
+                                    class="fp-price-pax-block"
+                                    :class="`fp-price-pax-block--${paxTone(bd.type)}`"
+                                >
+                                    <div class="fp-pax-header">
+                                        <span class="fp-pax-ico" :class="`fp-pax-ico--${paxTone(bd.type)}`">
+                                            <i :class="paxIcon(bd.type)"></i>
+                                        </span>
+                                        <span class="fp-pax-type">{{ bd.type }}</span>
+                                        <span class="fp-pax-qty">× {{ paxCount(bd.type) }}</span>
+                                        <span class="fp-pax-total ms-auto">
+                                            {{ priceData.currency }} {{ (paxCount(bd.type) * bd.total_price).toLocaleString() }}
+                                        </span>
+                                    </div>
+
+                                    <div class="fp-pax-rows">
+                                        <div class="fp-pax-row fp-pax-row--base">
+                                            <span class="fp-pax-row__label">
+                                                <i class="fa-solid fa-ticket"></i> Base Fare
+                                            </span>
+                                            <span>{{ priceData.currency }} {{ bd.base_fare.toLocaleString() }}</span>
+                                        </div>
+                                        <div class="fp-pax-row fp-pax-row--tax">
+                                            <span class="fp-pax-row__label">
+                                                <i class="fa-solid fa-landmark"></i> Total Taxes
+                                            </span>
+                                            <span>{{ priceData.currency }} {{ bd.total_taxes.toLocaleString() }}</span>
+                                        </div>
+                                    </div>
+
+                                    <details class="fp-tax-details" v-if="bd.taxes?.length">
+                                        <summary class="fp-tax-summary">View tax breakdown ({{ bd.taxes.length }} items)</summary>
+                                        <div class="fp-tax-table">
+                                            <div v-for="tax in bd.taxes" :key="tax.code" class="fp-tax-row">
+                                                <span class="fp-tax-code">{{ tax.code }}</span>
+                                                <span class="fp-tax-desc">{{ tax.description || '—' }}</span>
+                                                <span class="fp-tax-amt">{{ priceData.currency }} {{ tax.amount.toLocaleString() }}</span>
+                                            </div>
+                                        </div>
+                                    </details>
+                                </div>
+
+                                <div class="fp-gross-total">
+                                    <div class="fp-gross-row">
+                                        <span>Base Fare</span>
+                                        <span>{{ priceData.currency }} {{ priceData.base_fare.toLocaleString() }}</span>
+                                    </div>
+                                    <div class="fp-gross-row">
+                                        <span>Total Taxes</span>
+                                        <span>{{ priceData.currency }} {{ priceData.total_taxes.toLocaleString() }}</span>
+                                    </div>
+                                    <div class="fp-gross-row fp-gross-row--total">
+                                        <span>Gross Fare</span>
+                                        <span>{{ priceData.currency }} {{ formatFareAmount(priceData.gross_fare ?? priceData.total_price) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Tab: Fare Rules -->
+                            <div v-show="fareInfoTab === 'rules'" class="fp-fare-tab-panel fp-fare-rules-panel" role="tabpanel">
+                                <div v-if="fareRulesLoading" class="fp-rules-state">
+                                    <i class="fa-solid fa-spinner fa-spin"></i>
+                                    <span>Loading fare rules…</span>
+                                </div>
+                                <div v-else-if="fareRulesError" class="fp-rules-state fp-rules-state--error">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                    <span>{{ fareRulesError }}</span>
+                                </div>
+                                <div v-else-if="!fareRulesSegments.length" class="fp-rules-state">
+                                    <i class="fa-regular fa-folder-open"></i>
+                                    <span>No structured fare rules for this offer.</span>
+                                </div>
+                                <div v-else class="fp-rules-stack">
+                                    <article
+                                        v-for="(seg, sIdx) in fareRulesSegments"
+                                        :key="`${seg.direction}-${seg.flightRef}-${sIdx}`"
+                                        class="fp-rule-card"
+                                        :class="seg.direction === 'inbound' ? 'fp-rule-card--in' : 'fp-rule-card--out'"
+                                    >
+                                        <header class="fp-rule-card__head">
+                                            <div class="fp-rule-card__route">
+                                                <i class="fa-solid fa-plane"></i>
+                                                <span>{{ seg.displayLabel || seg.flightRef || 'Segment' }}</span>
+                                            </div>
+                                            <span class="fp-rule-dir">{{ seg.direction === 'inbound' ? 'Return' : 'Outbound' }}</span>
+                                        </header>
+
+                                        <div class="fp-rule-tables">
+                                            <div class="fp-rule-block fp-rule-block--cancel">
+                                                <div class="fp-rule-block__title">
+                                                    <i class="fa-solid fa-ban"></i>
+                                                    Cancellation
+                                                    <span class="fp-rule-count">{{ seg.cancellation?.length || 0 }}</span>
+                                                </div>
+                                                <div v-if="!seg.cancellation?.length" class="fp-rule-empty">No data</div>
+                                                <table v-else class="fp-rule-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Condition</th>
+                                                            <th>Status</th>
+                                                            <th>Charge</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr v-for="(c, ci) in seg.cancellation" :key="ci">
+                                                            <td>{{ formatRuleTiming(c.timing) }}</td>
+                                                            <td>
+                                                                <span
+                                                                    class="fp-rule-chip"
+                                                                    :class="c.permitted ? 'fp-rule-chip--ok' : 'fp-rule-chip--no'"
+                                                                >
+                                                                    {{ c.permitted ? 'Permitted' : 'Not Permitted' }}
+                                                                </span>
+                                                            </td>
+                                                            <td class="fp-rule-amt">{{ formatRuleAmount(c.amount) }}</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                                <p
+                                                    v-if="seg.cancellation?.some(c => c.taxes_refundable === false)"
+                                                    class="fp-rule-note"
+                                                >
+                                                    * Taxes non-refundable
+                                                </p>
+                                            </div>
+
+                                            <div class="fp-rule-block fp-rule-block--change">
+                                                <div class="fp-rule-block__title">
+                                                    <i class="fa-solid fa-arrow-right-arrow-left"></i>
+                                                    Changes
+                                                    <span class="fp-rule-count">{{ seg.changes?.length || 0 }}</span>
+                                                </div>
+                                                <div v-if="!seg.changes?.length" class="fp-rule-empty">No data</div>
+                                                <table v-else class="fp-rule-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Condition</th>
+                                                            <th>Status</th>
+                                                            <th>Charge</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr v-for="(c, ci) in seg.changes" :key="ci">
+                                                            <td>{{ formatRuleTiming(c.timing) }}</td>
+                                                            <td>
+                                                                <span
+                                                                    class="fp-rule-chip"
+                                                                    :class="c.permitted ? 'fp-rule-chip--ok' : 'fp-rule-chip--no'"
+                                                                >
+                                                                    {{ c.permitted ? 'Permitted' : 'Not Permitted' }}
+                                                                </span>
+                                                            </td>
+                                                            <td class="fp-rule-amt">{{ formatRuleAmount(c.amount) }}</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        <div class="fp-rule-meta">
+                                            <div class="fp-rule-meta__item">
+                                                <span class="fp-rule-meta__label">Min Stay</span>
+                                                <span class="fp-rule-meta__val">{{ seg.min_stay ?? 'No restriction' }}</span>
+                                            </div>
+                                            <div class="fp-rule-meta__item">
+                                                <span class="fp-rule-meta__label">Max Stay</span>
+                                                <span class="fp-rule-meta__val">{{ seg.max_stay ?? 'No restriction' }}</span>
+                                            </div>
+                                            <div class="fp-rule-meta__item">
+                                                <span class="fp-rule-meta__label">Advance</span>
+                                                <span class="fp-rule-meta__val">
+                                                    {{ seg.advance_booking?.book_by
+                                                        || seg.advance_booking?.pay_after_booking
+                                                        || seg.advance_booking?.pay_before_departure
+                                                        || 'No restriction' }}
+                                                </span>
+                                            </div>
+                                            <div class="fp-rule-meta__item">
+                                                <span class="fp-rule-meta__label">Stopover</span>
+                                                <span class="fp-rule-meta__val">
+                                                    {{ seg.stopover == null ? '—' : (seg.stopover ? 'Allowed' : 'Not allowed') }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </article>
                                 </div>
                             </div>
                         </div>
@@ -656,17 +941,60 @@ const attrLabel = (attr) => `${classLabel(attr.classification)} (${attr.inclusio
                             </div>
                         </div>
 
+                        <div v-if="hasDynamicPricing" class="fp-section fp-dynamic-pricing">
+                            <div class="fp-section-label">
+                                <i class="fa-solid fa-calculator me-2"></i>Agency Pricing
+                            </div>
+                            <div class="fp-gross-total">
+                                <div class="fp-gross-row fp-gross-row--totals">
+                                    <span>Total Payable</span>
+                                    <span>{{ priceData.currency }} {{ formatFareAmount(agencyTotalPayable) }}</span>
+                                </div>
+                                <details v-if="agencyPricingLineCount" class="fp-tax-details">
+                                    <summary class="fp-tax-summary">
+                                        View agency pricing breakdown ({{ agencyPricingLineCount }} items)
+                                    </summary>
+                                    <AgencyPricingBreakdown
+                                        :pricing="dynamicPricing"
+                                        :currency="priceData.currency"
+                                        :gross-payment="priceData.gross_payment ?? priceData.total_price"
+                                    />
+                                </details>
+                            </div>
+                        </div>
+
                     </template>
                 </div>
 
-                <!-- Footer CTA -->
+                <!-- Footer CTA — tall sticky bar: payable + gross + book -->
                 <div v-if="priceData && !loading" class="fp-footer">
-                    <div class="fp-footer-price">
-                        <span class="fp-footer-currency">{{ priceData.currency }}</span>
-                        <span class="fp-footer-amount">{{ priceData.total_price.toLocaleString() }}</span>
+                    <div class="fp-footer-prices">
+                        <div class="fp-footer-price-row fp-footer-price-row--payable">
+                            <div class="fp-footer-price-meta">
+                                <span class="fp-footer-ico fp-footer-ico--payable" aria-hidden="true">
+                                    <i class="fa-solid fa-receipt"></i>
+                                </span>
+                                <span class="fp-footer-price-label">Gross Fare</span>
+                            </div>
+                            <div class="fp-footer-price-value">
+                                <span class="fp-footer-currency">{{ priceData.currency }}</span>
+                                <span class="fp-footer-amount">{{ formatFareAmount(footerGrossFare) }}</span>
+                            </div>
+                        </div>
+                        <div class="fp-footer-price-row fp-footer-price-row--gross">
+                            <div class="fp-footer-price-meta">
+                                <span class="fp-footer-ico fp-footer-ico--gross" aria-hidden="true">
+                                    <i class="fa-solid fa-wallet"></i>
+                                </span>
+                                <span class="fp-footer-price-label">Total Payable</span>
+                            </div>
+                            <div class="fp-footer-price-value">
+                                <span class="fp-footer-currency">{{ priceData.currency }}</span>
+                                <span class="fp-footer-amount-gross">{{ formatFareAmount(agencyTotalPayable) }}</span>
+                            </div>
+                        </div>
                     </div>
                     <div class="fp-footer-right">
-                        <div v-if="workbenchError" class="fp-wb-error">{{ workbenchError }}</div>
                         <div
                             v-if="workbenchError && shouldSuggestAlternateFlow"
                             class="fp-wb-actions"
@@ -690,17 +1018,19 @@ const attrLabel = (attr) => `${classLabel(attr.classification)} (${attr.inclusio
                             </button>
                         </div>
                         <button
+                            v-if="showProceedButton"
                             class="fp-book-btn"
                             @click="handleProceed"
                             :disabled="isInitiating"
                         >
                             <template v-if="isInitiating">
-                                <i class="fa-solid fa-spinner fa-spin me-2"></i>
-                                Processing...
+                                <i class="fa-solid fa-spinner fa-spin"></i>
+                                <span class="fp-book-btn__text">Processing...</span>
                             </template>
                             <template v-else>
-                                Proceed to Booking
-                                <i class="fa-solid fa-arrow-right ms-2"></i>
+                                <i class="fa-solid fa-plane-departure fp-book-btn__lead"></i>
+                                <span class="fp-book-btn__text">Proceed to Booking</span>
+                                <i class="fa-solid fa-arrow-right fp-book-btn__arrow"></i>
                             </template>
                         </button>
                     </div>
@@ -1000,26 +1330,301 @@ const attrLabel = (attr) => `${classLabel(attr.classification)} (${attr.inclusio
 .fp-bag-weight { color: #7944eb; font-weight: 700; }
 .fp-bag-fee    { color: #e65100; font-size: 10px; }
 
+/* ── Fare tabs — shadcn "tabs-in-cell" look ─ */
+.fp-fare-tabs-section { padding-top: 2px; }
+.fp-fare-tabs-scroll {
+    margin-bottom: 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.fp-fare-tabs-scroll::-webkit-scrollbar { height: 4px; }
+.fp-fare-tabs-scroll::-webkit-scrollbar-thumb {
+    background: var(--bs-border-color, #cbd5e1);
+    border-radius: 999px;
+}
+.fp-fare-tabs {
+    display: inline-flex;
+    width: 100%;
+    min-width: max-content;
+    height: auto;
+    padding: 0;
+    margin: 0;
+    gap: 0;
+    background: var(--bs-body-bg, #fff);
+    border-radius: 0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+.fp-fare-tab {
+    position: relative;
+    flex: 1 1 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 40px;
+    padding: 10px 14px;
+    margin: 0 0 0 -1px;
+    border: 1px solid var(--bs-border-color, #e2e8f0);
+    border-radius: 0;
+    background: var(--bs-body-bg, #fff);
+    color: var(--bs-secondary-color, #64748b);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    cursor: pointer;
+    overflow: hidden;
+    transition: background 0.15s, color 0.15s;
+}
+.fp-fare-tab:first-child {
+    margin-left: 0;
+    border-radius: 6px 0 0 6px;
+}
+.fp-fare-tab:last-child {
+    border-radius: 0 6px 6px 0;
+}
+/* Active bottom primary bar (shadcn after:h-0.5) */
+.fp-fare-tab::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background: transparent;
+    pointer-events: none;
+}
+.fp-fare-tab__ico {
+    font-size: 13px;
+    opacity: 0.6;
+}
+.fp-fare-tab--active {
+    background: var(--bs-tertiary-bg, #f1f5f9);
+    color: var(--bs-body-color, #0f172a);
+    z-index: 1;
+}
+.fp-fare-tab--active::after {
+    background: #7944eb;
+}
+.fp-fare-tab--active .fp-fare-tab__ico {
+    opacity: 0.85;
+    color: #7944eb;
+}
+.fp-fare-tab:hover:not(.fp-fare-tab--active) {
+    background: rgba(148, 163, 184, 0.08);
+}
+.fp-fare-tab__pulse {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #7944eb;
+    animation: fp-pulse 1s ease-in-out infinite;
+}
+@keyframes fp-pulse {
+    0%, 100% { opacity: 0.35; transform: scale(0.85); }
+    50% { opacity: 1; transform: scale(1); }
+}
+html[data-bs-theme="dark"] .fp-fare-tabs {
+    background: transparent;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+html[data-bs-theme="dark"] .fp-fare-tab {
+    background: var(--bs-body-bg, #1a1d24);
+    border-color: var(--bs-border-color, #334155);
+    color: #94a3b8;
+}
+html[data-bs-theme="dark"] .fp-fare-tab--active {
+    background: rgba(148, 163, 184, 0.12);
+    color: #e2e8f0;
+}
+html[data-bs-theme="dark"] .fp-fare-tab--active::after {
+    background: #a78bfa;
+}
+html[data-bs-theme="dark"] .fp-fare-tab--active .fp-fare-tab__ico {
+    color: #c4b5fd;
+}
+.fp-fare-tab-panel { animation: fp-tab-in 0.2s ease; }
+@keyframes fp-tab-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: none; }
+}
+
 /* ── Price breakdown ─────────────────────── */
 .fp-price-pax-block {
     background: var(--bs-tertiary-bg, #f8f9fa);
     border: 1px solid var(--bs-border-color, #e2e8f0);
+    border-left: 3px solid #7944eb;
     border-radius: 8px;
     padding: 12px;
     margin-bottom: 8px;
 }
+.fp-price-pax-block--child { border-left-color: #059669; }
+.fp-price-pax-block--infant { border-left-color: #d97706; }
 .fp-pax-header {
-    display: flex; align-items: center; gap: 6px;
-    font-size: 13px; font-weight: 600; margin-bottom: 6px;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 600; margin-bottom: 8px;
 }
+.fp-pax-ico {
+    width: 26px; height: 26px; border-radius: 7px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 12px; flex-shrink: 0;
+}
+.fp-pax-ico--adult { background: rgba(121, 68, 235, 0.14); color: #7944eb; }
+.fp-pax-ico--child { background: rgba(5, 150, 105, 0.14); color: #059669; }
+.fp-pax-ico--infant { background: rgba(217, 119, 6, 0.14); color: #d97706; }
 .fp-pax-type  { color: var(--bs-body-color); }
 .fp-pax-qty   { color: var(--bs-secondary-color, #6b7280); font-size: 12px; }
 .fp-pax-total { font-weight: 700; color: #7944eb; }
-.fp-pax-rows  { display: flex; flex-direction: column; gap: 3px; margin-bottom: 6px; }
+.fp-pax-rows  { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
 .fp-pax-row {
-    display: flex; justify-content: space-between;
+    display: flex; justify-content: space-between; align-items: center;
     font-size: 11px; color: var(--bs-secondary-color, #6b7280);
+    padding: 5px 8px; border-radius: 6px;
 }
+.fp-pax-row--base { background: rgba(13, 148, 136, 0.08); color: #0f766e; }
+.fp-pax-row--tax { background: rgba(234, 88, 12, 0.08); color: #c2410c; }
+.fp-pax-row__label { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+html[data-bs-theme="dark"] .fp-pax-row--base { background: rgba(45, 212, 191, 0.12); color: #5eead4; }
+html[data-bs-theme="dark"] .fp-pax-row--tax { background: rgba(251, 146, 60, 0.14); color: #fdba74; }
+html[data-bs-theme="dark"] .fp-pax-ico--adult { background: rgba(121, 68, 235, 0.28); color: #c4b5fd; }
+html[data-bs-theme="dark"] .fp-pax-ico--child { background: rgba(16, 185, 129, 0.22); color: #6ee7b7; }
+html[data-bs-theme="dark"] .fp-pax-ico--infant { background: rgba(245, 158, 11, 0.22); color: #fcd34d; }
+
+/* ── Fare Rules dossier ──────────────────── */
+.fp-rules-state {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    min-height: 88px; padding: 18px 12px;
+    border-radius: 10px;
+    border: 1px dashed var(--bs-border-color, #cbd5e1);
+    color: var(--bs-secondary-color, #64748b);
+    font-size: 12px; font-weight: 600;
+}
+.fp-rules-state--error { color: #dc3545; border-color: rgba(220, 53, 69, 0.35); }
+.fp-rules-stack { display: flex; flex-direction: column; gap: 12px; }
+.fp-rule-card {
+    border-radius: 12px;
+    border: 1px solid var(--bs-border-color, #e2e8f0);
+    overflow: hidden;
+    background: var(--bs-body-bg, #fff);
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+}
+.fp-rule-card--out { border-top: 3px solid #3b82f6; }
+.fp-rule-card--in { border-top: 3px solid #10b981; }
+.fp-rule-card__head {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 10px 12px;
+    background: linear-gradient(90deg, rgba(59, 130, 246, 0.08), transparent 70%);
+}
+.fp-rule-card--in .fp-rule-card__head {
+    background: linear-gradient(90deg, rgba(16, 185, 129, 0.1), transparent 70%);
+}
+.fp-rule-card__route {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 800; color: var(--bs-body-color);
+}
+.fp-rule-dir {
+    font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 999px;
+    background: rgba(59, 130, 246, 0.12); color: #2563eb;
+}
+.fp-rule-card--in .fp-rule-dir {
+    background: rgba(16, 185, 129, 0.14); color: #059669;
+}
+.fp-rule-tables { display: flex; flex-direction: column; gap: 8px; padding: 0 10px 10px; }
+.fp-rule-block {
+    border-radius: 9px;
+    border: 1px solid var(--bs-border-color, #e2e8f0);
+    overflow: hidden;
+}
+.fp-rule-block--cancel { border-color: rgba(220, 53, 69, 0.28); }
+.fp-rule-block--change { border-color: rgba(37, 99, 235, 0.28); }
+.fp-rule-block__title {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px;
+    font-size: 11px; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase;
+}
+.fp-rule-block--cancel .fp-rule-block__title {
+    background: rgba(220, 53, 69, 0.08); color: #b91c1c;
+}
+.fp-rule-block--change .fp-rule-block__title {
+    background: rgba(37, 99, 235, 0.08); color: #1d4ed8;
+}
+.fp-rule-count {
+    margin-left: auto;
+    min-width: 20px; height: 20px; padding: 0 6px;
+    border-radius: 999px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 10px; background: rgba(15, 23, 42, 0.08); color: inherit;
+}
+.fp-rule-empty {
+    padding: 10px; font-size: 11px; color: var(--bs-secondary-color, #94a3b8);
+}
+.fp-rule-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+.fp-rule-table th,
+.fp-rule-table td {
+    padding: 7px 10px;
+    border-top: 1px solid var(--bs-border-color, #eef2f7);
+    vertical-align: middle;
+}
+.fp-rule-table th {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+    color: var(--bs-secondary-color, #64748b);
+    background: var(--bs-tertiary-bg, #f8fafc);
+}
+.fp-rule-table th:last-child,
+.fp-rule-table td:last-child { text-align: right; }
+.fp-rule-table th:nth-child(2),
+.fp-rule-table td:nth-child(2) { text-align: center; }
+.fp-rule-chip {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 2px 8px; border-radius: 999px;
+    font-size: 10px; font-weight: 700; white-space: nowrap;
+}
+.fp-rule-chip--ok { background: rgba(16, 185, 129, 0.14); color: #047857; }
+.fp-rule-chip--no { background: rgba(220, 53, 69, 0.12); color: #b91c1c; }
+.fp-rule-amt { font-weight: 700; font-variant-numeric: tabular-nums; }
+.fp-rule-note {
+    margin: 0; padding: 6px 10px;
+    font-size: 10px; color: #b91c1c;
+    background: rgba(220, 53, 69, 0.06);
+}
+.fp-rule-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    padding: 0 10px 10px;
+}
+.fp-rule-meta__item {
+    border-radius: 8px;
+    border: 1px solid var(--bs-border-color, #e2e8f0);
+    background: var(--bs-tertiary-bg, #f8fafc);
+    padding: 8px;
+    text-align: center;
+}
+.fp-rule-meta__label {
+    display: block;
+    font-size: 9px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--bs-secondary-color, #64748b); margin-bottom: 3px;
+}
+.fp-rule-meta__val {
+    display: block;
+    font-size: 11px; font-weight: 700; color: var(--bs-body-color);
+    line-height: 1.3;
+}
+html[data-bs-theme="dark"] .fp-rule-card {
+    background: rgba(15, 23, 42, 0.35);
+    box-shadow: none;
+}
+html[data-bs-theme="dark"] .fp-rule-block--cancel .fp-rule-block__title { color: #fca5a5; }
+html[data-bs-theme="dark"] .fp-rule-block--change .fp-rule-block__title { color: #93c5fd; }
+html[data-bs-theme="dark"] .fp-rule-chip--ok { background: rgba(16, 185, 129, 0.22); color: #6ee7b7; }
+html[data-bs-theme="dark"] .fp-rule-chip--no { background: rgba(248, 113, 113, 0.2); color: #fca5a5; }
+html[data-bs-theme="dark"] .fp-rule-dir { color: #93c5fd; }
+html[data-bs-theme="dark"] .fp-rule-card--in .fp-rule-dir { color: #6ee7b7; }
 
 /* Tax details */
 .fp-tax-details { margin-top: 6px; }
@@ -1027,7 +1632,9 @@ const attrLabel = (attr) => `${classLabel(attr.classification)} (${attr.inclusio
     font-size: 11px; color: #7944eb; cursor: pointer;
     list-style: none; user-select: none;
 }
+.fp-tax-summary::-webkit-details-marker { display: none; }
 .fp-tax-summary:hover { text-decoration: underline; }
+.fp-dynamic-pricing .fp-tax-details { margin-top: 8px; }
 .fp-tax-table  { margin-top: 6px; display: flex; flex-direction: column; gap: 2px; }
 .fp-tax-row    { display: flex; align-items: center; gap: 6px; font-size: 10px; }
 .fp-tax-code   { font-weight: 700; color: #7944eb; width: 28px; flex-shrink: 0; }
@@ -1061,8 +1668,46 @@ const attrLabel = (attr) => `${classLabel(attr.classification)} (${attr.inclusio
     font-weight: 700;
     color: #7944eb;
 }
+
+.fp-gross-row--totals {
+    margin-top: 4px;
+    padding-top: 6px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #7944eb;
+}
+
 .fp-dynamic-pricing {
     margin-top: 12px;
+}
+.fp-gross-row--subtotal {
+    font-weight: 600;
+}
+.fp-gross-row--deduction span:last-child {
+    color: #c62828;
+}
+.fp-gross-row--customer {
+    margin-top: 8px;
+    font-weight: 700;
+}
+.fp-gross-row--payable {
+    font-weight: 800;
+    color: #1565c0;
+    border-top: 1px dashed var(--bs-border-color, #cbd5e1);
+    margin-top: 6px;
+    padding-top: 8px;
+    font-size: 14px;
+}
+.fp-rule-ref {
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--bs-secondary-color, #64748b);
+}
+html[data-bs-theme="dark"] .fp-gross-row--payable {
+    color: #64b5f6;
+}
+html[data-bs-theme="dark"] .fp-gross-row--deduction span:last-child {
+    color: #ef9a9a;
 }
 
 /* ── Brand card ──────────────────────────── */
@@ -1134,47 +1779,176 @@ const attrLabel = (attr) => `${classLabel(attr.classification)} (${attr.inclusio
 .fp-footer {
     flex-shrink: 0;
     display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 0;
+    min-height: 88px;
+    padding: 0;
+    border-top: 1px solid var(--bs-border-color, #e2e8f0);
+    background: linear-gradient(180deg, rgba(121, 68, 235, 0.04) 0%, var(--bs-body-bg, #fff) 42%);
+    box-shadow: 0 -6px 18px rgba(15, 23, 42, 0.04);
+    overflow: hidden;
+}
+html[data-bs-theme="dark"] .fp-footer {
+    background: linear-gradient(180deg, rgba(121, 68, 235, 0.12) 0%, var(--bs-body-bg, #1a1d24) 42%);
+    box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.2);
+}
+.fp-footer-prices {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+    min-width: 0;
+    flex: 1;
+    padding: 14px 16px;
+}
+.fp-footer-price-row {
+    display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 14px 18px;
-    border-top: 1px solid var(--bs-border-color, #e2e8f0);
-    background: var(--bs-body-bg, #fff);
 }
-.fp-footer-price { display: flex; align-items: baseline; gap: 4px; }
-.fp-footer-currency { font-size: 12px; color: var(--bs-secondary-color, #6b7280); font-weight: 600; }
-.fp-footer-amount { font-size: 22px; font-weight: 800; color: #7944eb; }
+.fp-footer-price-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+.fp-footer-ico {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 12px;
+}
+.fp-footer-ico--payable {
+    background: rgba(121, 68, 235, 0.14);
+    color: #7944eb;
+}
+.fp-footer-ico--gross {
+    background: rgba(100, 116, 139, 0.12);
+    color: #64748b;
+}
+html[data-bs-theme="dark"] .fp-footer-ico--payable {
+    background: rgba(121, 68, 235, 0.28);
+    color: #c4b5fd;
+}
+html[data-bs-theme="dark"] .fp-footer-ico--gross {
+    background: rgba(148, 163, 184, 0.16);
+    color: #94a3b8;
+}
+.fp-footer-price-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--bs-secondary-color, #6b7280);
+    white-space: nowrap;
+}
+.fp-footer-price-value {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+    min-width: 0;
+}
+.fp-footer-currency {
+    font-size: 11px;
+    color: var(--bs-secondary-color, #6b7280);
+    font-weight: 700;
+}
+.fp-footer-amount {
+    font-size: 22px;
+    font-weight: 800;
+    color: #7944eb;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+}
+.fp-footer-amount-gross {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--bs-body-color, #1a2436);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+}
+.fp-footer-price-row--payable .fp-footer-price-label { color: #7944eb; }
+html[data-bs-theme="dark"] .fp-footer-amount { color: #c4b5fd; }
+html[data-bs-theme="dark"] .fp-footer-price-row--payable .fp-footer-price-label { color: #c4b5fd; }
+html[data-bs-theme="dark"] .fp-footer-amount-gross { color: var(--bs-body-color, #dee2e6); }
+
+/* Full-height narrow CTA — flush right edge (red-box layout) */
 .fp-book-btn {
-    background: linear-gradient(135deg, #7944eb, #4a6ef5);
+    background: linear-gradient(180deg, #7944eb 0%, #5b6ff0 55%, #4a6ef5 100%);
     color: #fff !important;
     text-decoration: none;
     border: none;
-    border-radius: 8px;
-    padding: 11px 22px;
-    font-size: 13px;
+    border-radius: 0;
+    width: 125px;
+    min-width: 125px;
+    max-width: 125px;
+    align-self: stretch;
+    min-height: 100%;
+    padding: 10px 8px;
+    font-size: 11px;
     font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1.25;
     cursor: pointer;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    transition: opacity 0.15s, transform 0.1s;
-    white-space: nowrap;
+    justify-content: center;
+    gap: 8px;
+    transition: filter 0.15s, opacity 0.15s;
+    box-shadow: none;
 }
-.fp-book-btn:hover { opacity: 0.92; transform: translateY(-1px); }
+.fp-book-btn__text {
+    text-align: center;
+    white-space: normal;
+    max-width: 4.6em;
+}
+.fp-book-btn__lead {
+    font-size: 15px;
+    opacity: 0.95;
+}
+.fp-book-btn__arrow {
+    font-size: 12px;
+    transition: transform 0.15s ease;
+}
+.fp-book-btn:hover:not(:disabled) {
+    filter: brightness(1.06);
+    opacity: 1;
+    transform: none;
+    box-shadow: none;
+}
+.fp-book-btn:hover:not(:disabled) .fp-book-btn__arrow {
+    transform: translateX(2px);
+}
+.fp-book-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    filter: none;
+}
 
 /* ── Footer right ────────────────────────── */
-.fp-footer-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-.fp-wb-error {
-    font-size: 11px;
-    color: var(--bs-danger, #dc3545);
-    max-width: 220px;
-    text-align: right;
+.fp-footer-right {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    justify-content: flex-end;
+    gap: 0;
+    flex-shrink: 0;
+    position: relative;
 }
 .fp-wb-actions {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
     gap: 6px;
-    width: 100%;
+    padding: 8px 10px;
+    justify-content: center;
 }
 .fp-alt-btn,
 .fp-search-btn {
@@ -1187,8 +1961,12 @@ const attrLabel = (attr) => `${classLabel(attr.classification)} (${attr.inclusio
     white-space: nowrap;
 }
 .fp-alt-btn {
-    background: rgba(121, 68, 235, 0.14);
-    color: #6d28d9;
+    background: rgba(220, 53, 69, 0.12);
+    color: #dc3545;
+}
+html[data-bs-theme="dark"] .fp-alt-btn {
+    background: rgba(220, 53, 69, 0.22);
+    color: #f87171;
 }
 .fp-search-btn {
     background: rgba(71, 85, 105, 0.14);
@@ -1209,5 +1987,35 @@ const attrLabel = (attr) => `${classLabel(attr.classification)} (${attr.inclusio
 /* ── Mobile ──────────────────────────────── */
 @media (max-width: 576px) {
     .fp-panel { width: 100vw; }
+    .fp-footer {
+        flex-direction: column;
+        align-items: stretch;
+        min-height: 0;
+        gap: 0;
+    }
+    .fp-footer-prices { padding: 14px 16px 10px; }
+    .fp-footer-right {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .fp-wb-actions {
+        align-items: stretch;
+        padding: 0 16px 10px;
+    }
+    .fp-book-btn {
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+        min-height: 52px;
+        flex-direction: row;
+        gap: 10px;
+        padding: 12px 16px;
+        font-size: 13px;
+        border-radius: 0;
+    }
+    .fp-book-btn__text {
+        max-width: none;
+        white-space: nowrap;
+    }
 }
 </style>

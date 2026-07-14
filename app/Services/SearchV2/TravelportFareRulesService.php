@@ -112,6 +112,36 @@ class TravelportFareRulesService
         ]);
     }
 
+    // Reload structured segments from booking_sessions (booking page reopen / refresh)
+    public function getSavedFareRulesForAttempt(int $bookingAttemptId): array
+    {
+        $sessions = BookingSession::query()
+            ->where('booking_attempt_id', $bookingAttemptId)
+            ->whereIn('session_type', ['fare_rules_outbound', 'fare_rules_inbound'])
+            ->where('status', 'success')
+            ->orderBy('id')
+            ->get();
+
+        $segments = [];
+        foreach ($sessions as $session) {
+            $raw = $session->response_payload ?? [];
+            if (!is_array($raw) || $raw === []) {
+                continue;
+            }
+
+            $direction = $session->session_type === 'fare_rules_inbound' ? 'inbound' : 'outbound';
+            $normalized = $this->normalize($raw);
+
+            foreach ($normalized['segments'] ?? [] as $seg) {
+                $segments[] = array_merge($seg, [
+                    'direction' => $direction,
+                ]);
+            }
+        }
+
+        return $segments;
+    }
+
     private function persistFiles(array $payload, array $rawResponse, int|string|null $userId): string
     {
         $dmy       = now()->format('dmy');
