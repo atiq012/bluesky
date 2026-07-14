@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted, reactive, computed, nextTick } from "vue";
+import { ref, onMounted, onUnmounted, reactive, computed, nextTick, watch } from "vue";
 import { onBeforeRouteLeave } from "vue-router";
 import { storeToRefs } from "pinia";
 import axiosInstance from "../../axiosInstance"
@@ -387,6 +387,30 @@ const handleReturnDateChange = (date) => {
     }
 };
 
+// Return calendar: days before journey (dep) stay disabled
+const returnMinDate = computed(() => {
+    const dep = selectedDateRange.value?.[0] ?? selectedDate.value;
+    const d = dep ? new Date(dep) : new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+});
+
+// If dep moves past return, bump return up to dep
+watch(
+    () => selectedDateRange.value?.[0],
+    (dep) => {
+        if (form.Way !== 2 || !dep || !selectedDateRange.value?.[1]) return;
+        const ret = new Date(selectedDateRange.value[1]);
+        const depDay = new Date(dep);
+        depDay.setHours(0, 0, 0, 0);
+        ret.setHours(0, 0, 0, 0);
+        if (ret < depDay) {
+            selectedDateRange.value[1] = new Date(depDay);
+            form.arrival_date = formatDateForForm(depDay);
+        }
+    }
+);
+
 function stopBookingTimerDisplay() {
     if (bookingTimerInterval.value) clearInterval(bookingTimerInterval.value)
     bookingStore.timerStartedAt = null
@@ -754,35 +778,41 @@ function handleClickOutside(event) {
     }
 }
 
-// Generalized filtering function
-function filterAirports(searchText, airports) {
+// From/To never same airport (e.g. From=DAC → To list skip DAC)
+function airportsForOrigin() {
+    const exclude = form.to || selectedDestinationDetails.value?.id;
+    if (!exclude) return airports.value;
+    return airports.value.filter((a) => a.id !== exclude);
+}
+
+function airportsForDestination() {
+    const exclude = form.from || selectedOriginDetails.value?.id;
+    if (!exclude) return airports.value;
+    return airports.value.filter((a) => a.id !== exclude);
+}
+
+function filterAirports(searchText, pool) {
     if (!searchText) {
-        return airports.slice(0, initialLoadLimit);
+        return pool.slice(0, initialLoadLimit);
     }
     const search = searchText.toLowerCase();
-    // First, check for matches in the id field
-    const idMatches = airports.filter(airport =>
+    const idMatches = pool.filter(airport =>
         airport.id.toLowerCase().includes(search)
     );
-
-    // Then check for matches in other fields
-    const otherMatches = airports.filter(airport =>
-        !airport.id.toLowerCase().includes(search) && // Exclude id matches
+    const otherMatches = pool.filter(airport =>
+        !airport.id.toLowerCase().includes(search) &&
         (airport.text.toLowerCase().includes(search) ||
             airport.city.toLowerCase().includes(search))
     );
-
-    // Combine the results, with id matches first
     return [...idMatches, ...otherMatches];
 }
 
-// Update filter functions
 function filterOriginAirports(searchText) {
-    filteredOriginAirports.value = filterAirports(searchText, airports.value);
+    filteredOriginAirports.value = filterAirports(searchText, airportsForOrigin());
 }
 
 function filterDestinationAirports(searchText) {
-    filteredDestinationAirports.value = filterAirports(searchText, airports.value);
+    filteredDestinationAirports.value = filterAirports(searchText, airportsForDestination());
 }
 
 // Enter with open suggestion list → pick first match
@@ -802,9 +832,7 @@ function onOriginFocus() {
     // Already editing empty field (e.g. after clear) → just keep suggestions open
     if (!form.from && !selectedOriginDetails.value) {
         showOriginList.value = true;
-        if (!filteredOriginAirports.value.length) {
-            filteredOriginAirports.value = airports.value.slice(0, initialLoadLimit);
-        }
+        filteredOriginAirports.value = airportsForOrigin().slice(0, initialLoadLimit);
         return;
     }
     stashOriginSelection();
@@ -818,18 +846,14 @@ function onOriginFocus() {
         form.fromInput = '';
         selectedOriginDetails.value = null;
         showOriginList.value = true;
-        if (!filteredOriginAirports.value.length) {
-            filteredOriginAirports.value = airports.value.slice(0, initialLoadLimit);
-        }
+        filteredOriginAirports.value = airportsForOrigin().slice(0, initialLoadLimit);
     }, 300);
 }
 
 function onDestinationFocus() {
     if (!form.to && !selectedDestinationDetails.value) {
         showDestinationList.value = true;
-        if (!filteredDestinationAirports.value.length) {
-            filteredDestinationAirports.value = airports.value.slice(0, initialLoadLimit);
-        }
+        filteredDestinationAirports.value = airportsForDestination().slice(0, initialLoadLimit);
         return;
     }
     stashDestinationSelection();
@@ -843,11 +867,13 @@ function onDestinationFocus() {
         form.toInput = '';
         selectedDestinationDetails.value = null;
         showDestinationList.value = true;
-        filteredDestinationAirports.value = airports.value.slice(0, initialLoadLimit);
+        filteredDestinationAirports.value = airportsForDestination().slice(0, initialLoadLimit);
     }, 300);
 }
 
 function selectOrigin(airport) {
+    const blockedTo = form.to || selectedDestinationDetails.value?.id;
+    if (blockedTo && airport.id === blockedTo) return;
     $('#origin_id').attr('placeholder', '');
     form.from = airport.id;
     form.fromInput = '';
@@ -865,13 +891,15 @@ function selectOrigin(airport) {
         form.to = '';
         form.toInput = '';
         showDestinationList.value = true;
-        filteredDestinationAirports.value = airports.value.slice(0, initialLoadLimit);
+        filteredDestinationAirports.value = airportsForDestination().slice(0, initialLoadLimit);
         patchSavedFormAirports();
         $('#destination_id').focus();
     }, 100);
 }
 
 function selectDestination(airport) {
+    const blockedFrom = form.from || selectedOriginDetails.value?.id;
+    if (blockedFrom && airport.id === blockedFrom) return;
     $('#destination_id').attr('placeholder', '');
     form.to = airport.id;
     form.toInput = '';
@@ -895,7 +923,7 @@ function clearOrigin() {
     form.fromInput = "";
     selectedOriginDetails.value = null;
     showOriginList.value = true;
-    filteredOriginAirports.value = airports.value.slice(0, initialLoadLimit);
+    filteredOriginAirports.value = airportsForOrigin().slice(0, initialLoadLimit);
     nextTick(() => {
         document.getElementById('origin_id')?.focus();
     });
@@ -908,7 +936,7 @@ function clearDestination() {
     form.toInput = "";
     selectedDestinationDetails.value = null;
     showDestinationList.value = true;
-    filteredDestinationAirports.value = airports.value.slice(0, initialLoadLimit);
+    filteredDestinationAirports.value = airportsForDestination().slice(0, initialLoadLimit);
     nextTick(() => {
         document.getElementById('destination_id')?.focus();
     });
@@ -1517,7 +1545,7 @@ const openReturnPicker = () => {
                                             </div>
                                             <VueDatePicker
                                                 ref="datePickerRef"
-                                                :model-value="form.Way === 1 ? selectedDate.value : selectedDateRange.value"
+                                                :model-value="form.Way === 1 ? selectedDate : selectedDateRange"
                                                 @update:model-value="handleDateChange"
                                                 :enable-time-picker="false"
                                                 :format="formatDisplayDate"
@@ -1573,7 +1601,7 @@ const openReturnPicker = () => {
                                             </div>
                                             <VueDatePicker
                                                 ref="datePickerRef"
-                                                :model-value="form.Way === 1 ? selectedDate.value : selectedDateRange.value"
+                                                :model-value="form.Way === 1 ? selectedDate : selectedDateRange"
                                                 @update:model-value="handleDateChange"
                                                 :enable-time-picker="false"
                                                 :format="formatDisplayDate"
@@ -1621,6 +1649,7 @@ const openReturnPicker = () => {
                                             auto-apply
                                             :format="formatSelectedDate"
                                             @update:model-value="handleReturnDateChange"
+                                            :min-date="returnMinDate"
                                             :teleport="true"
                                             :auto-position="true"
                                             :dark="isDark"
@@ -3967,6 +3996,50 @@ body:has(.search-page-layout) {
 
 .date-picker-wrapper .dp__input_icon {
     display: none;
+}
+
+/* Blocked calendar days: strikethrough so unavailable dates read as cut */
+.dp__cell_inner.dp__cell_disabled {
+    text-decoration: line-through;
+    text-decoration-thickness: 1.5px;
+    opacity: 0.45;
+    color: #9ca3af;
+}
+
+html[data-bs-theme="dark"] .dp__cell_inner.dp__cell_disabled {
+    color: rgba(255, 255, 255, 0.35);
+    opacity: 0.55;
+}
+
+/* Dual calendar: keep selected From–To range soft blue when reopened */
+.dp__menu {
+    --dp-primary-color: #5b9cf5;
+    --dp-primary-text-color: #fff;
+    --dp-range-between-dates-background-color: rgba(91, 156, 245, 0.22);
+    --dp-range-between-dates-text-color: #1e3a5f;
+    --dp-range-between-border-color: rgba(91, 156, 245, 0.22);
+    --dp-highlight-color: rgba(91, 156, 245, 0.18);
+}
+
+html[data-bs-theme="dark"] .dp__menu {
+    --dp-primary-color: #6ba8f7;
+    --dp-primary-text-color: #0b1220;
+    --dp-range-between-dates-background-color: rgba(107, 168, 247, 0.28);
+    --dp-range-between-dates-text-color: #e8f1ff;
+    --dp-range-between-border-color: rgba(107, 168, 247, 0.28);
+    --dp-highlight-color: rgba(107, 168, 247, 0.2);
+}
+
+.dp__cell_inner.dp__range_start,
+.dp__cell_inner.dp__range_end,
+.dp__cell_inner.dp__active_date {
+    background: var(--dp-primary-color) !important;
+    color: var(--dp-primary-text-color) !important;
+}
+
+.dp__cell_inner.dp__range_between {
+    background: var(--dp-range-between-dates-background-color) !important;
+    color: var(--dp-range-between-dates-text-color) !important;
 }
 </style>
 
