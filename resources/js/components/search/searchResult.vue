@@ -51,6 +51,19 @@ const showOriginList = ref(false);
 const showDestinationList = ref(false);
 const filteredOriginAirports = ref([]);
 const filteredDestinationAirports = ref([]);
+// Keep last confirmed airport so outside-click without pick restores it
+const lastOriginSelection = ref({
+    code: 'DAC',
+    details: {
+        id: 'DAC',
+        text: 'Hazrat Shahjalal International Airport',
+        city: 'Dhaka',
+    },
+});
+const lastDestinationSelection = ref(null);
+// Bump to cancel pending focus clear timeouts (outside-click race)
+let originEditToken = 0;
+let destinationEditToken = 0;
 
 const loadging = ref(false);
 const showSearchResults = ref(true);
@@ -484,6 +497,24 @@ onMounted(async () => {
         }
     }
 
+    // form is local (lost on refresh); details live in pinia sessionStorage.
+    // Prefer details.id so code + city/airport never diverge after refresh.
+    reconcileAirportFormWithDetails();
+
+    // Sync restore-cache with whatever is currently selected
+    if (form.from && selectedOriginDetails.value) {
+        lastOriginSelection.value = {
+            code: form.from,
+            details: { ...selectedOriginDetails.value },
+        };
+    }
+    if (form.to && selectedDestinationDetails.value) {
+        lastDestinationSelection.value = {
+            code: form.to,
+            details: { ...selectedDestinationDetails.value },
+        };
+    }
+
     // Restore persistent timer — survives refresh + navigation
     if (searchStore.isValid && bookingStore.timerStartedAt) {
         const elapsedSec = Math.floor((Date.now() - bookingStore.timerStartedAt) / 1000)
@@ -547,6 +578,11 @@ async function clearAndReset() {
         city: 'Dhaka',
     };
     selectedDestinationDetails.value = null;
+    lastOriginSelection.value = {
+        code: 'DAC',
+        details: { ...selectedOriginDetails.value },
+    };
+    lastDestinationSelection.value = null;
     // Reset pax jQuery spinners
     $('.adult').val(1);
     $('.child').val(0);
@@ -621,20 +657,95 @@ async function getAirports() {
     }
 }
 
-function handleClickOutside(event) {
-    const originInput = document.getElementById("origin_id");
-    const originResults = document.getElementById("origin_results");
-    const destinationInput = document.getElementById("destination_id");
-    const destinationResults = document.getElementById("destination_results");
+function stashOriginSelection() {
+    if (form.from && selectedOriginDetails.value) {
+        lastOriginSelection.value = {
+            code: form.from,
+            details: { ...selectedOriginDetails.value },
+        };
+    }
+}
 
-    if (!originInput?.contains(event.target) && !originResults?.contains(event.target)) {
+function stashDestinationSelection() {
+    if (form.to && selectedDestinationDetails.value) {
+        lastDestinationSelection.value = {
+            code: form.to,
+            details: { ...selectedDestinationDetails.value },
+        };
+    }
+}
+
+function restoreOriginSelection() {
+    const last = lastOriginSelection.value;
+    if (!last?.code) return;
+    form.from = last.code;
+    form.fromInput = '';
+    selectedOriginDetails.value = last.details;
+    $('#origin_id').attr('placeholder', '');
+}
+
+function restoreDestinationSelection() {
+    const last = lastDestinationSelection.value;
+    if (!last?.code) return;
+    form.to = last.code;
+    form.toInput = '';
+    selectedDestinationDetails.value = last.details;
+    $('#destination_id').attr('placeholder', '');
+}
+
+// Keep form.from/to in sync with pinia-persisted airport details after refresh
+function reconcileAirportFormWithDetails() {
+    if (selectedOriginDetails.value?.id) {
+        form.from = selectedOriginDetails.value.id;
+        form.fromInput = '';
+        $('#origin_id').attr('placeholder', '');
+    }
+    if (selectedDestinationDetails.value?.id) {
+        form.to = selectedDestinationDetails.value.id;
+        form.toInput = '';
+        $('#destination_id').attr('placeholder', '');
+    } else {
+        form.to = '';
+        form.toInput = '';
+    }
+}
+
+// Airport pick also patches savedForm so next refresh restore matches details
+function patchSavedFormAirports() {
+    if (!searchStore.savedForm) return;
+    searchStore.savedForm = {
+        ...searchStore.savedForm,
+        from: form.from,
+        to: form.to,
+        fromInput: form.fromInput,
+        toInput: form.toInput,
+    };
+}
+
+function handleClickOutside(event) {
+    // Clear ✖ removes itself from DOM (v-if) → target detaches → contains() false.
+    // Ignore that click so we do not instantly restore the just-cleared airport.
+    if (event.target?.closest?.('.clear-icon') || event.target?.classList?.contains('clear-icon')) {
+        return;
+    }
+
+    const originWrap = document.getElementById("origin_id")?.closest('.location-input-wrapper');
+    const destinationWrap = document.getElementById("destination_id")?.closest('.location-input-wrapper');
+
+    // Outside origin field + list → close list; if nothing picked, put last airport back
+    if (!originWrap?.contains(event.target)) {
+        originEditToken += 1;
+        if (showOriginList.value && !form.from) {
+            restoreOriginSelection();
+        }
         showOriginList.value = false;
     }
 
-    if (
-        !destinationInput?.contains(event.target) &&
-        !destinationResults?.contains(event.target)
-    ) {
+    if (!destinationWrap?.contains(event.target)) {
+        destinationEditToken += 1;
+        if (showDestinationList.value && !form.to) {
+            restoreDestinationSelection();
+        }
         showDestinationList.value = false;
     }
 
@@ -674,10 +785,34 @@ function filterDestinationAirports(searchText) {
     filteredDestinationAirports.value = filterAirports(searchText, airports.value);
 }
 
+// Enter with open suggestion list → pick first match
+function onOriginEnter(event) {
+    if (!showOriginList.value || !filteredOriginAirports.value.length) return;
+    event.preventDefault();
+    selectOrigin(filteredOriginAirports.value[0]);
+}
+
+function onDestinationEnter(event) {
+    if (!showDestinationList.value || !filteredDestinationAirports.value.length) return;
+    event.preventDefault();
+    selectDestination(filteredDestinationAirports.value[0]);
+}
+
 function onOriginFocus() {
+    // Already editing empty field (e.g. after clear) → just keep suggestions open
+    if (!form.from && !selectedOriginDetails.value) {
+        showOriginList.value = true;
+        if (!filteredOriginAirports.value.length) {
+            filteredOriginAirports.value = airports.value.slice(0, initialLoadLimit);
+        }
+        return;
+    }
+    stashOriginSelection();
+    const token = ++originEditToken;
     $('#oFrom').addClass('fly-out');
     $('#oCityAirport').addClass('fly-out');
     setTimeout(() => {
+        if (token !== originEditToken) return;
         $('#origin_id').val('');
         form.from = '';
         form.fromInput = '';
@@ -690,9 +825,19 @@ function onOriginFocus() {
 }
 
 function onDestinationFocus() {
+    if (!form.to && !selectedDestinationDetails.value) {
+        showDestinationList.value = true;
+        if (!filteredDestinationAirports.value.length) {
+            filteredDestinationAirports.value = airports.value.slice(0, initialLoadLimit);
+        }
+        return;
+    }
+    stashDestinationSelection();
+    const token = ++destinationEditToken;
     $('#dFrom').addClass('fly-out');
     $('#dCityAirport').addClass('fly-out');
     setTimeout(() => {
+        if (token !== destinationEditToken) return;
         $('#destination_id').val('');
         form.to = '';
         form.toInput = '';
@@ -707,11 +852,21 @@ function selectOrigin(airport) {
     form.from = airport.id;
     form.fromInput = '';
     selectedOriginDetails.value = airport;
+    lastOriginSelection.value = {
+        code: airport.id,
+        details: { ...airport },
+    };
     showOriginList.value = false;
+    patchSavedFormAirports();
     setTimeout(() => {
+        // Opening destination after origin pick — stash dest so cancel can restore
+        stashDestinationSelection();
         selectedDestinationDetails.value = null;
+        form.to = '';
+        form.toInput = '';
         showDestinationList.value = true;
         filteredDestinationAirports.value = airports.value.slice(0, initialLoadLimit);
+        patchSavedFormAirports();
         $('#destination_id').focus();
     }, 100);
 }
@@ -721,23 +876,42 @@ function selectDestination(airport) {
     form.to = airport.id;
     form.toInput = '';
     selectedDestinationDetails.value = airport;
+    lastDestinationSelection.value = {
+        code: airport.id,
+        details: { ...airport },
+    };
     showDestinationList.value = false;
+    patchSavedFormAirports();
+    // Next step after To: open departure (range) date picker
+    nextTick(() => {
+        setTimeout(() => openPicker(), 100);
+    });
 }
 
 function clearOrigin() {
+    stashOriginSelection();
     $('#origin_id').attr('placeholder', 'From');
     form.from = "";
     form.fromInput = "";
     selectedOriginDetails.value = null;
-    showOriginList.value = false;
+    showOriginList.value = true;
+    filteredOriginAirports.value = airports.value.slice(0, initialLoadLimit);
+    nextTick(() => {
+        document.getElementById('origin_id')?.focus();
+    });
 }
 
 function clearDestination() {
+    stashDestinationSelection();
     $('#destination_id').attr('placeholder', 'To');
     form.to = "";
     form.toInput = "";
     selectedDestinationDetails.value = null;
-    showDestinationList.value = false;
+    showDestinationList.value = true;
+    filteredDestinationAirports.value = airports.value.slice(0, initialLoadLimit);
+    nextTick(() => {
+        document.getElementById('destination_id')?.focus();
+    });
 }
 
 function stageSearchResult(searchResult) {
@@ -1015,6 +1189,8 @@ function swapLocations() {
     [selectedOriginDetails.value, selectedDestinationDetails.value] = [selectedDestinationDetails.value, selectedOriginDetails.value];
     [showOriginList.value, showDestinationList.value] = [showDestinationList.value, showOriginList.value];
     [filteredOriginAirports.value, filteredDestinationAirports.value] = [filteredDestinationAirports.value, filteredOriginAirports.value];
+    [lastOriginSelection.value, lastDestinationSelection.value] = [lastDestinationSelection.value, lastOriginSelection.value];
+    patchSavedFormAirports();
 }
 
 // Add this function to handle click
@@ -1232,8 +1408,10 @@ const openReturnPicker = () => {
                                         <input id="origin_id" v-model="form.fromInput" name="origin_name" class="form-control origin_name"
                                         :class="{ 'has-value': form.from && !showOriginList}"
                                         @input="filterOriginAirports($event.target.value)"
-                                        @focus="onOriginFocus" autocomplete="off" />
-                                        <span v-if="form.from" @click="clearOrigin" class="clear-icon">✖</span>
+                                        @focus="onOriginFocus"
+                                        @keydown.enter="onOriginEnter"
+                                        autocomplete="off" />
+                                        <span v-if="form.from" @click.stop="clearOrigin" class="clear-icon">✖</span>
                                         <div v-if="showOriginList" id="origin_results" class="position-absolute w-100 mt-2" style="z-index: 1000; animation: fadeIn 0.3s ease-in-out">
                                             <SimpleBar style="max-height: 300px" class="search-results-simplebar">
                                                 <div v-for="airport in filteredOriginAirports" :key="airport.id" class="cursor-pointer border-bottom border-light" @click="selectOrigin(airport)">
@@ -1275,9 +1453,10 @@ const openReturnPicker = () => {
                                             :class="{ 'has-value': form.to && !showDestinationList }"
                                             @input="filterDestinationAirports($event.target.value)"
                                             @focus="onDestinationFocus"
+                                            @keydown.enter="onDestinationEnter"
                                             placeholder="To"
                                             autocomplete="off" />
-                                        <span v-if="form.to" @click="clearDestination" class="clear-icon">✖</span>
+                                        <span v-if="form.to" @click.stop="clearDestination" class="clear-icon">✖</span>
 
                                         <div v-if="showDestinationList" id="destination_results"
                                             class="position-absolute w-100 mt-2"
