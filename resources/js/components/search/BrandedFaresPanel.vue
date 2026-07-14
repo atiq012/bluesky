@@ -11,6 +11,7 @@ import {
 const props = defineProps({
     visible: { type: Boolean, default: false },
     flight:  { type: Object,  default: null },
+    form:    { type: Object,  default: () => ({}) },
 })
 
 const emit = defineEmits(['close', 'select', 'payable-breakdown'])
@@ -31,19 +32,67 @@ watch(() => props.visible, (vis) => {
 
 const brandOptions = computed(() => props.flight?.outbound?.brand_options ?? [])
 
-const routeSubtitle = computed(() => {
-    const out = props.flight?.outbound
-    if (!out) return ''
-    const from = out.origin ?? out.departure_airport_code ?? ''
-    const to = out.destination ?? out.arrival_airport_code ?? ''
-    const airline = out.first_airline_name ?? ''
-    const parts = [from && to ? `${from} → ${to}` : '', airline].filter(Boolean)
-    return parts.join(' · ')
+const DEFAULT_AIRLINE_LOGO = '/uploads/airlines/default.svg'
+
+// Header — same layout as FlightPricePanel
+const headerAirlineLogo = computed(() =>
+    props.flight?.outbound?.first_logo_path
+        || props.flight?.inbound?.first_logo_path
+        || DEFAULT_AIRLINE_LOGO
+)
+
+const headerAirlineName = computed(() =>
+    props.flight?.outbound?.first_airline_name
+        || props.flight?.outbound?.first_carrier_code
+        || 'Airline'
+)
+
+const isRoundTrip = computed(() =>
+    Number(props.form?.Way) === 2 || !!props.flight?.inbound
+)
+
+const headerRouteLabel = computed(() => {
+    const origin = props.form?.from || props.flight?.outbound?.origin || ''
+    const dest = props.form?.to || props.flight?.outbound?.destination || ''
+    if (!origin && !dest) return 'Branded Fares'
+    if (isRoundTrip.value && origin && dest) return `${origin} → ${dest} → ${origin}`
+    if (origin && dest) return `${origin} → ${dest}`
+    return [origin, dest].filter(Boolean).join(' → ') || 'Branded Fares'
 })
+
+function formatHeaderDate(iso) {
+    if (!iso) return ''
+    const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return ''
+    const day = String(d.getDate()).padStart(2, '0')
+    const mon = d.toLocaleDateString('en-US', { month: 'short' })
+    return `${day} ${mon}`
+}
+
+const headerTripMeta = computed(() => {
+    const trip = isRoundTrip.value ? 'Return' : 'One Way'
+    const dep = formatHeaderDate(props.form?.dep_date || props.flight?.outbound?.departure_date)
+    const ret = isRoundTrip.value
+        ? formatHeaderDate(props.form?.arrival_date || props.flight?.inbound?.departure_date)
+        : ''
+    const datePart = dep && ret ? `${dep} - ${ret}` : (dep || ret || '')
+    const pax = Number(props.form?.ADT ?? 0)
+        + Number(props.form?.CNN ?? 0)
+        + Number(props.form?.KID ?? 0)
+        + Number(props.form?.INF ?? 0)
+    const traveler = `${pax || 1} Traveler${(pax || 1) === 1 ? '' : 's'}`
+    return [trip, datePart, traveler].filter(Boolean).join(' . ')
+})
+
+function onHeaderLogoError(e) {
+    if (e?.target) e.target.src = DEFAULT_AIRLINE_LOGO
+}
 
 const panelStyle = computed(() => ({
     width: `min(${PANEL_WIDTH}px, 100vw)`,
 }))
+
+
 
 function isDualPrice(brandIndex) {
     return !!dualPricingToggles[brandIndex]
@@ -90,6 +139,14 @@ const CLASSIFICATION_ICON = {
 const classLabel = (c) => CLASSIFICATION_LABEL[c] ?? c
 const classIcon = (c) => CLASSIFICATION_ICON[c] ?? 'fa-solid fa-circle-question'
 
+const INCLUSION_ORDER = { Included: 0, Chargeable: 1, 'Not Offered': 2 }
+function sortedAttributes(attrs) {
+    if (!attrs?.length) return []
+    return [...attrs].sort((a, b) =>
+        (INCLUSION_ORDER[a.inclusion] ?? 9) - (INCLUSION_ORDER[b.inclusion] ?? 9)
+    )
+}
+
 const TIER_CLASS = ['fare-card--eco', 'fare-card--flex', 'fare-card--first']
 function tierClass(bIdx) {
     return TIER_CLASS[bIdx % TIER_CLASS.length]
@@ -112,14 +169,23 @@ function tierClass(bIdx) {
                 aria-label="Branded Fares"
             >
                 <div class="bfp-header">
-                    <button class="bfp-close-btn" type="button" title="Close" @click="closePanel">
-                        <i class="fa-solid fa-arrow-left"></i>
-                    </button>
-                    <div class="bfp-header-title">
-                        <div class="bfp-header-main">Branded Fares</div>
-                        <div v-if="routeSubtitle" class="bfp-header-sub">{{ routeSubtitle }}</div>
+                    <div class="bfp-header-brand">
+                        <img
+                            :src="headerAirlineLogo"
+                            :alt="headerAirlineName"
+                            class="bfp-header-logo"
+                            @error="onHeaderLogoError"
+                        />
                     </div>
+                    <div class="bfp-header-title">
+                        <div class="bfp-header-main">{{ headerRouteLabel }}</div>
+                        <div class="bfp-header-sub">{{ headerTripMeta }}</div>
+                    </div>
+                    <button class="bfp-close-btn" type="button" title="Back" @click="closePanel">
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
                 </div>
+
 
                 <div class="bfp-body">
                     <div v-if="brandOptions.length" class="bfp-cards">
@@ -135,7 +201,13 @@ function tierClass(bIdx) {
                                 <div class="fare-card__header fare-card__header--slim">
                                     <div class="fare-card__header-row">
                                         <div class="fare-card__title-block">
-                                            <span class="fare-card__title">{{ brand.label }}</span>
+                                            <span class="fare-card__title-row">
+                                                <span class="fare-card__title">{{ brand.label }}</span>
+                                                <span
+                                                    class="fare-card__source"
+                                                    :class="brand.content_source === 'NDC' ? 'fare-card__source--ndc' : 'fare-card__source--gds'"
+                                                >{{ brand.content_source || 'GDS' }}</span>
+                                            </span>
                                             <span class="fare-card__meta-inline">
                                                 <span>Class {{ brand.class_of_service }}</span>
                                                 <span v-if="brand.fare_basis_code">{{ brand.fare_basis_code }}</span>
@@ -199,35 +271,53 @@ function tierClass(bIdx) {
                                 <div class="fare-card__divider"></div>
                                 <div class="fare-card__features">
                                     <div
-                                        v-for="(attr, aIdx) in brand.attributes"
+                                        v-for="(attr, aIdx) in sortedAttributes(brand.attributes)"
                                         :key="aIdx"
                                         class="fare-card__feature"
                                     >
-                                        <span
-                                            class="fare-card__status-dot"
-                                            :class="{
-                                                'fare-card__status-dot--ok':  attr.inclusion === 'Included',
-                                                'fare-card__status-dot--fee': attr.inclusion === 'Chargeable',
-                                                'fare-card__status-dot--no':  attr.inclusion === 'Not Offered',
-                                            }"
-                                        >
-                                            <i :class="{
-                                                'fa-solid fa-check':       attr.inclusion === 'Included',
-                                                'fa-solid fa-dollar-sign': attr.inclusion === 'Chargeable',
-                                                'fa-solid fa-xmark':       attr.inclusion === 'Not Offered',
-                                            }"></i>
+                                        <span class="fare-card__feature-part">
+                                            <span
+                                                class="fare-card__cat-icon"
+                                                :class="{
+                                                    'fare-card__cat-icon--ok':  attr.inclusion === 'Included',
+                                                    'fare-card__cat-icon--fee': attr.inclusion === 'Chargeable',
+                                                    'fare-card__cat-icon--no':  attr.inclusion === 'Not Offered',
+                                                }"
+                                            >
+                                                <i :class="classIcon(attr.classification)"></i>
+                                            </span>
+                                            <span
+                                                class="fare-card__feature-text"
+                                                :class="{
+                                                    'fare-card__feature-text--ok':  attr.inclusion === 'Included',
+                                                    'fare-card__feature-text--fee': attr.inclusion === 'Chargeable',
+                                                    'fare-card__feature-text--no':  attr.inclusion === 'Not Offered',
+                                                }"
+                                            >{{ classLabel(attr.classification) }}</span>
                                         </span>
-                                        <span class="fare-card__cat-icon">
-                                            <i :class="classIcon(attr.classification)"></i>
-                                        </span>
-                                        <span
-                                            class="fare-card__feature-text"
-                                            :class="{
-                                                'fare-card__feature-text--fee': attr.inclusion === 'Chargeable',
-                                                'fare-card__feature-text--no':  attr.inclusion === 'Not Offered',
-                                            }"
-                                        >
-                                            {{ classLabel(attr.classification) }} ({{ attr.inclusion }})
+                                        <span class="fare-card__feature-part fare-card__feature-part--status">
+                                            <span
+                                                class="fare-card__status-dot fare-card__status-dot--outline"
+                                                :class="{
+                                                    'fare-card__status-dot--ok':  attr.inclusion === 'Included',
+                                                    'fare-card__status-dot--fee': attr.inclusion === 'Chargeable',
+                                                    'fare-card__status-dot--no':  attr.inclusion === 'Not Offered',
+                                                }"
+                                            >
+                                                <i :class="{
+                                                    'fa-solid fa-check':       attr.inclusion === 'Included',
+                                                    'fa-solid fa-dollar-sign': attr.inclusion === 'Chargeable',
+                                                    'fa-solid fa-xmark':       attr.inclusion === 'Not Offered',
+                                                }"></i>
+                                            </span>
+                                            <span
+                                                class="fare-card__feature-text fare-card__feature-text--status"
+                                                :class="{
+                                                    'fare-card__feature-text--ok':  attr.inclusion === 'Included',
+                                                    'fare-card__feature-text--fee': attr.inclusion === 'Chargeable',
+                                                    'fare-card__feature-text--no':  attr.inclusion === 'Not Offered',
+                                                }"
+                                            >{{ attr.inclusion }}</span>
                                         </span>
                                     </div>
                                 </div>
@@ -286,15 +376,17 @@ function tierClass(bIdx) {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 14px 18px;
-    background: linear-gradient(135deg, #7944eb 0%, #4a6ef5 100%);
-    color: #fff;
+    padding: 12px 16px;
+    /* Bluesky logo hues, very light tint */
+    background: linear-gradient(90deg, #e6fafa 0%, #e8f4fb 40%, #eaf3fc 70%, #e8f2fb 100%);
+    color: #0f172a;
+    border-bottom: 1px solid rgba(26, 158, 181, 0.14);
     flex-shrink: 0;
 }
 .bfp-close-btn {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.75);
     border: none;
-    color: #fff;
+    color: #1a9eb5;
     width: 34px;
     height: 34px;
     border-radius: 50%;
@@ -305,16 +397,65 @@ function tierClass(bIdx) {
     transition: background 0.15s;
     flex-shrink: 0;
 }
-.bfp-close-btn:hover { background: rgba(255, 255, 255, 0.3); }
+.bfp-close-btn:hover { background: rgba(255, 255, 255, 0.95); }
+.bfp-header-brand {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(26, 158, 181, 0.14);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.bfp-header-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 4px;
+}
 .bfp-header-title { flex: 1; min-width: 0; }
-.bfp-header-main { font-size: 15px; font-weight: 700; }
-.bfp-header-sub {
-    font-size: 11px;
-    opacity: 0.85;
+.bfp-header-main {
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.25;
+    color: #0f172a;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
+.bfp-header-sub {
+    margin-top: 2px;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.3;
+    color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+html[data-bs-theme="dark"] .bfp-header {
+    background: linear-gradient(90deg, #1a2f35 0%, #1a2838 40%, #1b2a3a 70%, #1a2c3c 100%);
+    border-bottom-color: rgba(26, 158, 181, 0.2);
+    color: #e2e8f0;
+}
+html[data-bs-theme="dark"] .bfp-header-main { color: #f1f5f9; }
+html[data-bs-theme="dark"] .bfp-header-sub { color: #94a3b8; }
+html[data-bs-theme="dark"] .bfp-header-brand {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+html[data-bs-theme="dark"] .bfp-close-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: #7dd3fc;
+}
+html[data-bs-theme="dark"] .bfp-close-btn:hover {
+    background: rgba(255, 255, 255, 0.18);
+}
+
 
 .bfp-body {
     flex: 1;
@@ -418,6 +559,12 @@ html[data-bs-theme="dark"] .bfp-cards::-webkit-scrollbar-thumb { background: #37
     flex-direction: column;
     gap: 2px;
 }
+.fare-card__title-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
 .fare-card__title {
     font-size: 14px;
     font-weight: 700;
@@ -427,6 +574,36 @@ html[data-bs-theme="dark"] .bfp-cards::-webkit-scrollbar-thumb { background: #37
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+.fare-card__source {
+    flex-shrink: 0;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 20px;
+    line-height: 1.2;
+}
+.fare-card__source--gds {
+    background: rgba(94, 114, 228, 0.12);
+    color: #4c63d2;
+    border: 1px solid rgba(94, 114, 228, 0.28);
+}
+.fare-card__source--ndc {
+    background: rgba(245, 158, 11, 0.14);
+    color: #b45309;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+}
+[data-bs-theme="dark"] .fare-card__source--gds {
+    background: rgba(129, 140, 248, 0.18);
+    color: #a5b4fc;
+    border-color: rgba(129, 140, 248, 0.35);
+}
+[data-bs-theme="dark"] .fare-card__source--ndc {
+    background: rgba(251, 191, 36, 0.18);
+    color: #fbbf24;
+    border-color: rgba(251, 191, 36, 0.35);
 }
 .fare-card__meta-inline {
     display: flex;
@@ -592,7 +769,7 @@ html[data-bs-theme="dark"] .fare-card__price-line--payable .fare-card__price-val
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    padding: 10px 18px;
+    padding: 6px 12px;
     scrollbar-width: thin;
     scrollbar-color: #c5cae9 transparent;
 }
@@ -611,45 +788,91 @@ html[data-bs-theme="dark"] .fare-card__features::-webkit-scrollbar-thumb {
 .fare-card__feature {
     display: flex;
     align-items: center;
-    padding: 7px 0;
-    font-size: 13px;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 5px 0;
     border-bottom: 1px solid var(--bs-border-color, #f4f5fa);
 }
 .fare-card__feature:last-child { border-bottom: none; }
 
+.fare-card__feature-part {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    line-height: 1;
+}
+.fare-card__feature-part--status {
+    flex-shrink: 0;
+}
+
+.fare-card__cat-icon {
+    width: 16px;
+    height: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--bs-secondary-color, #8b97ad);
+    font-size: 11px;
+    flex-shrink: 0;
+    line-height: 1;
+}
+.fare-card__cat-icon--ok  { color: #0d9b6e; }
+.fare-card__cat-icon--fee { color: #d97706; }
+.fare-card__cat-icon--no  { color: #9aa3b5; }
+html[data-bs-theme="dark"] .fare-card__cat-icon--ok  { color: #6ee7b7; }
+html[data-bs-theme="dark"] .fare-card__cat-icon--fee { color: #fbbf24; }
+html[data-bs-theme="dark"] .fare-card__cat-icon--no  { color: #6b7280; }
+
 .fare-card__status-dot {
-    width: 20px;
-    height: 20px;
+    box-sizing: border-box;
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 9px;
-    margin-right: 8px;
+    font-size: 8px;
     flex-shrink: 0;
+    line-height: 0;
+}
+.fare-card__status-dot i {
+    display: block;
+    line-height: 1;
+    width: 1em;
+    text-align: center;
 }
 .fare-card__status-dot--ok  { background: #e6f7f4; color: #0d9b6e; }
 .fare-card__status-dot--fee { background: #fff5e6; color: #d97706; }
-.fare-card__status-dot--no  { background: #f3f3f3; color: #b0b8c8; }
+.fare-card__status-dot--no  { background: #e8eaef; color: #9aa3b5; }
+.fare-card__status-dot--outline {
+    background: transparent;
+    border: 1.5px solid currentColor;
+}
+.fare-card__status-dot--outline.fare-card__status-dot--ok  { color: #0d9b6e; }
+.fare-card__status-dot--outline.fare-card__status-dot--fee { color: #d97706; border-color: #d97706; }
+.fare-card__status-dot--outline.fare-card__status-dot--no  { color: #9aa3b5; border-color: #c5cad6; }
 html[data-bs-theme="dark"] .fare-card__status-dot--ok  { background: #064e3b; color: #6ee7b7; }
 html[data-bs-theme="dark"] .fare-card__status-dot--fee { background: #451a03; color: #fbbf24; }
 html[data-bs-theme="dark"] .fare-card__status-dot--no  { background: #374151; color: #9ca3af; }
+html[data-bs-theme="dark"] .fare-card__status-dot--outline.fare-card__status-dot--ok  { color: #6ee7b7; background: transparent; }
+html[data-bs-theme="dark"] .fare-card__status-dot--outline.fare-card__status-dot--fee { color: #fbbf24; border-color: #fbbf24; background: transparent; }
+html[data-bs-theme="dark"] .fare-card__status-dot--outline.fare-card__status-dot--no  { color: #6b7280; border-color: #6b7280; background: transparent; }
 
-.fare-card__cat-icon {
-    width: 18px;
-    text-align: center;
-    margin-right: 8px;
-    color: var(--bs-secondary-color, #8b97ad);
-    font-size: 12px;
-    flex-shrink: 0;
-}
 .fare-card__feature-text {
-    font-size: 12px;
-    font-weight: 500;
+    font-size: 11px;
+    font-weight: 600;
     color: var(--bs-body-color, #1a2436);
+    line-height: 16px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
+.fare-card__feature-text--status { font-weight: 700; }
+.fare-card__feature-text--ok  { color: #0d9b6e; }
 .fare-card__feature-text--fee { color: #d97706; }
-.fare-card__feature-text--no  { color: #b0b8c8; }
+.fare-card__feature-text--no  { color: #9aa3b5; }
+html[data-bs-theme="dark"] .fare-card__feature-text--ok  { color: #6ee7b7; }
 html[data-bs-theme="dark"] .fare-card__feature-text--fee { color: #fbbf24; }
 html[data-bs-theme="dark"] .fare-card__feature-text--no  { color: #6b7280; }
 

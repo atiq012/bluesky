@@ -49,7 +49,6 @@ const priceData        = ref(null)
 const priceLogId       = ref(null)
 const bookingAttemptId = ref(null)
 const offerId          = ref(null)
-const isDownloading    = ref(false)
 const priceChanged     = ref(false)
 const fareRulesLoading = ref(false)
 const fareRulesError   = ref(null)
@@ -344,37 +343,6 @@ async function goBackToSearch() {
     router.push({ name: 'searchResult' })
 }
 
-async function downloadFiles() {
-    if (!priceLogId.value || isDownloading.value) return
-    isDownloading.value = true
-    try {
-        const res  = await axiosInstance.post('flight-price-log/view', { id: priceLogId.value })
-        const data = res?.data?.data
-        if (!data) return
-
-        const triggerDownload = (content, filename) => {
-            const blob = new Blob([JSON.stringify(content, null, 2)], { type: 'application/json' })
-            const url  = URL.createObjectURL(blob)
-            const a    = document.createElement('a')
-            a.href     = url
-            a.download = filename
-            a.click()
-            URL.revokeObjectURL(url)
-        }
-
-        const productRef = currentBrand.value?._productRef ?? 'p'
-        const brandRef   = currentBrand.value?._brandRef   ?? 'b'
-        const prefix     = `tp-price-${productRef}-${brandRef}-${priceLogId.value}`
-
-        triggerDownload(data.price_payload, `${prefix}-payload.json`)
-        await new Promise(r => setTimeout(r, 300))
-        triggerDownload(data.response_json, `${prefix}-response.json`)
-    } catch (e) {
-        console.error(e)
-    } finally {
-        isDownloading.value = false
-    }
-}
 
 function formatTime(date, time) {
     if (!time) return ''
@@ -426,11 +394,6 @@ const inclusionIcon = (inc) => {
     if (inc === 'Chargeable')  return 'fa-solid fa-dollar-sign'
     return 'fa-solid fa-xmark'
 }
-const inclusionClass = (inc) => {
-    if (inc === 'Included')    return 'attr-ok'
-    if (inc === 'Chargeable')  return 'attr-fee'
-    return 'attr-no'
-}
 const CLASSIFICATION_LABEL = {
     Refund:         'Refund',
     Rebooking:      'Rebooking',
@@ -456,7 +419,14 @@ const CLASSIFICATION_ICON = {
 }
 const classificationIcon = (cls) => CLASSIFICATION_ICON[cls] ?? 'fa-solid fa-circle-question'
 const classLabel = (cls) => CLASSIFICATION_LABEL[cls] ?? cls
-const attrLabel = (attr) => `${classLabel(attr.classification)} (${attr.inclusion})`
+
+const INCLUSION_ORDER = { Included: 0, Chargeable: 1, 'Not Offered': 2 }
+function sortedBrandAttributes(brand) {
+    const attrs = [...(brand?.attributes ?? []), ...(brand?.additional_attributes ?? [])]
+    return attrs.sort((a, b) =>
+        (INCLUSION_ORDER[a.inclusion] ?? 9) - (INCLUSION_ORDER[b.inclusion] ?? 9)
+    )
+}
 
 const agencyPricingLineCount = computed(() => dynamicPricing.value?.pricing_breakdown?.length ?? 0)
 
@@ -467,6 +437,62 @@ const agencyTotalPayable = computed(() =>
 const footerGrossFare = computed(() =>
     Number(priceData.value?.gross_fare ?? priceData.value?.gross_payment ?? priceData.value?.total_price ?? 0)
 )
+
+const DEFAULT_AIRLINE_LOGO = '/uploads/airlines/default.svg'
+
+// Header route + trip meta — match search-summary chip in screenshot
+const headerAirlineLogo = computed(() =>
+    props.flight?.outbound?.first_logo_path
+        || props.flight?.inbound?.first_logo_path
+        || DEFAULT_AIRLINE_LOGO
+)
+
+const headerAirlineName = computed(() =>
+    props.flight?.outbound?.first_airline_name
+        || props.flight?.outbound?.first_carrier_code
+        || 'Airline'
+)
+
+const isRoundTrip = computed(() =>
+    Number(props.form?.Way) === 2 || !!props.flight?.inbound
+)
+
+const headerRouteLabel = computed(() => {
+    const origin = props.form?.from || props.flight?.outbound?.origin || ''
+    const dest = props.form?.to || props.flight?.outbound?.destination || ''
+    if (!origin && !dest) return currentBrand.value?.label || 'Fare Confirmation'
+    if (isRoundTrip.value && origin && dest) return `${origin} → ${dest} → ${origin}`
+    if (origin && dest) return `${origin} → ${dest}`
+    return [origin, dest].filter(Boolean).join(' → ') || 'Fare Confirmation'
+})
+
+function formatHeaderDate(iso) {
+    if (!iso) return ''
+    const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return ''
+    const day = String(d.getDate()).padStart(2, '0')
+    const mon = d.toLocaleDateString('en-US', { month: 'short' })
+    return `${day} ${mon}`
+}
+
+const headerTripMeta = computed(() => {
+    const trip = isRoundTrip.value ? 'Return' : 'One Way'
+    const dep = formatHeaderDate(props.form?.dep_date || props.flight?.outbound?.departure_date)
+    const ret = isRoundTrip.value
+        ? formatHeaderDate(props.form?.arrival_date || props.flight?.inbound?.departure_date)
+        : ''
+    const datePart = dep && ret ? `${dep} - ${ret}` : (dep || ret || '')
+    const pax = Number(props.form?.ADT ?? 0)
+        + Number(props.form?.CNN ?? 0)
+        + Number(props.form?.KID ?? 0)
+        + Number(props.form?.INF ?? 0)
+    const traveler = `${pax || 1} Traveler${(pax || 1) === 1 ? '' : 's'}`
+    return [trip, datePart, traveler].filter(Boolean).join(' . ')
+})
+
+function onHeaderLogoError(e) {
+    if (e?.target) e.target.src = DEFAULT_AIRLINE_LOGO
+}
 </script>
 
 <template>
@@ -480,25 +506,22 @@ const footerGrossFare = computed(() =>
         <Transition name="fp-slide">
             <div v-if="visible" class="fp-panel" role="dialog" aria-modal="true">
 
-                <!-- Header -->
+                <!-- Header: airline logo + route / trip meta -->
                 <div class="fp-header">
-                    <button class="fp-close-btn" @click="closePanel" title="Close">
-                        <i class="fa-solid fa-arrow-left"></i>
-                    </button>
-                    <div class="fp-header-title">
-                        <div class="fp-header-main">Fare Confirmation</div>
-                        <div v-if="currentBrand?.label" class="fp-header-sub">
-                            {{ currentBrand.label }}
-                        </div>
+                    <div class="fp-header-brand">
+                        <img
+                            :src="headerAirlineLogo"
+                            :alt="headerAirlineName"
+                            class="fp-header-logo"
+                            @error="onHeaderLogoError"
+                        />
                     </div>
-                    <button
-                        v-if="priceLogId"
-                        class="fp-dl-btn"
-                        @click="downloadFiles"
-                        :disabled="isDownloading"
-                        title="Download payload & response"
-                    >
-                        <i :class="isDownloading ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-download'"></i>
+                    <div class="fp-header-title">
+                        <div class="fp-header-main">{{ headerRouteLabel }}</div>
+                        <div class="fp-header-sub">{{ headerTripMeta }}</div>
+                    </div>
+                    <button class="fp-close-btn" @click="closePanel" title="Back">
+                        <i class="fa-solid fa-arrow-right"></i>
                     </button>
                 </div>
 
@@ -626,16 +649,49 @@ const footerGrossFare = computed(() =>
                                 </div>
                                 <div class="fp-attrs">
                                     <div
-                                        v-for="(attr, aIdx) in [...(priceData.brand.attributes ?? []), ...(priceData.brand.additional_attributes ?? [])]"
+                                        v-for="(attr, aIdx) in sortedBrandAttributes(priceData.brand)"
                                         :key="aIdx"
                                         class="fp-attr-row"
                                     >
-                                        <span :class="['fp-attr-dot', inclusionClass(attr.inclusion)]">
-                                            <i :class="inclusionIcon(attr.inclusion)"></i>
+                                        <span class="fp-attr-part">
+                                            <span
+                                                class="fp-attr-cat"
+                                                :class="{
+                                                    'fp-attr-cat--ok':  attr.inclusion === 'Included',
+                                                    'fp-attr-cat--fee': attr.inclusion === 'Chargeable',
+                                                    'fp-attr-cat--no':  attr.inclusion === 'Not Offered',
+                                                }"
+                                            >
+                                                <i :class="classificationIcon(attr.classification)"></i>
+                                            </span>
+                                            <span
+                                                class="fp-attr-text"
+                                                :class="{
+                                                    'fp-attr-text--ok':  attr.inclusion === 'Included',
+                                                    'fp-attr-text--fee': attr.inclusion === 'Chargeable',
+                                                    'fp-attr-text--no':  attr.inclusion === 'Not Offered',
+                                                }"
+                                            >{{ classLabel(attr.classification) }}</span>
                                         </span>
-                                        <i :class="['fp-attr-cat', classificationIcon(attr.classification)]"></i>
-                                        <span :class="['fp-attr-text', inclusionClass(attr.inclusion) + '-text']">
-                                            {{ attrLabel(attr) }}
+                                        <span class="fp-attr-part fp-attr-part--status">
+                                            <span
+                                                class="fp-attr-dot fp-attr-dot--outline"
+                                                :class="{
+                                                    'fp-attr-dot--ok':  attr.inclusion === 'Included',
+                                                    'fp-attr-dot--fee': attr.inclusion === 'Chargeable',
+                                                    'fp-attr-dot--no':  attr.inclusion === 'Not Offered',
+                                                }"
+                                            >
+                                                <i :class="inclusionIcon(attr.inclusion)"></i>
+                                            </span>
+                                            <span
+                                                class="fp-attr-text fp-attr-text--status"
+                                                :class="{
+                                                    'fp-attr-text--ok':  attr.inclusion === 'Included',
+                                                    'fp-attr-text--fee': attr.inclusion === 'Chargeable',
+                                                    'fp-attr-text--no':  attr.inclusion === 'Not Offered',
+                                                }"
+                                            >{{ attr.inclusion }}</span>
                                         </span>
                                     </div>
                                 </div>
@@ -1075,15 +1131,17 @@ const footerGrossFare = computed(() =>
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 14px 18px;
-    background: linear-gradient(135deg, #7944eb 0%, #4a6ef5 100%);
-    color: #fff;
+    padding: 12px 16px;
+    /* Bluesky logo hues, very light tint */
+    background: linear-gradient(90deg, #e6fafa 0%, #e8f4fb 40%, #eaf3fc 70%, #e8f2fb 100%);
+    color: #0f172a;
+    border-bottom: 1px solid rgba(26, 158, 181, 0.14);
     flex-shrink: 0;
 }
 .fp-close-btn {
-    background: rgba(255,255,255,0.15);
+    background: rgba(255, 255, 255, 0.75);
     border: none;
-    color: #fff;
+    color: #1a9eb5;
     width: 34px; height: 34px;
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
@@ -1091,23 +1149,64 @@ const footerGrossFare = computed(() =>
     transition: background 0.15s;
     flex-shrink: 0;
 }
-.fp-close-btn:hover { background: rgba(255,255,255,0.3); }
+.fp-close-btn:hover { background: rgba(255, 255, 255, 0.95); }
+.fp-header-brand {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(26, 158, 181, 0.14);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.fp-header-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 4px;
+}
 .fp-header-title { flex: 1; min-width: 0; }
-.fp-header-main { font-size: 15px; font-weight: 700; }
-.fp-header-sub  { font-size: 11px; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.fp-dl-btn {
-    background: rgba(255,255,255,0.15);
-    border: none;
-    color: #fff;
-    width: 34px; height: 34px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: background 0.15s;
+.fp-header-main {
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.25;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
-.fp-dl-btn:hover:not(:disabled) { background: rgba(255,255,255,0.3); }
-.fp-dl-btn:disabled { opacity: 0.5; cursor: default; }
+.fp-header-sub {
+    margin-top: 2px;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.3;
+    color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+html[data-bs-theme="dark"] .fp-header {
+    background: linear-gradient(90deg, #1a2f35 0%, #1a2838 40%, #1b2a3a 70%, #1a2c3c 100%);
+    border-bottom-color: rgba(26, 158, 181, 0.2);
+    color: #e2e8f0;
+}
+html[data-bs-theme="dark"] .fp-header-main { color: #f1f5f9; }
+html[data-bs-theme="dark"] .fp-header-sub { color: #94a3b8; }
+html[data-bs-theme="dark"] .fp-header-brand {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+html[data-bs-theme="dark"] .fp-close-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: #7dd3fc;
+}
+html[data-bs-theme="dark"] .fp-close-btn:hover {
+    background: rgba(255, 255, 255, 0.18);
+}
 
 /* ── Body ────────────────────────────────── */
 .fp-body {
@@ -1721,23 +1820,91 @@ html[data-bs-theme="dark"] .fp-gross-row--deduction span:last-child {
 .fp-brand-img { height: 36px; object-fit: contain; border-radius: 4px; }
 .fp-brand-name { font-size: 14px; font-weight: 700; color: var(--bs-body-color); }
 .fp-brand-meta { display: flex; gap: 5px; margin-top: 3px; }
-.fp-attrs { display: flex; flex-direction: column; gap: 5px; }
-.fp-attr-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
-.fp-attr-dot {
-    width: 20px; height: 20px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 9px; flex-shrink: 0;
+.fp-attrs { display: flex; flex-direction: column; }
+.fp-attr-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--bs-border-color, #f4f5fa);
 }
-.attr-ok  { background: #d1fae5; color: #065f46; }
-.attr-fee { background: #fef3c7; color: #92400e; }
-.attr-no  { background: #fee2e2; color: #991b1b; }
-.fp-attr-cat { font-size: 12px; color: var(--bs-secondary-color, #6b7280); width: 16px; flex-shrink: 0; }
-.fp-attr-text { color: var(--bs-body-color); }
-.attr-fee-text { color: #92400e; }
-.attr-no-text  { color: #991b1b; text-decoration: line-through; opacity: 0.75; }
-[data-bs-theme="dark"] .attr-ok  { background: #064e3b; color: #6ee7b7; }
-[data-bs-theme="dark"] .attr-fee { background: #451a03; color: #fcd34d; }
-[data-bs-theme="dark"] .attr-no  { background: #450a0a; color: #fca5a5; }
+.fp-attr-row:last-child { border-bottom: none; }
+.fp-attr-part {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    line-height: 1;
+}
+.fp-attr-part--status { flex-shrink: 0; }
+.fp-attr-cat {
+    width: 16px;
+    height: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    flex-shrink: 0;
+    line-height: 1;
+    color: var(--bs-secondary-color, #8b97ad);
+}
+.fp-attr-cat--ok  { color: #0d9b6e; }
+.fp-attr-cat--fee { color: #d97706; }
+.fp-attr-cat--no  { color: #9aa3b5; }
+html[data-bs-theme="dark"] .fp-attr-cat--ok  { color: #6ee7b7; }
+html[data-bs-theme="dark"] .fp-attr-cat--fee { color: #fbbf24; }
+html[data-bs-theme="dark"] .fp-attr-cat--no  { color: #6b7280; }
+.fp-attr-dot {
+    box-sizing: border-box;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    flex-shrink: 0;
+    line-height: 0;
+}
+.fp-attr-dot i {
+    display: block;
+    line-height: 1;
+    width: 1em;
+    text-align: center;
+}
+.fp-attr-dot--ok  { background: #e6f7f4; color: #0d9b6e; }
+.fp-attr-dot--fee { background: #fff5e6; color: #d97706; }
+.fp-attr-dot--no  { background: #e8eaef; color: #9aa3b5; }
+.fp-attr-dot--outline {
+    background: transparent;
+    border: 1.5px solid currentColor;
+}
+.fp-attr-dot--outline.fp-attr-dot--ok  { color: #0d9b6e; }
+.fp-attr-dot--outline.fp-attr-dot--fee { color: #d97706; border-color: #d97706; }
+.fp-attr-dot--outline.fp-attr-dot--no  { color: #9aa3b5; border-color: #c5cad6; }
+html[data-bs-theme="dark"] .fp-attr-dot--ok  { background: #064e3b; color: #6ee7b7; }
+html[data-bs-theme="dark"] .fp-attr-dot--fee { background: #451a03; color: #fbbf24; }
+html[data-bs-theme="dark"] .fp-attr-dot--no  { background: #374151; color: #9ca3af; }
+html[data-bs-theme="dark"] .fp-attr-dot--outline.fp-attr-dot--ok  { color: #6ee7b7; background: transparent; }
+html[data-bs-theme="dark"] .fp-attr-dot--outline.fp-attr-dot--fee { color: #fbbf24; border-color: #fbbf24; background: transparent; }
+html[data-bs-theme="dark"] .fp-attr-dot--outline.fp-attr-dot--no  { color: #6b7280; border-color: #6b7280; background: transparent; }
+.fp-attr-text {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--bs-body-color, #1a2436);
+    line-height: 16px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.fp-attr-text--status { font-weight: 700; }
+.fp-attr-text--ok  { color: #0d9b6e; }
+.fp-attr-text--fee { color: #d97706; }
+.fp-attr-text--no  { color: #9aa3b5; }
+html[data-bs-theme="dark"] .fp-attr-text--ok  { color: #6ee7b7; }
+html[data-bs-theme="dark"] .fp-attr-text--fee { color: #fbbf24; }
+html[data-bs-theme="dark"] .fp-attr-text--no  { color: #6b7280; }
 
 /* ── Penalties ───────────────────────────── */
 .fp-penalties { display: flex; flex-direction: column; gap: 8px; }

@@ -330,10 +330,24 @@ form.arrival_date = formatDateForForm(_defaultEnd);
 const animateDateCard = ref(false);
 const animateReturnDateCard = ref(false);
 const showPaxPanel = ref(false);
+const showCabinMenu = ref(false);
 const isFilterScrollHover = ref(false);
 const isResultsScrollHover = ref(false);
-const selectedCabinClass = ref('Economy');
+const cabinOptions = ['Economy', 'Premium Economy', 'Business', 'First'];
 
+function toggleCabinMenu() {
+    showCabinMenu.value = !showCabinMenu.value;
+}
+
+function pickCabinClass(cabin) {
+    form.cabin_class = cabin;
+    showCabinMenu.value = false;
+}
+
+function closePaxPanel() {
+    showCabinMenu.value = false;
+    showPaxPanel.value = false;
+}
 const dateNumberFlyState = ref('');
 const dateInfoFlyState = ref('');
 const returnDateNumberFlyState = ref('');
@@ -623,6 +637,7 @@ const changePassenger = (type, delta) => {
     const limits = {
         ADT: { min: 1, max: 9 },
         CNN: { min: 0, max: 4 },
+        KID: { min: 0, max: 4 },
         INF: { min: 0, max: 4 },
     };
 
@@ -774,6 +789,7 @@ function handleClickOutside(event) {
     }
 
     if (!event.target.closest('.pax-panel-wrapper')) {
+        showCabinMenu.value = false;
         showPaxPanel.value = false;
     }
 }
@@ -1360,59 +1376,104 @@ const openReturnPicker = () => {
                         </div>
 
                         <div class="pax-panel-wrapper">
-                            <button class="search-pax-trigger" type="button" @click.stop="showPaxPanel = !showPaxPanel">
+                            <button class="search-pax-trigger" type="button" :class="{ open: showPaxPanel }" @click.stop="showCabinMenu = false; showPaxPanel = !showPaxPanel">
                                 <i class="fa-regular fa-user"></i>
                                 <span>PAX</span>
                                 <span>{{ paxSummary }}</span>
-                                <i class="fa-solid fa-angle-down"></i>
+                                <i class="fa-solid fa-angle-down search-pax-trigger-caret"></i>
                             </button>
 
+                            <Transition name="pax-popup">
                             <div v-if="showPaxPanel" class="search-pax-popup" @click.stop>
                                 <div class="popup-title">TRAVELLERS</div>
 
-                                <div class="popup-row">
-                                    <div>
-                                        <div class="row-name">Adults</div>
-                                        <div class="row-sub">12 years and above</div>
+                                <div class="popup-row pax-breakdown-row">
+                                    <div class="pax-row-left">
+                                        <i class="fa-solid fa-person pax-row-icon" aria-hidden="true"></i>
+                                        <div>
+                                            <div class="row-name">Adults</div>
+                                            <div class="row-sub">12 years &amp; above</div>
+                                        </div>
                                     </div>
-                                    <div class="input-group product-qty">
-                                        <button type="button" class="btn btn-light btn-number" @click="changePassenger('ADT', -1)">−</button>
-                                        <input type="text" name="adult" class="form-control input-number adult" :value="form.ADT" readonly>
-                                        <button type="button" class="btn btn-light btn-number" @click="changePassenger('ADT', 1)">+</button>
-                                    </div>
-                                </div>
-
-                                <div class="popup-row">
-                                    <div>
-                                        <div class="row-name">Children</div>
-                                        <div class="row-sub">Aged 2-11</div>
-                                    </div>
-                                    <div class="input-group product-qty">
-                                        <button type="button" class="btn btn-light btn-number" @click="changePassenger('CNN', -1)">−</button>
-                                        <input type="text" name="child" class="form-control input-number child" :value="form.CNN" readonly>
-                                        <button type="button" class="btn btn-light btn-number" @click="changePassenger('CNN', 1)">+</button>
+                                    <div class="pax-stepper">
+                                        <button type="button" class="pax-step-btn" :disabled="form.ADT <= 1" @click="changePassenger('ADT', -1)">−</button>
+                                        <span class="pax-step-val">{{ form.ADT }}</span>
+                                        <button type="button" class="pax-step-btn pax-step-btn--plus" :disabled="form.ADT >= 9" @click="changePassenger('ADT', 1)">+</button>
                                     </div>
                                 </div>
 
-                                <div class="popup-row">
-                                    <div>
-                                        <div class="row-name">Infants</div>
-                                        <div class="row-sub">Under 2 years</div>
+                                <div class="popup-row pax-breakdown-row">
+                                    <div class="pax-row-left">
+                                        <i class="fa-solid fa-child pax-row-icon" aria-hidden="true"></i>
+                                        <div>
+                                            <div class="row-name">Children</div>
+                                            <div class="row-sub">From 5 to under 12</div>
+                                        </div>
                                     </div>
-                                    <div class="input-group product-qty">
-                                        <button type="button" class="btn btn-light btn-number" @click="changePassenger('INF', -1)">−</button>
-                                        <input type="text" name="infant" class="form-control input-number infant" :value="form.INF" readonly>
-                                        <button type="button" class="btn btn-light btn-number" @click="changePassenger('INF', 1)">+</button>
+                                    <div class="pax-stepper">
+                                        <button type="button" class="pax-step-btn" :disabled="form.CNN <= 0" @click="changePassenger('CNN', -1)">−</button>
+                                        <span class="pax-step-val">{{ form.CNN }}</span>
+                                        <button type="button" class="pax-step-btn pax-step-btn--plus" :disabled="form.CNN >= 4" @click="changePassenger('CNN', 1)">+</button>
                                     </div>
                                 </div>
 
-                                <div class="popup-title cabin-class-title mb-2">CABIN CLASS</div>
-                                <div class="cabin-switcher">
-                                    <button type="button" :class="{ active: form.cabin_class === 'Economy' }" @click="form.cabin_class = 'Economy'">Economy</button>
-                                    <button type="button" :class="{ active: form.cabin_class === 'Business' }" @click="form.cabin_class = 'Business'">Business</button>
-                                    <button type="button" :class="{ active: form.cabin_class === 'First' }" @click="form.cabin_class = 'First'">First</button>
+                                <div class="popup-row pax-breakdown-row">
+                                    <div class="pax-row-left">
+                                        <i class="fa-solid fa-child-reaching pax-row-icon" aria-hidden="true"></i>
+                                        <div>
+                                            <div class="row-name">Kids</div>
+                                            <div class="row-sub">From 2 to under 5</div>
+                                        </div>
+                                    </div>
+                                    <div class="pax-stepper">
+                                        <button type="button" class="pax-step-btn" :disabled="form.KID <= 0" @click="changePassenger('KID', -1)">−</button>
+                                        <span class="pax-step-val">{{ form.KID }}</span>
+                                        <button type="button" class="pax-step-btn pax-step-btn--plus" :disabled="form.KID >= 4" @click="changePassenger('KID', 1)">+</button>
+                                    </div>
+                                </div>
+
+                                <div class="popup-row pax-breakdown-row">
+                                    <div class="pax-row-left">
+                                        <i class="fa-solid fa-baby pax-row-icon" aria-hidden="true"></i>
+                                        <div>
+                                            <div class="row-name">Infants</div>
+                                            <div class="row-sub">Under 2 years</div>
+                                        </div>
+                                    </div>
+                                    <div class="pax-stepper">
+                                        <button type="button" class="pax-step-btn" :disabled="form.INF <= 0" @click="changePassenger('INF', -1)">−</button>
+                                        <span class="pax-step-val">{{ form.INF }}</span>
+                                        <button type="button" class="pax-step-btn pax-step-btn--plus" :disabled="form.INF >= 4" @click="changePassenger('INF', 1)">+</button>
+                                    </div>
+                                </div>
+
+                                <div class="cabin-footer">
+                                    <div class="popup-title cabin-class-title">CABIN CLASS</div>
+                                    <div class="cabin-ok-row">
+                                        <div class="cabin-select-wrap" :class="{ open: showCabinMenu }">
+                                            <button type="button" class="cabin-select" @click.stop="toggleCabinMenu">
+                                                <i class="fa-solid fa-chair cabin-select-icon" aria-hidden="true"></i>
+                                                <span class="cabin-select-label">{{ form.cabin_class }}</span>
+                                                <i class="fa-solid fa-chevron-down cabin-select-caret" aria-hidden="true"></i>
+                                            </button>
+                                            <div v-if="showCabinMenu" class="cabin-select-menu" @click.stop>
+                                                <button
+                                                    v-for="cabin in cabinOptions"
+                                                    :key="cabin"
+                                                    type="button"
+                                                    class="cabin-select-option"
+                                                    :class="{ active: form.cabin_class === cabin }"
+                                                    @click="pickCabinClass(cabin)"
+                                                >
+                                                    {{ cabin }}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <button type="button" class="cabin-ok-btn" @click="closePaxPanel">OK</button>
+                                    </div>
                                 </div>
                             </div>
+                            </Transition>
                         </div>
                     </div>
 
@@ -2282,7 +2343,11 @@ const openReturnPicker = () => {
                                     >
                                         <div class="price-cta-btn__top">
                                             <span class="price-cta-btn__from-label">from</span>
-                                            <i class="fa-solid text-info fa-layer-group price-cta-btn__layers"></i>
+                                            <span
+                                                class="price-cta-btn__source"
+                                                :class="flight.outbound.content_source === 'NDC' ? 'price-cta-btn__source--ndc' : 'price-cta-btn__source--gds'"
+                                                :title="flight.outbound.content_source === 'NDC' ? 'NDC fare' : 'GDS fare'"
+                                            >{{ flight.outbound.content_source || 'GDS' }}</span>
                                         </div>
                                         <div class="price-cta-btn__amount">
                                             <span class="price-cta-btn__currency">BDT</span>
@@ -3248,6 +3313,7 @@ const openReturnPicker = () => {
     <BrandedFaresPanel
         :visible="openFareFlightIndex !== null"
         :flight="openFareFlight"
+        :form="form"
         @close="closeFarePanel"
         @select="onBrandedFareSelect"
         @payable-breakdown="openPayableBreakdown"
@@ -3809,10 +3875,26 @@ body:has(.search-page-layout) {
     letter-spacing: 1.2px;
     color: rgba(255,255,255,0.65);
 }
-.price-cta-btn__layers {
-    font-size: 11px;
-    color: rgba(255,255,255,0.55);
-    opacity: 1;
+.price-cta-btn__source {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 20px;
+    line-height: 1.2;
+    white-space: nowrap;
+    border: 1px solid transparent;
+}
+.price-cta-btn__source--gds {
+    background: rgba(255, 255, 255, 0.18);
+    border-color: rgba(255, 255, 255, 0.35);
+    color: #fff;
+}
+.price-cta-btn__source--ndc {
+    background: rgba(251, 191, 36, 0.95);
+    border-color: rgba(255, 255, 255, 0.4);
+    color: #1a1a2e;
 }
 .price-cta-btn__amount {
     display: flex;
@@ -4255,6 +4337,32 @@ html[data-bs-theme="dark"] .dp__menu {
     padding: 14px;
     box-shadow: 0 18px 36px rgba(26, 34, 67, 0.2);
     z-index: 1200;
+    transform-origin: top right;
+}
+
+.search-pax-trigger-caret {
+    transition: transform 0.22s ease;
+}
+
+.search-pax-trigger.open .search-pax-trigger-caret {
+    transform: rotate(180deg);
+}
+
+.pax-popup-enter-active,
+.pax-popup-leave-active {
+    transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.pax-popup-enter-from,
+.pax-popup-leave-to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+}
+
+.pax-popup-enter-to,
+.pax-popup-leave-from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
 }
 
 .popup-title {
@@ -4266,7 +4374,133 @@ html[data-bs-theme="dark"] .dp__menu {
 }
 
 .cabin-class-title {
-    margin-top: 14px;
+    margin-top: 0;
+    margin-bottom: 8px;
+}
+
+.cabin-footer {
+    margin-top: 12px;
+    padding-top: 4px;
+}
+
+.cabin-ok-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cabin-select-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+}
+
+.cabin-select-icon {
+    font-size: 12px;
+    color: #6b7cff;
+    flex-shrink: 0;
+}
+
+.cabin-select-caret {
+    margin-left: auto;
+    font-size: 10px;
+    color: #8b91a7;
+    flex-shrink: 0;
+    transition: transform 0.15s ease;
+}
+
+.cabin-select-wrap.open .cabin-select-caret {
+    transform: rotate(180deg);
+}
+
+.cabin-select {
+    width: 100%;
+    height: 42px;
+    padding: 0 12px;
+    border: 1px solid #e4e7f2;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #ffffff 0%, #f7f8fc 100%);
+    color: #2f3447;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(26, 34, 67, 0.04);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    text-align: left;
+}
+
+.cabin-select-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cabin-select:hover {
+    border-color: #c9d0ef;
+}
+
+.cabin-select-wrap.open .cabin-select {
+    border-color: #6b7cff;
+    box-shadow: 0 0 0 3px rgba(107, 124, 255, 0.18);
+}
+
+.cabin-select-menu {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: calc(100% + 8px);
+    z-index: 1300;
+    padding: 6px;
+    border-radius: 14px;
+    border: 1px solid #e4e7f2;
+    background: #fff;
+    box-shadow: 0 14px 28px rgba(26, 34, 67, 0.16);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    animation: cabinMenuIn 0.14s ease;
+}
+
+@keyframes cabinMenuIn {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.cabin-select-option {
+    border: 0;
+    background: transparent;
+    text-align: left;
+    padding: 10px 12px;
+    border-radius: 10px;
+    color: #2f3447;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+
+.cabin-select-option:hover {
+    background: #eef2ff;
+    color: #3b4fd4;
+}
+
+.cabin-select-option.active {
+    background: linear-gradient(90deg, #2b4fd8 0%, #8c2cc7 100%);
+    color: #fff;
 }
 
 .popup-row {
@@ -4274,8 +4508,27 @@ html[data-bs-theme="dark"] .dp__menu {
     justify-content: space-between;
     gap: 10px;
     align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px dashed #e7e7ef;
+    padding: 10px 0;
+    border-bottom: 1px solid #edf0f5;
+}
+
+.pax-breakdown-row:has(+ .cabin-footer) {
+    border-bottom: none;
+}
+
+.pax-row-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.pax-row-icon {
+    width: 22px;
+    text-align: center;
+    font-size: 18px;
+    color: #9aa3b5;
+    flex-shrink: 0;
 }
 
 .row-name {
@@ -4289,49 +4542,65 @@ html[data-bs-theme="dark"] .dp__menu {
     color: #7f869e;
 }
 
-.search-pax-popup .product-qty {
-    min-width: 102px;
-    max-width: 102px;
-    border: 1px solid #ececf2;
-    border-radius: 999px;
-    overflow: hidden;
-}
-
-.search-pax-popup .btn-number {
-    border: 0;
-    width: 34px;
-    background: #f7f7fb;
-    color: #4e556b;
-}
-
-.search-pax-popup .input-number {
-    border: 0;
-    box-shadow: none;
-    text-align: center;
-    font-weight: 600;
-    color: #30364a;
-}
-
-.cabin-switcher {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+.pax-stepper {
+    display: inline-flex;
+    align-items: center;
     gap: 10px;
-    margin-top: 8px;
+    flex-shrink: 0;
 }
 
-.cabin-switcher button {
+.pax-step-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
     border: 0;
-    border-radius: 12px;
-    background: #ececf2;
-    color: #4e556b;
-    height: 32px;
-    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #d6e8ff;
+    color: #2b6fd6;
+    font-size: 16px;
     font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
 }
 
-.cabin-switcher button.active {
+.pax-step-btn--plus {
+    background: #2b6fd6;
+    color: #fff;
+}
+
+.pax-step-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.pax-step-val {
+    min-width: 18px;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 700;
+    color: #2f3447;
+}
+
+.cabin-ok-btn {
+    min-width: 64px;
+    height: 40px;
+    padding: 0 18px;
+    border: 0;
+    border-radius: 10px;
     background: linear-gradient(90deg, #2b4fd8 0%, #8c2cc7 100%);
     color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.cabin-ok-btn:hover {
+    filter: brightness(1.05);
 }
 
 .search-panel-bottom {
