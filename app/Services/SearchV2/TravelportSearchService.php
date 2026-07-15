@@ -251,9 +251,9 @@ class TravelportSearchService
 
         $request = [
             '@type' => 'CatalogProductOfferingsRequestAir',
-            'maxNumberOfUpsellsToReturn' => 1,
+            'maxNumberOfUpsellsToReturn' => 4,
             'offersPerPage' => 999,
-            'contentSourceList' => ['GDS'],
+            'contentSourceList' => ['GDS', 'NDC'],
             'PassengerCriteria' => $this->buildPassengerCriteria($form),
             'SearchCriteriaFlight' => $searchCriteriaFlight,
             'CustomResponseModifiersAir' => [

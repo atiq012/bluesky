@@ -12,7 +12,18 @@ const props = defineProps({
 
 const lines = computed(() => props.pricing?.pricing_breakdown ?? []);
 
+// Detail rows only — Net Payable + Customer rendered as summary cards
+const detailLines = computed(() =>
+    lines.value.filter((line) => {
+        if (line.type === 'total') return false;
+        const label = (line.label || '').toLowerCase();
+        return !label.includes('net payable');
+    })
+);
+
 const ruleName = computed(() => props.pricing?.rule_name ?? '');
+
+const totalPayableAmount = computed(() => Number(props.pricing?.total_payable ?? 0));
 
 const customerAmount = computed(() => {
     if (props.grossPayment != null) {
@@ -22,12 +33,12 @@ const customerAmount = computed(() => {
     return Number(props.pricing?.gross_payment ?? props.pricing?.gross_fare ?? 0);
 });
 
-const showCustomerRow = computed(() => {
+const showCustomerCard = computed(() => {
     if (!props.showCustomerLine) {
         return false;
     }
 
-    return Math.abs(customerAmount.value - Number(props.pricing?.total_payable ?? 0)) > 0.01
+    return Math.abs(customerAmount.value - totalPayableAmount.value) > 0.01
         || Number(props.pricing?.markup ?? 0) > 0;
 });
 
@@ -70,7 +81,7 @@ function lineMeta(line) {
     if (label.includes('net fare')) {
         return { icon: 'fa-wallet', tone: 'slate' };
     }
-    if (label.includes('total payable')) {
+    if (label.includes('net payable')) {
         return { icon: 'fa-circle-check', tone: 'blue' };
     }
 
@@ -104,7 +115,7 @@ function formatLineAmount(line) {
     <div class="apb">
         <div v-if="lines.length" class="apb-table">
             <div
-                v-for="(line, idx) in lines"
+                v-for="(line, idx) in detailLines"
                 :key="idx"
                 class="apb-row"
                 :class="rowClass(line)"
@@ -118,14 +129,30 @@ function formatLineAmount(line) {
                 <span class="apb-value">{{ formatLineAmount(line) }}</span>
             </div>
 
-            <div v-if="showCustomerRow" class="apb-row apb-row--customer">
-                <div class="apb-row-left">
-                    <span class="apb-icon apb-icon--slate" aria-hidden="true">
+            <div class="apb-summary" :class="{ 'apb-summary--single': !showCustomerCard }">
+                <div class="apb-card apb-card--payable">
+                    <span class="apb-card-icon" aria-hidden="true">
+                        <i class="fa-solid fa-wallet"></i>
+                    </span>
+                    <div class="apb-card-body">
+                        <span class="apb-card-label">net Payable</span>
+                        <span class="apb-card-price">
+                            {{ currency }} {{ formatFareAmount(totalPayableAmount) }}
+                        </span>
+                    </div>
+                </div>
+
+                <div v-if="showCustomerCard" class="apb-card apb-card--customer">
+                    <span class="apb-card-icon" aria-hidden="true">
                         <i class="fa-solid fa-user-tag"></i>
                     </span>
-                    <span class="apb-label">Gross Payment (Customer)</span>
+                    <div class="apb-card-body">
+                        <span class="apb-card-label">Gross Fare</span>
+                        <span class="apb-card-price">
+                            {{ currency }} {{ formatFareAmount(customerAmount) }}
+                        </span>
+                    </div>
                 </div>
-                <span class="apb-value">{{ currency }} {{ formatFareAmount(customerAmount) }}</span>
             </div>
         </div>
 
@@ -237,33 +264,87 @@ function formatLineAmount(line) {
     color: #2e7d32;
 }
 
-.apb-row--total {
-    margin-top: 2px;
-    padding: 6px 8px;
-    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-    border: 1px solid rgba(21, 101, 192, 0.18);
-    border-radius: 6px;
-    box-shadow: none;
+.apb-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 10px;
+}
+.apb-summary--single {
+    grid-template-columns: 1fr;
 }
 
-.apb-row--total .apb-label,
-.apb-row--total .apb-value {
-    font-size: 13px;
+.apb-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    min-width: 0;
+}
+.apb-card-icon {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    font-size: 15px;
+}
+.apb-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+.apb-card-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    line-height: 1.2;
+}
+.apb-card-price {
+    font-size: 15px;
     font-weight: 800;
-    color: #1565c0;
+    letter-spacing: -0.3px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+    word-break: break-word;
 }
 
-.apb-row--total .apb-icon--blue {
-    background: #fff;
+/* Agency payable — teal */
+.apb-card--payable {
+    background: linear-gradient(135deg, #e8faf7 0%, #d5f4ee 55%, #c3ede5 100%);
+    border-color: rgba(15, 118, 110, 0.2);
 }
-
-.apb-row--customer {
-    margin-top: 0;
-    border-bottom-style: dashed;
+.apb-card--payable .apb-card-icon {
+    color: #0f766e;
+    background: rgba(255, 255, 255, 0.85);
+    box-shadow: 0 1px 4px rgba(15, 118, 110, 0.12);
 }
+.apb-card--payable .apb-card-label { color: #0f766e; }
+.apb-card--payable .apb-card-price { color: #115e59; }
 
-.apb-row--customer .apb-value {
-    font-weight: 600;
+/* Customer gross — violet */
+.apb-card--customer {
+    background: linear-gradient(135deg, #f3eefc 0%, #e8dff8 55%, #ddd0f3 100%);
+    border-color: rgba(109, 40, 217, 0.2);
+}
+.apb-card--customer .apb-card-icon {
+    color: #6d28d9;
+    background: rgba(255, 255, 255, 0.85);
+    box-shadow: 0 1px 4px rgba(109, 40, 217, 0.12);
+}
+.apb-card--customer .apb-card-label { color: #6d28d9; }
+.apb-card--customer .apb-card-price { color: #5b21b6; }
+
+@media (max-width: 420px) {
+    .apb-summary {
+        grid-template-columns: 1fr;
+    }
 }
 
 .apb-rule {
@@ -334,11 +415,6 @@ html[data-bs-theme='dark'] .apb-row--subtotal {
     border-color: #495057;
 }
 
-html[data-bs-theme='dark'] .apb-row--total {
-    background: linear-gradient(135deg, #1e3a5f 0%, #1a365d 100%);
-    border-color: rgba(100, 181, 246, 0.35);
-}
-
 html[data-bs-theme='dark'] .apb-row--deduction .apb-value {
     color: #ef9a9a;
 }
@@ -347,14 +423,29 @@ html[data-bs-theme='dark'] .apb-row--addition .apb-value {
     color: #81c784;
 }
 
-html[data-bs-theme='dark'] .apb-row--total .apb-label,
-html[data-bs-theme='dark'] .apb-row--total .apb-value {
-    color: #64b5f6;
+html[data-bs-theme='dark'] .apb-card--payable {
+    background: linear-gradient(135deg, #134e4a 0%, #115e59 55%, #0f766e 100%);
+    border-color: rgba(94, 234, 212, 0.28);
 }
+html[data-bs-theme='dark'] .apb-card--payable .apb-card-icon {
+    color: #5eead4;
+    background: rgba(15, 23, 42, 0.35);
+    box-shadow: none;
+}
+html[data-bs-theme='dark'] .apb-card--payable .apb-card-label { color: #99f6e4; }
+html[data-bs-theme='dark'] .apb-card--payable .apb-card-price { color: #ccfbf1; }
 
-html[data-bs-theme='dark'] .apb-row--total .apb-icon--blue {
-    background: #1e2227;
+html[data-bs-theme='dark'] .apb-card--customer {
+    background: linear-gradient(135deg, #4c1d95 0%, #5b21b6 55%, #6d28d9 100%);
+    border-color: rgba(196, 181, 253, 0.28);
 }
+html[data-bs-theme='dark'] .apb-card--customer .apb-card-icon {
+    color: #c4b5fd;
+    background: rgba(15, 23, 42, 0.35);
+    box-shadow: none;
+}
+html[data-bs-theme='dark'] .apb-card--customer .apb-card-label { color: #ddd6fe; }
+html[data-bs-theme='dark'] .apb-card--customer .apb-card-price { color: #ede9fe; }
 
 html[data-bs-theme='dark'] .apb-icon--slate {
     color: #cbd5e1;

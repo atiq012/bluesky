@@ -27,6 +27,7 @@ import {
     brandGrossFare,
     canShowPayableBreakdown,
 } from '../../utils/dynamicRulePricingDisplay'
+import { User, Users, CalendarDays, Plane, Globe } from 'lucide-vue-next'
 
 let unsubscribeDynamicRuleBroadcast = null;
 
@@ -1272,7 +1273,12 @@ const openReturnPicker = () => {
                     <span class="compact-airport-code">{{ form.from }}</span>
                     <div class="compact-route-arrow">
                         <span class="compact-route-line"></span>
-                        <i class="bx bxs-plane compact-plane-icon"></i>
+                        <Plane
+                            class="compact-plane-icon compact-plane-icon--lucide"
+                            :size="14"
+                            :stroke-width="2"
+                            aria-hidden="true"
+                        />
                         <span v-if="form.Way === 2" class="compact-route-line compact-route-line--back"></span>
                     </div>
                     <span class="compact-airport-code">{{ form.to }}</span>
@@ -1287,7 +1293,12 @@ const openReturnPicker = () => {
             <div class="compact-divider-v"></div>
 
             <div class="compact-dates-block">
-                <i class="bx bx-calendar-alt compact-meta-icon"></i>
+                <CalendarDays
+                    class="compact-meta-icon compact-meta-icon--lucide"
+                    :size="15"
+                    :stroke-width="2"
+                    aria-hidden="true"
+                />
                 <div class="compact-dates-text">
                     <span class="compact-date-val">{{ formatCompactDate(form.dep_date) }}</span>
                     <template v-if="form.Way === 2 && form.arrival_date">
@@ -1300,7 +1311,13 @@ const openReturnPicker = () => {
             <div class="compact-divider-v"></div>
 
             <div class="compact-pax-block">
-                <i class="fa-regular fa-user compact-meta-icon"></i>
+                <component
+                    :is="totalTravellers > 1 ? Users : User"
+                    class="compact-meta-icon compact-meta-icon--lucide"
+                    :size="15"
+                    :stroke-width="2"
+                    aria-hidden="true"
+                />
                 <span>{{ totalTravellers }} Pax · {{ form.cabin_class }}</span>
             </div>
 
@@ -1340,7 +1357,15 @@ const openReturnPicker = () => {
         </div>
 
         <div class="compact-stats-strip">
-            <span><i class="bx bxs-plane"></i> {{ distinctAirlines.length }} Airlines</span>
+            <span>
+                <Globe
+                    class="compact-stats-lucide"
+                    :size="14"
+                    :stroke-width="2"
+                    aria-hidden="true"
+                />
+                {{ distinctAirlines.length }} Airlines
+            </span>
             <span class="compact-stats-dot">·</span>
             <span><i class="bx bx-git-branch"></i> {{ totalFlights }} Routes</span>
             <template v-if="flights.length > 0">
@@ -1349,7 +1374,7 @@ const openReturnPicker = () => {
             </template>
             <div class="compact-stats-spacer"></div>
             <span v-if="searchStore.isValid" class="compact-clear-btn" @click="clearAndReset">
-                Clear <span>✕</span>
+                Clear <span class="compact-clear-x">✕</span>
             </span>
         </div>
     </div>
@@ -3840,27 +3865,27 @@ body:has(.search-page-layout) {
 /* ── Price CTA button ──────────────────────────────────────── */
 .price-cta-btn {
     width: 100%;
-    border: none;
+    border: 1px solid rgba(124, 58, 237, 0.14);
     border-radius: 14px;
-    /* UNDO-V1: background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 55%, #1fa8a4 80%, #05b7b2 100%); */
-    background: linear-gradient(160deg, #05b7b2 0%, #1a9eb5 28%, #4e54c8 58%, #7c3aed 100%);
-    color: #fff;
+    /* BLUE (firoza) → SKY (purple), light pastel — same as compact/header */
+    background: linear-gradient(160deg, #d2f4f2 0%, #d6eef9 35%, #e2e0f8 70%, #ebe4fc 100%);
+    color: #0f172a;
     padding: 13px 15px 11px;
     cursor: pointer;
     position: relative;
     overflow: hidden;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
-    box-shadow: 0 4px 20px rgba(78,84,200,0.25), 0 2px 8px rgba(5,183,178,0.15);
+    box-shadow: none;
     text-align: left;
     display: block;
 }
 .price-cta-btn:hover {
     transform: translateY(-3px);
-    box-shadow: 0 8px 28px rgba(78,84,200,0.30), 0 4px 14px rgba(5,183,178,0.22);
+    box-shadow: 0 8px 24px rgba(124, 58, 237, 0.16), 0 4px 12px rgba(5, 183, 178, 0.12);
 }
 .price-cta-btn:active {
     transform: translateY(1px);
-    box-shadow: 0 2px 8px rgba(5,183,178,0.15);
+    box-shadow: none;
 }
 .price-cta-btn__top {
     display: flex;
@@ -3873,28 +3898,33 @@ body:has(.search-page-layout) {
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 1.2px;
-    color: rgba(255,255,255,0.65);
+    color: #64748b;
 }
 .price-cta-btn__source {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     font-size: 9px;
     font-weight: 800;
-    letter-spacing: 0.9px;
+    letter-spacing: 0.6px;
     text-transform: uppercase;
-    padding: 2px 7px;
+    padding: 3px 8px;
     border-radius: 20px;
-    line-height: 1.2;
+    line-height: 1;
+    height: 18px;
     white-space: nowrap;
     border: 1px solid transparent;
+    box-sizing: border-box;
 }
 .price-cta-btn__source--gds {
-    background: rgba(255, 255, 255, 0.18);
-    border-color: rgba(255, 255, 255, 0.35);
-    color: #fff;
+    background: rgba(78, 84, 200, 0.12);
+    border-color: rgba(78, 84, 200, 0.28);
+    color: #4c63d2;
 }
 .price-cta-btn__source--ndc {
-    background: rgba(251, 191, 36, 0.95);
-    border-color: rgba(255, 255, 255, 0.4);
-    color: #1a1a2e;
+    background: rgba(245, 158, 11, 0.16);
+    border-color: rgba(245, 158, 11, 0.35);
+    color: #b45309;
 }
 .price-cta-btn__amount {
     display: flex;
@@ -3906,7 +3936,7 @@ body:has(.search-page-layout) {
 .price-cta-btn__currency {
     font-size: 11px;
     font-weight: 600;
-    color: rgba(255,255,255,0.72);
+    color: #64748b;
     letter-spacing: 0.5px;
 }
 .price-cta-btn__number {
@@ -3916,16 +3946,8 @@ body:has(.search-page-layout) {
     vertical-align: bottom;
     font-size: 22px;
     font-weight: 900;
-    color: #ffffff;
+    color: #0f172a;
     letter-spacing: -0.8px;
-}
-.price-rolling-sep {
-    display: inline-block;
-    font-size: 15px;
-    font-weight: 700;
-    opacity: 0.7;
-    align-self: flex-end;
-    margin-bottom: 0.08em;
 }
 .price-slip-wrap {
     display: inline-block;
@@ -3942,9 +3964,17 @@ body:has(.search-page-layout) {
     from { transform: translateY(-110%); opacity: 0; }
     to   { transform: translateY(0);     opacity: 1; }
 }
+.price-rolling-sep {
+    display: inline-block;
+    font-size: 15px;
+    font-weight: 700;
+    opacity: 0.7;
+    align-self: flex-end;
+    margin-bottom: 0.08em;
+}
 .price-cta-btn__divider {
     height: 1px;
-    background: linear-gradient(90deg, rgba(255,255,255,0.22) 0%, rgba(5,183,178,0.35) 100%);
+    background: linear-gradient(90deg, rgba(5, 183, 178, 0.35) 0%, rgba(124, 58, 237, 0.28) 100%);
     margin: 9px 0 7px;
 }
 .price-cta-btn__cta {
@@ -3956,15 +3986,15 @@ body:has(.search-page-layout) {
 .price-cta-btn__cabin {
     font-size: 11px;
     font-weight: 600;
-    color: rgba(255,255,255,0.88);
+    color: #475569;
     letter-spacing: 0.3px;
     white-space: nowrap;
 }
 .price-cta-btn__hint {
     font-size: 10px;
     font-weight: 600;
-    color: rgba(255,255,255,0.92);
-    background: rgba(5,183,178,0.28);
+    color: #0f766e !important;
+    background: rgba(5, 183, 178, 0.14);
     padding: 2px 8px;
     border-radius: 20px;
     white-space: nowrap;
@@ -3974,7 +4004,7 @@ body:has(.search-page-layout) {
     text-align: center;
     margin-top: 6px;
     font-size: 11px;
-    color: rgba(255,255,255,0.55);
+    color: #94a3b8;
     animation: chevronBounce 1.4s ease-in-out infinite;
 }
 @keyframes chevronBounce {
@@ -3982,7 +4012,11 @@ body:has(.search-page-layout) {
     50%       { transform: translateY(3px); }
 }
 .price-cta-btn--open {
-    box-shadow: 0 6px 24px rgba(78,84,200,0.35), 0 3px 12px rgba(5,183,178,0.25);
+    box-shadow: none;
+    border-color: rgba(124, 58, 237, 0.28);
+}
+.price-cta-btn--open:hover {
+    box-shadow: 0 8px 24px rgba(124, 58, 237, 0.16), 0 4px 12px rgba(5, 183, 178, 0.12);
 }
 .price-cta-btn__chevron--open {
     animation: none;
@@ -3990,6 +4024,37 @@ body:has(.search-page-layout) {
 .price-cta-btn__chevron--open i {
     transform: rotate(180deg);
     transition: transform 0.3s ease;
+}
+
+html[data-bs-theme="dark"] .price-cta-btn {
+    background: linear-gradient(160deg, #1a2f35 0%, #1a2838 35%, #24204a 70%, #2a1f3c 100%);
+    border-color: rgba(124, 58, 237, 0.28);
+    color: #e2e8f0;
+    box-shadow: none;
+}
+html[data-bs-theme="dark"] .price-cta-btn:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+html[data-bs-theme="dark"] .price-cta-btn__from-label,
+html[data-bs-theme="dark"] .price-cta-btn__currency,
+html[data-bs-theme="dark"] .price-cta-btn__cabin,
+html[data-bs-theme="dark"] .price-cta-btn__chevron {
+    color: #94a3b8;
+}
+html[data-bs-theme="dark"] .price-cta-btn__number {
+    color: #f1f5f9;
+}
+html[data-bs-theme="dark"] .price-cta-btn__source--gds {
+    background: rgba(129, 140, 248, 0.18);
+    border-color: rgba(129, 140, 248, 0.35);
+    color: #a5b4fc;
+}
+html[data-bs-theme="dark"] .price-cta-btn__hint {
+    color: #5eead4 !important;
+    background: rgba(5, 183, 178, 0.2);
+}
+html[data-bs-theme="dark"] .price-cta-btn__divider {
+    background: linear-gradient(90deg, rgba(5, 183, 178, 0.35) 0%, rgba(167, 139, 250, 0.35) 100%);
 }
 
 @keyframes fadeIn {

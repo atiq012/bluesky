@@ -1,6 +1,8 @@
 export function formatFareAmount(value) {
     const n = Number(value ?? 0);
-    return Number.isFinite(n) ? n.toLocaleString() : '0';
+    if (!Number.isFinite(n)) return '0';
+    // Whole currency units — skip trailing .00
+    return Math.round(n).toLocaleString('en-US');
 }
 
 export function brandGrossFare(brand) {

@@ -1133,9 +1133,9 @@ function onHeaderLogoError(e) {
     gap: 12px;
     padding: 12px 16px;
     /* Bluesky logo hues, very light tint */
-    background: linear-gradient(90deg, #e6fafa 0%, #e8f4fb 40%, #eaf3fc 70%, #e8f2fb 100%);
+    background: linear-gradient(90deg, #d2f4f2 0%, #d6eef9 35%, #e2e0f8 70%, #ebe4fc 100%);
     color: #0f172a;
-    border-bottom: 1px solid rgba(26, 158, 181, 0.14);
+    border-bottom: 1px solid rgba(124, 58, 237, 0.12);
     flex-shrink: 0;
 }
 .fp-close-btn {
@@ -1190,8 +1190,8 @@ function onHeaderLogoError(e) {
 }
 
 html[data-bs-theme="dark"] .fp-header {
-    background: linear-gradient(90deg, #1a2f35 0%, #1a2838 40%, #1b2a3a 70%, #1a2c3c 100%);
-    border-bottom-color: rgba(26, 158, 181, 0.2);
+    background: linear-gradient(90deg, #1a2f35 0%, #1a2838 35%, #24204a 70%, #2a1f3c 100%);
+    border-bottom-color: rgba(124, 58, 237, 0.22);
     color: #e2e8f0;
 }
 html[data-bs-theme="dark"] .fp-header-main { color: #f1f5f9; }
