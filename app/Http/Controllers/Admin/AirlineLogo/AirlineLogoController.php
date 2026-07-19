@@ -25,6 +25,14 @@ class AirlineLogoController extends BaseController
             ->make(true);
     }
 
+    public function index2()
+    {
+        $data = DB::table('airline_logos as al')
+            ->selectRaw('al.id as idd,al.created_at,al.updated_at,f_username(al.updated_by) updated_by,f_username(al.created_by) created_by,al.name as a_name,al.code as code,al.logo_path as logo,al.airline_business_type as busi_type,al.country_name as country')->get();
+
+        return $data;
+    }
+
     public function store(Request $request)
     {
 

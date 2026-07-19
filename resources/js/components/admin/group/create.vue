@@ -107,7 +107,7 @@ const airlinesOptions = ref([]);
 getAllAirlines();
 async function getAllAirlines() {
     try {
-        const response = await axiosInstance.get('getAirlines');
+        const response = await axiosInstance.get('getAllAirlines');
         airlinesOptions.value = response.data.data.map(airlines => airlines.a_name);
     } catch (error) {
         console.error('Failed to fetch airlines:', error);

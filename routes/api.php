@@ -147,6 +147,7 @@ Route::middleware(['auth:api'])->group(function () {
 
     //airlines
     Route::get('getAirlines', [AirlineLogoController::class, 'index'])->name('settings.airlines.getAirlines');
+    Route::get('getAllAirlines', [AirlineLogoController::class, 'index'])->name('settings.airlines.getAirlines');
     Route::post('/airlines/update', [AirlineLogoController::class, 'update'])->name('settings.airlines.update');
     Route::post('/editAirlines', [AirlineLogoController::class, 'edit'])->name('settings.airlines.edit');
 
