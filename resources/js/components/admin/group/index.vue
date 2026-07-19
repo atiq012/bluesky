@@ -6,6 +6,7 @@ import axiosInstance from "../../../axiosInstance";
 import { useAuthStore } from '../../../stores/authStore';
 import AppDataTable from '../../common/DataTable.vue';
 import ActionButtons from '../../common/ActionButtons.vue';
+import CreatedInfo from '../../common/CreatedInfo.vue';
 import AppTooltip from '../../common/AppTooltip.vue';
 import moment from "moment";
 
@@ -16,7 +17,9 @@ const loading = ref(false);
 const filterDate = ref("");
 const filterAuthor = ref("");
 const filterStatus = ref("");
-
+const showNoteModal = ref(false);
+const selectedGroupItem = ref(null);
+const declineNote = ref(null);
 const statistics = computed(() => {
     const total = rData.value.length;
     const active = rData.value.filter(i => (i.status || '').toLowerCase() === 'active').length;
@@ -37,6 +40,8 @@ const columns = [
     { field: 'paid', title: 'Total Paid & Due' },
     { field: 'kam', title: 'KAM' },
     { field: 'status', title: 'Status' },
+    { field: 'created_col', title: 'Created By', sort: false },
+    // { field: 'updated_col', title: 'Updated By', sort: false },
     { field: 'action', title: 'Action' },
 ];
 
@@ -75,8 +80,16 @@ function statusConfig(status) {
             return { cls: 'status-pill status-active', icon: 'fa-solid fa-circle', label: 'Confirmed' };
         case 'Approved':
             return { cls: 'status-pill status-active', icon: 'fa-solid fa-circle', label: 'Approved' };
+        case 'Request Cancelled':
+            return { cls: 'status-pill status-expired', icon: 'fa-solid fa-circle', label: 'Request Cancelled' };
         default:
             return { cls: 'status-pill status-active', icon: 'fa-solid fa-circle', label: 'Active' };
+    }
+}
+
+function canDelete(row) {
+    if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'On Process') {
+        return false
     }
 }
 
@@ -117,35 +130,39 @@ function handlePnr(item) {
     // router.push({ name: 'pnrGroupPnr', params: { id: item.id } });
 }
 
-function handleDelete(item) {
-    iziToast.question({
-        timeout: 100000,
-        pauseOnHover: false,
-        close: false,
-        overlay: true,
-        displayMode: 'once',
-        id: 'question',
-        zindex: 999,
-        message: 'Want to delete this Group PNR?',
-        position: 'center',
-        buttons: [
-            ['<button><b>No</b></button>', function (instance, toast) {
-                instance.hide({ transitionOut: 'fadeOut' }, toast, 'no');
-            }, true],
-            ['<button><b>Yes</b></button>', function (instance, toast) {
-                instance.hide({ transitionOut: 'fadeOut' }, toast, 'yes');
-            }, true]
-        ],
-        onClosed: async function (instance, toast, closedBy) {
-            if (closedBy == 'yes') {
-                await axiosInstance.post("deleteGroupPnr", { 'id': item.id });
-                getListValues();
-                if (typeof Notification !== 'undefined' && Notification?.showToast) {
-                    Notification.showToast('s', 'Successfully Group PNR Deleted.');
-                }
-            }
+async function declineGroupReq() {
+
+    if (!declineNote.value || !declineNote.value) return;
+
+    try {
+        await axiosInstance.post("CancelGroup", {
+            id: selectedGroupItem.value,
+            note: declineNote.value
+        });
+
+        getListValues();
+
+        if (typeof Notification !== 'undefined' && Notification?.showToast) {
+            Notification.showToast('s', 'Decline successfully!');
         }
-    });
+
+        closeDeclineModal();
+    } catch (error) {
+        if (typeof Notification !== 'undefined' && Notification?.showToast) {
+            Notification.showToast('e', 'Failed to decline.');
+        }
+    }
+}
+function handleDelete(item) {
+
+    showNoteModal.value = true;
+    selectedGroupItem.value = item.id;
+    declineNote.value = "";
+}
+function closeDeclineModal() {
+    showNoteModal.value = false;
+    selectedGroupItem.value = null;
+    declineNote.value = "";
 }
 
 getListValues();
@@ -314,7 +331,9 @@ getListValues();
                     <!-- Departure & Return Date -->
                     <template #dates="{ value: row }">
                         <div class="cell-main" v-if="row.request_type == 'multicity'">
-                            <div v-if="row.request_type == 'multicity'" v-html="`<i class='fa-regular fa-calendar me-1' style='font-size: 0.65rem;'></i>${row.route_date_display.replaceAll(' | ', `<br> <i class='fa-regular fa-calendar me-1' style='font-size: 0.65rem;'></i>`).replaceAll('|', `<br> <i class='fa-regular fa-calendar me-1' style='font-size: 0.65rem;'></i>`)}`"></div>
+                            <div v-if="row.request_type == 'multicity'"
+                                v-html="`<i class='fa-regular fa-calendar me-1' style='font-size: 0.65rem;'></i>${row.route_date_display.replaceAll(' | ', `<br> <i class='fa-regular fa-calendar me-1' style='font-size: 0.65rem;'></i>`).replaceAll('|', `<br> <i class='fa-regular fa-calendar me-1' style='font-size: 0.65rem;'></i>`)}`">
+                            </div>
                         </div>
                         <div class="cell-main" v-else-if="row.request_type == 'oneway'">
                             <i class="fa-regular fa-calendar me-1" style="font-size: 0.65rem;">
@@ -370,7 +389,7 @@ getListValues();
                     </template>
                     <!-- KAM -->
                     <template #kam="{ value: row }">
-                        <div class="status-cell" v-if="row.assigned_to">
+                        <!-- <div class="status-cell" v-if="row.assigned_to">
                             <span class="cell-link">
                                 <i class="fa-regular fa-user"></i>
                                 {{ row.assigned_to_kam ?? '-' }}
@@ -378,7 +397,9 @@ getListValues();
                         </div>
                         <div v-else>
                             -
-                        </div>
+                        </div> -->
+                        <CreatedInfo :name="row?.assigned_to_kam" :date="row?.assigned_date" />
+
                     </template>
                     <!-- Status -->
                     <template #status="{ value: row }">
@@ -390,19 +411,73 @@ getListValues();
                         </div>
                     </template>
 
+                    <!-- created by -->
+                    <!-- Created By -->
+                    <template #created_col="{ value: row }">
+                        <CreatedInfo :name="row?.createdby" :date="row?.created_at" />
+                    </template>
+
+                    <!-- Updated By -->
+                    <!-- <template #updated_col="{ value: row }">
+                        <CreatedInfo :name="row?.updatedby || row?.updatedby" :date="row?.updated_at" />
+                    </template> -->
+
                     <!-- Action -->
                     <template #action="{ value: row }">
                         <ActionButtons :item="row" :show-edit="false" :show-view="true" :show-copy="true"
-                            :show-delete="true" :show-authorize="false" copy-label="PNR" @edit="handleEdit"
+                            :show-delete="canDelete(row)" :show-authorize="false" copy-label="PNR" @edit="handleEdit"
                             @view="handleView" @copy="handlePnr" @delete="handleDelete" />
                     </template>
                 </AppDataTable>
             </div>
         </div>
     </div>
+
+    <!-- decline note -->
+    <div v-if="showNoteModal" class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fa-solid fa-pencil me-2"></i>Cancel Note
+                    </h5>
+                    <button type="button" class="btn-close" @click="closeDeclineModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Cancel Note <span class="text-danger">*</span></label>
+                        <textarea class="form-control" v-model="declineNote" rows="4"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-action btn-secondary btn-sm" @click="closeDeclineModal">
+                        <i class="fa-solid fa-xmark me-1"></i>Cancel
+                    </button>
+                    <button type="button" class="btn-action btn-next btn-sm" @click="declineGroupReq">
+                        <i class="fa-solid fa-check me-1"></i>Submit
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </template>
 
 <style scoped>
+.btn-action {
+    padding: 0.5rem 1.75rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 300;
+    cursor: pointer;
+    border: none;
+    transition: all 0.18s;
+}
+
+.btn-next {
+    background: #3b82f6;
+    color: #fff;
+    box-shadow: 0 1px 3px rgba(59, 130, 246, 0.25);
+}
 /* Stats card styles */
 .info-agency {
     box-shadow: 0 0 1px rgba(0, 0, 0, .125), 0 1px 3px rgba(0, 0, 0, .2);

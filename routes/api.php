@@ -190,6 +190,7 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('get-groups', [GroupController::class, 'index'])->name('group.getGroups');
     Route::post('group-requests', [GroupController::class, 'store'])->name('group.groupRequests');
     Route::post('edit-group-request/data', [GroupController::class, 'edit'])->name('group.edit');
+    Route::post('CancelGroup', [GroupController::class, 'destroy'])->name('group.destroy');
 
     //Internal API
     Route::post('/Lowfaresearch', [APIController::class, 'Lowfaresearch']);

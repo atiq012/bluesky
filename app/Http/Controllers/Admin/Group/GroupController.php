@@ -17,8 +17,10 @@ class GroupController extends BaseController
     public function index()
     {
         $data = DB::table('group_requests')
+            ->leftJoin('users as u', 'u.id', '=', 'group_requests.created_by')
+            ->leftJoin('users as u2', 'u2.id', '=', 'group_requests.updated_by')
             ->leftJoin('group_request_segments', 'group_requests.id', '=', 'group_request_segments.group_request_id')
-            ->select('group_requests.*',
+            ->select('group_requests.*', 'u.name as createdby', 'u2.name as updatedby',
                 DB::raw('f_username(NULLIF(group_requests.assigned_to, "")) as assigned_to_kam'),
                 DB::raw('GROUP_CONCAT(
                 CONCAT_WS("- ",
@@ -152,7 +154,7 @@ class GroupController extends BaseController
     private function generateGroupCode()
     {
         // Get the highest ID
-        $nextId = \DB::table('group_requests')->max('id') + 1;
+        $nextId           = \DB::table('group_requests')->max('id') + 1;
         $sequentialNumber = str_pad($nextId, 8, '0', STR_PAD_LEFT);
         return 'GR' . $sequentialNumber;
     }
@@ -172,12 +174,12 @@ class GroupController extends BaseController
     {
         $groupId = $request->id;
 
-        if (!$groupId) {
+        if (! $groupId) {
             return $this->ErrorResponse('Group ID is required for editing.', 'Group PNR ID is required for editing.');
         }
 
         $groupData = GroupRequest::with(['segments'])->find($groupId);
-        if (!$groupData) {
+        if (! $groupData) {
             return $this->ErrorResponse('Group not found.', 'Group PNR not found.');
         }
 
@@ -195,8 +197,23 @@ class GroupController extends BaseController
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(Request $request)
     {
-        //
+        $id = $request->id;
+
+        if (! $id) {
+            return $this->ErrorResponse('Group ID is required for deleting.', 'Group ID is required for deleting.');
+        }
+
+        $group = GroupRequest::find($id);
+        if (! $group) {
+            return $this->ErrorResponse('Group not found.', 'Group not found.');
+        }
+
+        $group->status = 'Request Cancelled';
+        $group->remarks = $request->note;
+        $group->save();
+
+        return $this->SuccessResponse($group, 'Group deleted successfully.');
     }
 }
