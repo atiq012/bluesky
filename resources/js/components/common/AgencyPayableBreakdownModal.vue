@@ -7,7 +7,7 @@ const props = defineProps({
     isOpen: { type: Boolean, default: false },
     pricing: { type: Object, default: null },
     currency: { type: String, default: 'BDT' },
-    title: { type: String, default: 'Payable Price Breakdown' },
+    title: { type: String, default: 'Payable Fare Breakdown' },
     subtitle: { type: String, default: '' },
     grossPayment: { type: Number, default: null },
 });
@@ -22,7 +22,7 @@ const headerRuleName = computed(() => props.subtitle || props.pricing?.rule_name
         :is-open="isOpen"
         :show-header="false"
         size="md"
-        max-width="520px"
+        max-width="420px"
         @close="$emit('close')"
     >
         <div class="apbm-shell">
@@ -53,13 +53,6 @@ const headerRuleName = computed(() => props.subtitle || props.pricing?.rule_name
                     :show-rule-name="false"
                 />
             </div>
-
-            <div class="apbm-footer">
-                <button type="button" class="apbm-btn-close" @click="$emit('close')">
-                    <i class="fa-solid fa-xmark me-1"></i>
-                    Close
-                </button>
-            </div>
         </div>
     </AppModal>
 </template>
@@ -78,8 +71,10 @@ const headerRuleName = computed(() => props.subtitle || props.pricing?.rule_name
     justify-content: space-between;
     gap: 12px;
     padding: 1.1rem 1.15rem 1rem;
-    background: linear-gradient(135deg, #0f766e 0%, #0891b2 45%, #1565c0 100%);
-    color: #fff;
+    /* Same Bluesky tint as FlightPricePanel header */
+    background: linear-gradient(90deg, #d2f4f2 0%, #d6eef9 35%, #e2e0f8 70%, #ebe4fc 100%);
+    color: #0f172a;
+    border-bottom: 1px solid rgba(124, 58, 237, 0.12);
 }
 
 .apbm-header-main {
@@ -97,10 +92,10 @@ const headerRuleName = computed(() => props.subtitle || props.pricing?.rule_name
     align-items: center;
     justify-content: center;
     border-radius: 12px;
-    background: rgba(255, 255, 255, 0.18);
-    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(26, 158, 181, 0.14);
+    color: #1a9eb5;
     font-size: 1.05rem;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
 }
 
 .apbm-header-text {
@@ -113,7 +108,7 @@ const headerRuleName = computed(() => props.subtitle || props.pricing?.rule_name
     font-weight: 700;
     line-height: 1.3;
     letter-spacing: -0.01em;
-    color: #fff;
+    color: #0f172a;
 }
 
 .apbm-subtitle {
@@ -123,13 +118,14 @@ const headerRuleName = computed(() => props.subtitle || props.pricing?.rule_name
     margin: 4px 0 0;
     font-size: 12px;
     line-height: 1.4;
-    color: rgba(255, 255, 255, 0.92);
+    color: #64748b;
     font-weight: 500;
 }
 
 .apbm-subtitle-icon {
     font-size: 10px;
     opacity: 0.9;
+    color: #7c3aed;
 }
 
 .apbm-close {
@@ -140,64 +136,54 @@ const headerRuleName = computed(() => props.subtitle || props.pricing?.rule_name
     align-items: center;
     justify-content: center;
     border: none;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.14);
-    color: #fff;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.75);
+    color: #1a9eb5;
     cursor: pointer;
     transition: background 0.15s ease;
 }
 
 .apbm-close:hover {
-    background: rgba(255, 255, 255, 0.24);
+    background: rgba(255, 255, 255, 0.95);
 }
 
 .apbm-body {
-    padding: 0.55rem 1rem 0.2rem;
+    padding: 0.55rem 1rem 0.85rem;
     overflow-y: auto;
-}
-
-.apbm-footer {
-    display: flex;
-    justify-content: flex-end;
-    padding: 0.55rem 1rem 0.7rem;
-    border-top: 1px solid var(--bs-border-color-translucent, rgba(0, 0, 0, 0.08));
-    background: var(--bs-tertiary-bg, #f8fafc);
-}
-
-.apbm-btn-close {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.42rem 0.95rem;
-    font-size: 13px;
-    font-weight: 600;
-    color: #475569;
-    background: #fff;
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease;
-}
-
-.apbm-btn-close:hover {
-    background: #f1f5f9;
-    border-color: #94a3b8;
 }
 </style>
 
 <style>
-html[data-bs-theme='dark'] .apbm-footer {
-    background: #1e2227;
-    border-color: #495057;
+html[data-bs-theme='dark'] .apbm-header {
+    background: linear-gradient(90deg, #1a2f35 0%, #1a2838 35%, #24204a 70%, #2a1f3c 100%);
+    border-bottom-color: rgba(124, 58, 237, 0.22);
+    color: #e2e8f0;
 }
 
-html[data-bs-theme='dark'] .apbm-btn-close {
-    color: #cbd5e1;
-    background: #2b3035;
-    border-color: #495057;
+html[data-bs-theme='dark'] .apbm-header-text .apbm-title {
+    color: #f1f5f9;
 }
 
-html[data-bs-theme='dark'] .apbm-btn-close:hover {
-    background: #343a40;
-    border-color: #64748b;
+html[data-bs-theme='dark'] .apbm-subtitle {
+    color: #94a3b8;
+}
+
+html[data-bs-theme='dark'] .apbm-subtitle-icon {
+    color: #a78bfa;
+}
+
+html[data-bs-theme='dark'] .apbm-header-icon {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: #7dd3fc;
+}
+
+html[data-bs-theme='dark'] .apbm-close {
+    background: rgba(255, 255, 255, 0.1);
+    color: #7dd3fc;
+}
+
+html[data-bs-theme='dark'] .apbm-close:hover {
+    background: rgba(255, 255, 255, 0.18);
 }
 </style>

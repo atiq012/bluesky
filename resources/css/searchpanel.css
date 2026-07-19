@@ -542,10 +542,12 @@ li.menu-item {
 /* ── Compact Search Summary Bar ────────────────────────────────────── */
 .search-compact-bar {
     z-index: 100;
-    background: linear-gradient(120deg, #1a0557 0%, #6b3fd4 45%, #02b9af 100%);
+    /* Same light Bluesky tint as FlightPricePanel / BrandedFaresPanel header */
+    background: linear-gradient(90deg, #d2f4f2 0%, #d6eef9 35%, #e2e0f8 70%, #ebe4fc 100%);
     border-radius: 16px;
     margin-bottom: 16px;
-    box-shadow: 0 4px 16px rgba(107, 63, 212, 0.25);
+    border: 1px solid rgba(124, 58, 237, 0.12);
+    box-shadow: 0 2px 12px rgba(26, 158, 181, 0.08);
     overflow: hidden;
     animation: compactBarSlideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -570,17 +572,16 @@ li.menu-item {
 }
 
 .compact-trip-badge {
-    background: rgba(255, 255, 255, 0.15);
-    color: #fff;
+    background: rgba(26, 158, 181, 0.1);
+    color: #0f766e;
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     padding: 3px 9px;
     border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.25);
+    border: 1px solid rgba(26, 158, 181, 0.22);
     white-space: nowrap;
-    backdrop-filter: blur(4px);
 }
 
 .compact-route-block {
@@ -592,7 +593,7 @@ li.menu-item {
 .compact-airport-code {
     font-size: 21px;
     font-weight: 900;
-    color: #fff;
+    color: #0f172a;
     letter-spacing: 0.02em;
     line-height: 1;
 }
@@ -608,18 +609,24 @@ li.menu-item {
     display: inline-block;
     width: 18px;
     height: 1.5px;
-    background: rgba(255, 255, 255, 0.45);
+    background: rgba(15, 23, 42, 0.28);
     border-radius: 1px;
 }
 
 .compact-plane-icon {
     font-size: 13px;
-    color: rgba(255, 255, 255, 0.9);
+    color: #1a9eb5;
+    flex-shrink: 0;
+}
+.compact-plane-icon--lucide {
+    display: block;
+    width: 14px;
+    height: 14px;
 }
 
 .compact-cities-text {
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.65);
+    color: #64748b;
     display: flex;
     align-items: center;
     gap: 4px;
@@ -633,7 +640,7 @@ li.menu-item {
 .compact-divider-v {
     width: 1px;
     height: 32px;
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(26, 158, 181, 0.2);
     flex-shrink: 0;
 }
 
@@ -642,13 +649,18 @@ li.menu-item {
     display: flex;
     align-items: center;
     gap: 8px;
-    color: rgba(255, 255, 255, 0.9);
+    color: #334155;
 }
 
 .compact-meta-icon {
     font-size: 14px;
-    color: rgba(255, 255, 255, 0.55);
+    color: #1a9eb5;
     flex-shrink: 0;
+}
+.compact-meta-icon--lucide {
+    display: block;
+    width: 15px;
+    height: 15px;
 }
 
 .compact-dates-text {
@@ -658,14 +670,14 @@ li.menu-item {
 }
 
 .compact-date-val {
-    color: #fff;
+    color: #0f172a;
     font-weight: 600;
     font-size: 12.5px;
     white-space: nowrap;
 }
 
 .compact-date-sep {
-    color: rgba(255, 255, 255, 0.45);
+    color: #94a3b8;
     font-size: 11px;
 }
 
@@ -673,7 +685,7 @@ li.menu-item {
     font-size: 12.5px;
     font-weight: 500;
     white-space: nowrap;
-    color: #fff;
+    color: #0f172a;
 }
 
 .compact-spacer {
@@ -685,8 +697,8 @@ li.menu-item {
     display: flex;
     align-items: center;
     gap: 7px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.75);
+    border: 1px solid rgba(26, 158, 181, 0.22);
     border-radius: 10px;
     padding: 4px 12px;
     flex-shrink: 0;
@@ -694,7 +706,7 @@ li.menu-item {
 
 .compact-timer-icon {
     font-size: 15px;
-    color: rgba(255, 255, 255, 0.65);
+    color: #1a9eb5;
     flex-shrink: 0;
     line-height: 1;
 }
@@ -706,7 +718,7 @@ li.menu-item {
     font-variant-numeric: tabular-nums;
     font-weight: 800;
     font-size: 19px;
-    color: #fff;
+    color: #0f172a;
     letter-spacing: -0.01em;
     line-height: 1;
 }
@@ -730,7 +742,7 @@ li.menu-item {
 .digit-colon {
     font-size: 17px;
     font-weight: 800;
-    color: rgba(255, 255, 255, 0.5);
+    color: #94a3b8;
     margin: 0 2px;
     line-height: 1;
     position: relative;
@@ -757,8 +769,8 @@ li.menu-item {
     display: flex;
     align-items: center;
     gap: 6px;
-    background: rgba(255, 255, 255, 0.95);
-    color: #6b3fd4;
+    background: #1a9eb5;
+    color: #fff;
     border: none;
     border-radius: 10px;
     padding: 8px 18px;
@@ -767,14 +779,14 @@ li.menu-item {
     cursor: pointer;
     transition: all 0.2s ease;
     white-space: nowrap;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+    box-shadow: 0 2px 8px rgba(26, 158, 181, 0.28);
     flex-shrink: 0;
 }
 
 .compact-modify-btn:hover {
-    background: #fff;
+    background: #148a9e;
     transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+    box-shadow: 0 4px 14px rgba(26, 158, 181, 0.35);
 }
 
 .compact-modify-btn i {
@@ -786,10 +798,10 @@ li.menu-item {
     align-items: center;
     gap: 8px;
     padding: 6px 20px;
-    background: rgba(0, 0, 0, 0.18);
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(26, 158, 181, 0.06);
+    border-top: 1px solid rgba(26, 158, 181, 0.12);
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.6);
+    color: #0f766e;
     font-weight: 500;
     letter-spacing: 0.03em;
 }
@@ -797,11 +809,23 @@ li.menu-item {
 .compact-stats-strip i {
     font-size: 11px;
     margin-right: 3px;
-    opacity: 0.7;
+    opacity: 0.85;
+    color: #0f766e;
+}
+.compact-stats-lucide {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-right: 3px;
+    vertical-align: -2px;
+    color: #0f766e;
+    opacity: 0.85;
+    flex-shrink: 0;
 }
 
 .compact-stats-dot {
-    opacity: 0.35;
+    opacity: 0.45;
+    color: #0f766e;
 }
 
 .compact-stats-spacer {
@@ -810,7 +834,7 @@ li.menu-item {
 
 .compact-clear-btn {
     cursor: pointer;
-    color: rgba(255, 255, 255, 0.55);
+    color: #0f766e;
     font-size: 11px;
     font-weight: 600;
     transition: color 0.15s ease;
@@ -818,10 +842,81 @@ li.menu-item {
 }
 
 .compact-clear-btn:hover {
-    color: rgba(255, 255, 255, 0.9);
+    color: #0d9488;
+}
+
+.compact-clear-x {
+    color: #dc2626;
+    font-weight: 700;
+}
+
+.compact-clear-btn:hover .compact-clear-x {
+    color: #b91c1c;
 }
 
 [data-bs-theme="dark"] .search-compact-bar {
-    box-shadow: 0 8px 32px rgba(107, 63, 212, 0.55), 0 2px 10px rgba(0, 0, 0, 0.4);
+    background: linear-gradient(90deg, #1a2f35 0%, #1a2838 35%, #24204a 70%, #2a1f3c 100%);
+    border-color: rgba(124, 58, 237, 0.22);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+[data-bs-theme="dark"] .compact-trip-badge {
+    background: rgba(125, 211, 252, 0.12);
+    color: #7dd3fc;
+    border-color: rgba(125, 211, 252, 0.25);
+}
+[data-bs-theme="dark"] .compact-airport-code,
+[data-bs-theme="dark"] .compact-date-val,
+[data-bs-theme="dark"] .compact-pax-block,
+[data-bs-theme="dark"] .compact-timer-digits {
+    color: #f1f5f9;
+}
+[data-bs-theme="dark"] .compact-cities-text {
+    color: #94a3b8;
+}
+[data-bs-theme="dark"] .compact-stats-strip,
+[data-bs-theme="dark"] .compact-stats-strip i,
+[data-bs-theme="dark"] .compact-stats-lucide,
+[data-bs-theme="dark"] .compact-stats-dot,
+[data-bs-theme="dark"] .compact-clear-btn {
+    color: #5eead4;
+}
+[data-bs-theme="dark"] .compact-clear-btn:hover { color: #99f6e4; }
+[data-bs-theme="dark"] .compact-clear-x {
+    color: #f87171;
+}
+[data-bs-theme="dark"] .compact-clear-btn:hover .compact-clear-x {
+    color: #ef4444;
+}
+[data-bs-theme="dark"] .compact-plane-icon,
+[data-bs-theme="dark"] .compact-meta-icon,
+[data-bs-theme="dark"] .compact-timer-icon {
+    color: #7dd3fc;
+}
+[data-bs-theme="dark"] .compact-route-line {
+    background: rgba(241, 245, 249, 0.28);
+}
+[data-bs-theme="dark"] .compact-divider-v {
+    background: rgba(125, 211, 252, 0.2);
+}
+[data-bs-theme="dark"] .compact-dates-block,
+[data-bs-theme="dark"] .compact-pax-block {
+    color: #cbd5e1;
+}
+[data-bs-theme="dark"] .compact-date-sep,
+[data-bs-theme="dark"] .digit-colon {
+    color: #64748b;
+}
+[data-bs-theme="dark"] .compact-timer-block {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(125, 211, 252, 0.22);
+}
+[data-bs-theme="dark"] .compact-modify-btn {
+    background: #1a9eb5;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(26, 158, 181, 0.35);
+}
+[data-bs-theme="dark"] .compact-stats-strip {
+    background: rgba(0, 0, 0, 0.2);
+    border-top-color: rgba(125, 211, 252, 0.12);
 }
 

@@ -204,6 +204,7 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('/flight-search-log/view', [SearchV2Controller::class, 'viewFlightSearchLog'])->name('search.v2.logs.view');
     Route::get('dynamic-rules/cache-stamp', [DynamicRuleCacheController::class, 'cacheStamp'])->name('dynamicRules.cacheStamp');
     Route::get('/v2/fare-rules', [TravelportFareRulesController::class, 'index'])->name('fareRules.index');
+    Route::get('/v2/fare-rules/saved', [TravelportFareRulesController::class, 'saved'])->name('fareRules.saved');
     Route::get('/v2/fare-rules/download', [TravelportFareRulesController::class, 'download'])->name('fareRules.download');
 
     // Price V2

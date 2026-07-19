@@ -51,7 +51,8 @@ class SearchResponseMapper
             $outOfferingId = $outOffering['id'] ?? null;
 
             foreach ($outOffering['ProductBrandOptions'] ?? [] as $outPbo) {
-                $outRefs = $outPbo['flightRefs'] ?? [];
+                // GDS sends flightRefs on PBO; NDC often omits them — fall back to Product.FlightSegment
+                $outRefs = $this->resolveFlightRefs($outPbo);
                 $outLeg  = $this->mapLegFromRefs($outRefs, $outPbo, $preferredCabin);
                 if ($outLeg === null) {
                     continue;
@@ -79,7 +80,7 @@ class SearchResponseMapper
                             continue;
                         }
 
-                        $inRefs = $inPbo['flightRefs'] ?? [];
+                        $inRefs = $this->resolveFlightRefs($inPbo);
                         $inLeg  = $this->mapLegFromRefs($inRefs, $inPbo, $preferredCabin);
                         if ($inLeg === null) {
                             continue;
@@ -111,6 +112,37 @@ class SearchResponseMapper
             'flights'            => array_values($flights),
             'catalog_identifier' => $catalogIdentifier,
         ];
+    }
+
+    // Prefer PBO.flightRefs (GDS). NDC Journey often only lists FlightRef under Product.FlightSegment.
+    private function resolveFlightRefs(array $pbo): array
+    {
+        $refs = $pbo['flightRefs'] ?? [];
+        if (!empty($refs)) {
+            return $refs;
+        }
+
+        foreach ($pbo['ProductBrandOffering'] ?? [] as $candidate) {
+            $productRef = $candidate['Product'][0]['productRef'] ?? null;
+            $product    = $productRef ? ($this->productMap[$productRef] ?? null) : null;
+            if (!$product) {
+                continue;
+            }
+
+            $fromProduct = [];
+            foreach ($product['FlightSegment'] ?? [] as $seg) {
+                $ref = $seg['Flight']['FlightRef'] ?? null;
+                if ($ref) {
+                    $fromProduct[] = $ref;
+                }
+            }
+
+            if (!empty($fromProduct)) {
+                return $fromProduct;
+            }
+        }
+
+        return [];
     }
 
     private function mapLegFromRefs(array $refs, ?array $pbo, string $preferredCabin = ''): ?array
@@ -196,6 +228,8 @@ class SearchResponseMapper
             'segments'                => $segments,
             'key'                     => implode('-', $refs),
             'pricingMethod'           => 'JSON_V2',
+            // Travelport ProductBrandOffering ContentSource (GDS vs NDC)
+            'content_source'          => $pboffer['ContentSource'] ?? 'GDS',
             'brand_options'           => $this->buildBrandOptions($pbo),
             '_selected_productRef'    => $productRef,
             '_selected_brandRef'      => $brandRef,
@@ -209,7 +243,7 @@ class SearchResponseMapper
             return [];
         }
 
-        $rawFlightRefs = $pbo['flightRefs'] ?? [];
+        $rawFlightRefs = $this->resolveFlightRefs($pbo);
         $flightRefs    = implode(',', $rawFlightRefs);
 
         $availSourceCodes = [];
@@ -269,6 +303,7 @@ class SearchResponseMapper
                 'baggage_allowance'        => $this->extractBaggage($tnc),
                 'attributes'               => $attributes,
                 'is_default_brand'         => $isDefaultBrand,
+                'content_source'           => $pboffer['ContentSource'] ?? 'GDS',
                 '_refs'                    => 'flights:' . $flightRefs . ' | ' . $productRef . ' | ' . $brandRef . ' | ' . $tncRef,
                 '_productRef'              => $productRef,
                 '_brandRef'                => $brandRef,

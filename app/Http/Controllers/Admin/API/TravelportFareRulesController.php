@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin\API;
 
 use Exception;
 use Illuminate\Http\Request;
+use App\Models\BookingAttempt;
 use App\Services\HashIdService;
 use App\Services\SearchV2\TravelportFareRulesService;
 use App\Http\Controllers\BaseController;
@@ -56,6 +57,39 @@ class TravelportFareRulesController extends BaseController
                 'status'  => false,
                 'message' => 'Failed to fetch fare rules. Please try again.',
             ], 500);
+        }
+    }
+
+    // Booking page reopen: read already-saved fare_rules_* sessions
+    public function saved(Request $request)
+    {
+        $request->validate([
+            'booking_attempt_id' => ['required', 'string'],
+        ]);
+
+        $rawAttemptId = hashid_decode(
+            HashIdService::BOOKING_ATTEMPT,
+            (string) $request->input('booking_attempt_id')
+        );
+
+        if (!$rawAttemptId) {
+            return $this->ErrorResponse('Booking attempt not found.', [], 404);
+        }
+
+        $attempt = BookingAttempt::query()->find($rawAttemptId);
+        if (!$attempt) {
+            return $this->ErrorResponse('Booking attempt not found.', [], 404);
+        }
+
+        try {
+            $segments = $this->fareRulesService->getSavedFareRulesForAttempt((int) $rawAttemptId);
+
+            return $this->SuccessResponse([
+                'fare_rules' => ['segments' => $segments],
+            ], 'Saved fare rules loaded.');
+        } catch (Exception $exception) {
+            report($exception);
+            return $this->ErrorResponse('Failed to load saved fare rules.', [], 500);
         }
     }
 

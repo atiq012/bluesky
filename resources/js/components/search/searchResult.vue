@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted, reactive, computed, nextTick } from "vue";
+import { ref, onMounted, onUnmounted, reactive, computed, nextTick, watch } from "vue";
 import { onBeforeRouteLeave } from "vue-router";
 import { storeToRefs } from "pinia";
 import axiosInstance from "../../axiosInstance"
@@ -14,8 +14,9 @@ import { useSearchStore } from '../../stores/searchStore';
 import '../../../css/searchpanel.css'
 import '../../../css/search-dark.css'
 import FlightPricePanel from './FlightPricePanel.vue'
+import BrandedFaresPanel from './BrandedFaresPanel.vue'
+import SearchWingsLoader from './SearchWingsLoader.vue'
 import AppTooltip from '../common/AppTooltip.vue'
-import AppModal from '../common/AppModal.vue'
 import AgencyPayableBreakdownModal from '../common/AgencyPayableBreakdownModal.vue'
 import { completePriceAttempt, completeSearchAttempt } from '../../utils/bookingAttemptSession'
 import {
@@ -23,12 +24,10 @@ import {
     unsubscribeDynamicRulePricingUpdates,
 } from '../../utils/useDynamicRulePricingBroadcast'
 import {
-    formatFareAmount,
     brandGrossFare,
-    brandTotalPayable,
-    brandHasAgentPricing,
     canShowPayableBreakdown,
 } from '../../utils/dynamicRulePricingDisplay'
+import { User, Users, CalendarDays, Plane, Globe } from 'lucide-vue-next'
 
 let unsubscribeDynamicRuleBroadcast = null;
 
@@ -53,8 +52,28 @@ const showOriginList = ref(false);
 const showDestinationList = ref(false);
 const filteredOriginAirports = ref([]);
 const filteredDestinationAirports = ref([]);
+// Keep last confirmed airport so outside-click without pick restores it
+const lastOriginSelection = ref({
+    code: 'DAC',
+    details: {
+        id: 'DAC',
+        text: 'Hazrat Shahjalal International Airport',
+        city: 'Dhaka',
+    },
+});
+const lastDestinationSelection = ref(null);
+// Bump to cancel pending focus clear timeouts (outside-click race)
+let originEditToken = 0;
+let destinationEditToken = 0;
 
 const loadging = ref(false);
+const showSearchResults = ref(true);
+const loaderRunKey = ref(0);
+const LOADER_MIN_MS = 1000;
+const LOADER_FADE_MS = 220;
+let loaderFadeResolve = null;
+// Loader test tag: 'wings' | 'gif'
+const SEARCH_LOADER_TAG = 'wings';
 
 const fareRulesData           = ref({})
 const fareRulesLoading        = ref({})
@@ -64,19 +83,27 @@ const showPricePanel          = ref(false)
 const selectedFlightForPrice  = ref(null)
 const selectedBrandForPrice   = ref(null)
 const searchCollapsed         = ref(false)
-const dualPricingToggles      = reactive({})
 
-function farePriceKey(flightIndex, brandIndex) {
-    return `${flightIndex}-${brandIndex}`
+const openFareFlightIndex = ref(null)
+
+function toggleFarePanel(index) {
+    openFareFlightIndex.value = openFareFlightIndex.value === index ? null : index
 }
 
-function isDualPrice(flightIndex, brandIndex) {
-    return !!dualPricingToggles[farePriceKey(flightIndex, brandIndex)]
+function closeFarePanel() {
+    openFareFlightIndex.value = null
 }
 
-function toggleDualPrice(flightIndex, brandIndex) {
-    const key = farePriceKey(flightIndex, brandIndex)
-    dualPricingToggles[key] = !dualPricingToggles[key]
+function selectFare(flight, brand) {
+    selectedFlightForPrice.value = flight
+    selectedBrandForPrice.value  = brand
+    showPricePanel.value         = true
+    closeFarePanel()
+}
+
+function onBrandedFareSelect(brand) {
+    if (!openFareFlight.value) return
+    selectFare(openFareFlight.value, brand)
 }
 
 const payableBreakdownOpen = ref(false)
@@ -101,12 +128,6 @@ const _themeObserver = new MutationObserver(() => {
     isDark.value = document.documentElement.getAttribute('data-bs-theme') === 'dark'
 })
 _themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-bs-theme'] })
-
-function selectFare(flight, brand) {
-    selectedFlightForPrice.value = flight
-    selectedBrandForPrice.value  = brand
-    showPricePanel.value         = true
-}
 
 const bookingTimerMinutes = ref(30)
 const bookingTimerSeconds = ref(0)
@@ -200,6 +221,7 @@ const filteredAirlineList = computed(() => {
 })
 
 const filteredFlights = computed(() => {
+    if (!showSearchResults.value) return [];
     return flights.value.filter(f => {
         const price = calcOutboundPriceRaw(f)
         const airlineOk = !selectedAirlines.value.length || selectedAirlines.value.includes(f.outbound?.first_airline_name)
@@ -222,6 +244,11 @@ const filteredFlights = computed(() => {
         }
         return airlineOk && priceOk && stopOk && refundOk && layoverOk && scheduleOk
     })
+})
+
+const openFareFlight = computed(() => {
+    if (openFareFlightIndex.value === null) return null
+    return filteredFlights.value[openFareFlightIndex.value] ?? null
 })
 
 const form = reactive({
@@ -279,30 +306,6 @@ const returnDate = ref(_defaultEnd);
 const returnDatePickerRef = ref(null);
 const isRangePicker = ref(false);
 
-const CLASSIFICATION_LABEL = {
-    Refund:         'Refund',
-    Rebooking:      'Rebooking',
-    CheckedBag:     'Checked Baggage',
-    CarryOn:        'Carry-on',
-    WiFi:           'Wi-Fi',
-    Meals:          'Meals',
-    SeatAssignment: 'Seat Selection',
-};
-const CLASSIFICATION_ICON = {
-    Refund:           'fa-solid fa-rotate-left',
-    Rebooking:        'fa-solid fa-calendar-check',
-    CheckedBag:       'fa-solid fa-suitcase-rolling',
-    CarryOn:          'fa-solid fa-suitcase',
-    WiFi:             'fa-solid fa-wifi',
-    Meals:            'fa-solid fa-utensils',
-    SeatAssignment:   'fa-solid fa-chair',
-    'Mileage Accrual':'fa-solid fa-coins',
-    Upgrade:          'fa-solid fa-arrow-up',
-    'Lounge Access':  'fa-solid fa-couch',
-};
-const classLabel = (c) => CLASSIFICATION_LABEL[c] ?? c;
-const classIcon  = (c) => CLASSIFICATION_ICON[c]  ?? 'fa-solid fa-circle-question';
-
 const formatDisplayDate = (date) => {
     if (!date) return '';
     const dateObj = new Date(date);
@@ -328,10 +331,24 @@ form.arrival_date = formatDateForForm(_defaultEnd);
 const animateDateCard = ref(false);
 const animateReturnDateCard = ref(false);
 const showPaxPanel = ref(false);
+const showCabinMenu = ref(false);
 const isFilterScrollHover = ref(false);
 const isResultsScrollHover = ref(false);
-const selectedCabinClass = ref('Economy');
+const cabinOptions = ['Economy', 'Premium Economy', 'Business', 'First'];
 
+function toggleCabinMenu() {
+    showCabinMenu.value = !showCabinMenu.value;
+}
+
+function pickCabinClass(cabin) {
+    form.cabin_class = cabin;
+    showCabinMenu.value = false;
+}
+
+function closePaxPanel() {
+    showCabinMenu.value = false;
+    showPaxPanel.value = false;
+}
 const dateNumberFlyState = ref('');
 const dateInfoFlyState = ref('');
 const returnDateNumberFlyState = ref('');
@@ -384,6 +401,30 @@ const handleReturnDateChange = (date) => {
         form.arrival_date = formatDateForForm(date);
     }
 };
+
+// Return calendar: days before journey (dep) stay disabled
+const returnMinDate = computed(() => {
+    const dep = selectedDateRange.value?.[0] ?? selectedDate.value;
+    const d = dep ? new Date(dep) : new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+});
+
+// If dep moves past return, bump return up to dep
+watch(
+    () => selectedDateRange.value?.[0],
+    (dep) => {
+        if (form.Way !== 2 || !dep || !selectedDateRange.value?.[1]) return;
+        const ret = new Date(selectedDateRange.value[1]);
+        const depDay = new Date(dep);
+        depDay.setHours(0, 0, 0, 0);
+        ret.setHours(0, 0, 0, 0);
+        if (ret < depDay) {
+            selectedDateRange.value[1] = new Date(depDay);
+            form.arrival_date = formatDateForForm(depDay);
+        }
+    }
+);
 
 function stopBookingTimerDisplay() {
     if (bookingTimerInterval.value) clearInterval(bookingTimerInterval.value)
@@ -495,6 +536,24 @@ onMounted(async () => {
         }
     }
 
+    // form is local (lost on refresh); details live in pinia sessionStorage.
+    // Prefer details.id so code + city/airport never diverge after refresh.
+    reconcileAirportFormWithDetails();
+
+    // Sync restore-cache with whatever is currently selected
+    if (form.from && selectedOriginDetails.value) {
+        lastOriginSelection.value = {
+            code: form.from,
+            details: { ...selectedOriginDetails.value },
+        };
+    }
+    if (form.to && selectedDestinationDetails.value) {
+        lastDestinationSelection.value = {
+            code: form.to,
+            details: { ...selectedDestinationDetails.value },
+        };
+    }
+
     // Restore persistent timer — survives refresh + navigation
     if (searchStore.isValid && bookingStore.timerStartedAt) {
         const elapsedSec = Math.floor((Date.now() - bookingStore.timerStartedAt) / 1000)
@@ -558,6 +617,11 @@ async function clearAndReset() {
         city: 'Dhaka',
     };
     selectedDestinationDetails.value = null;
+    lastOriginSelection.value = {
+        code: 'DAC',
+        details: { ...selectedOriginDetails.value },
+    };
+    lastDestinationSelection.value = null;
     // Reset pax jQuery spinners
     $('.adult').val(1);
     $('.child').val(0);
@@ -574,6 +638,7 @@ const changePassenger = (type, delta) => {
     const limits = {
         ADT: { min: 1, max: 9 },
         CNN: { min: 0, max: 4 },
+        KID: { min: 0, max: 4 },
         INF: { min: 0, max: 4 },
     };
 
@@ -632,184 +697,387 @@ async function getAirports() {
     }
 }
 
-function handleClickOutside(event) {
-    const originInput = document.getElementById("origin_id");
-    const originResults = document.getElementById("origin_results");
-    const destinationInput = document.getElementById("destination_id");
-    const destinationResults = document.getElementById("destination_results");
+function stashOriginSelection() {
+    if (form.from && selectedOriginDetails.value) {
+        lastOriginSelection.value = {
+            code: form.from,
+            details: { ...selectedOriginDetails.value },
+        };
+    }
+}
 
-    if (!originInput?.contains(event.target) && !originResults?.contains(event.target)) {
+function stashDestinationSelection() {
+    if (form.to && selectedDestinationDetails.value) {
+        lastDestinationSelection.value = {
+            code: form.to,
+            details: { ...selectedDestinationDetails.value },
+        };
+    }
+}
+
+function restoreOriginSelection() {
+    const last = lastOriginSelection.value;
+    if (!last?.code) return;
+    form.from = last.code;
+    form.fromInput = '';
+    selectedOriginDetails.value = last.details;
+    $('#origin_id').attr('placeholder', '');
+}
+
+function restoreDestinationSelection() {
+    const last = lastDestinationSelection.value;
+    if (!last?.code) return;
+    form.to = last.code;
+    form.toInput = '';
+    selectedDestinationDetails.value = last.details;
+    $('#destination_id').attr('placeholder', '');
+}
+
+// Keep form.from/to in sync with pinia-persisted airport details after refresh
+function reconcileAirportFormWithDetails() {
+    if (selectedOriginDetails.value?.id) {
+        form.from = selectedOriginDetails.value.id;
+        form.fromInput = '';
+        $('#origin_id').attr('placeholder', '');
+    }
+    if (selectedDestinationDetails.value?.id) {
+        form.to = selectedDestinationDetails.value.id;
+        form.toInput = '';
+        $('#destination_id').attr('placeholder', '');
+    } else {
+        form.to = '';
+        form.toInput = '';
+    }
+}
+
+// Airport pick also patches savedForm so next refresh restore matches details
+function patchSavedFormAirports() {
+    if (!searchStore.savedForm) return;
+    searchStore.savedForm = {
+        ...searchStore.savedForm,
+        from: form.from,
+        to: form.to,
+        fromInput: form.fromInput,
+        toInput: form.toInput,
+    };
+}
+
+function handleClickOutside(event) {
+    // Clear ✖ removes itself from DOM (v-if) → target detaches → contains() false.
+    // Ignore that click so we do not instantly restore the just-cleared airport.
+    if (event.target?.closest?.('.clear-icon') || event.target?.classList?.contains('clear-icon')) {
+        return;
+    }
+
+    const originWrap = document.getElementById("origin_id")?.closest('.location-input-wrapper');
+    const destinationWrap = document.getElementById("destination_id")?.closest('.location-input-wrapper');
+
+    // Outside origin field + list → close list; if nothing picked, put last airport back
+    if (!originWrap?.contains(event.target)) {
+        originEditToken += 1;
+        if (showOriginList.value && !form.from) {
+            restoreOriginSelection();
+        }
         showOriginList.value = false;
     }
 
-    if (
-        !destinationInput?.contains(event.target) &&
-        !destinationResults?.contains(event.target)
-    ) {
+    if (!destinationWrap?.contains(event.target)) {
+        destinationEditToken += 1;
+        if (showDestinationList.value && !form.to) {
+            restoreDestinationSelection();
+        }
         showDestinationList.value = false;
     }
 
     if (!event.target.closest('.pax-panel-wrapper')) {
+        showCabinMenu.value = false;
         showPaxPanel.value = false;
     }
 }
 
-// Generalized filtering function
-function filterAirports(searchText, airports) {
+// From/To never same airport (e.g. From=DAC → To list skip DAC)
+function airportsForOrigin() {
+    const exclude = form.to || selectedDestinationDetails.value?.id;
+    if (!exclude) return airports.value;
+    return airports.value.filter((a) => a.id !== exclude);
+}
+
+function airportsForDestination() {
+    const exclude = form.from || selectedOriginDetails.value?.id;
+    if (!exclude) return airports.value;
+    return airports.value.filter((a) => a.id !== exclude);
+}
+
+function filterAirports(searchText, pool) {
     if (!searchText) {
-        return airports.slice(0, initialLoadLimit);
+        return pool.slice(0, initialLoadLimit);
     }
     const search = searchText.toLowerCase();
-    // First, check for matches in the id field
-    const idMatches = airports.filter(airport =>
+    const idMatches = pool.filter(airport =>
         airport.id.toLowerCase().includes(search)
     );
-
-    // Then check for matches in other fields
-    const otherMatches = airports.filter(airport =>
-        !airport.id.toLowerCase().includes(search) && // Exclude id matches
+    const otherMatches = pool.filter(airport =>
+        !airport.id.toLowerCase().includes(search) &&
         (airport.text.toLowerCase().includes(search) ||
             airport.city.toLowerCase().includes(search))
     );
-
-    // Combine the results, with id matches first
     return [...idMatches, ...otherMatches];
 }
 
-// Update filter functions
 function filterOriginAirports(searchText) {
-    filteredOriginAirports.value = filterAirports(searchText, airports.value);
+    filteredOriginAirports.value = filterAirports(searchText, airportsForOrigin());
 }
 
 function filterDestinationAirports(searchText) {
-    filteredDestinationAirports.value = filterAirports(searchText, airports.value);
+    filteredDestinationAirports.value = filterAirports(searchText, airportsForDestination());
+}
+
+// Enter with open suggestion list → pick first match
+function onOriginEnter(event) {
+    if (!showOriginList.value || !filteredOriginAirports.value.length) return;
+    event.preventDefault();
+    selectOrigin(filteredOriginAirports.value[0]);
+}
+
+function onDestinationEnter(event) {
+    if (!showDestinationList.value || !filteredDestinationAirports.value.length) return;
+    event.preventDefault();
+    selectDestination(filteredDestinationAirports.value[0]);
 }
 
 function onOriginFocus() {
+    // Already editing empty field (e.g. after clear) → just keep suggestions open
+    if (!form.from && !selectedOriginDetails.value) {
+        showOriginList.value = true;
+        filteredOriginAirports.value = airportsForOrigin().slice(0, initialLoadLimit);
+        return;
+    }
+    stashOriginSelection();
+    const token = ++originEditToken;
     $('#oFrom').addClass('fly-out');
     $('#oCityAirport').addClass('fly-out');
     setTimeout(() => {
+        if (token !== originEditToken) return;
         $('#origin_id').val('');
         form.from = '';
         form.fromInput = '';
         selectedOriginDetails.value = null;
         showOriginList.value = true;
-        if (!filteredOriginAirports.value.length) {
-            filteredOriginAirports.value = airports.value.slice(0, initialLoadLimit);
-        }
+        filteredOriginAirports.value = airportsForOrigin().slice(0, initialLoadLimit);
     }, 300);
 }
 
 function onDestinationFocus() {
+    if (!form.to && !selectedDestinationDetails.value) {
+        showDestinationList.value = true;
+        filteredDestinationAirports.value = airportsForDestination().slice(0, initialLoadLimit);
+        return;
+    }
+    stashDestinationSelection();
+    const token = ++destinationEditToken;
     $('#dFrom').addClass('fly-out');
     $('#dCityAirport').addClass('fly-out');
     setTimeout(() => {
+        if (token !== destinationEditToken) return;
         $('#destination_id').val('');
         form.to = '';
         form.toInput = '';
         selectedDestinationDetails.value = null;
         showDestinationList.value = true;
-        filteredDestinationAirports.value = airports.value.slice(0, initialLoadLimit);
+        filteredDestinationAirports.value = airportsForDestination().slice(0, initialLoadLimit);
     }, 300);
 }
 
 function selectOrigin(airport) {
+    const blockedTo = form.to || selectedDestinationDetails.value?.id;
+    if (blockedTo && airport.id === blockedTo) return;
     $('#origin_id').attr('placeholder', '');
     form.from = airport.id;
     form.fromInput = '';
     selectedOriginDetails.value = airport;
+    lastOriginSelection.value = {
+        code: airport.id,
+        details: { ...airport },
+    };
     showOriginList.value = false;
+    patchSavedFormAirports();
     setTimeout(() => {
+        // Opening destination after origin pick — stash dest so cancel can restore
+        stashDestinationSelection();
         selectedDestinationDetails.value = null;
+        form.to = '';
+        form.toInput = '';
         showDestinationList.value = true;
-        filteredDestinationAirports.value = airports.value.slice(0, initialLoadLimit);
+        filteredDestinationAirports.value = airportsForDestination().slice(0, initialLoadLimit);
+        patchSavedFormAirports();
         $('#destination_id').focus();
     }, 100);
 }
 
 function selectDestination(airport) {
+    const blockedFrom = form.from || selectedOriginDetails.value?.id;
+    if (blockedFrom && airport.id === blockedFrom) return;
     $('#destination_id').attr('placeholder', '');
     form.to = airport.id;
     form.toInput = '';
     selectedDestinationDetails.value = airport;
+    lastDestinationSelection.value = {
+        code: airport.id,
+        details: { ...airport },
+    };
     showDestinationList.value = false;
+    patchSavedFormAirports();
+    // Next step after To: open departure (range) date picker
+    nextTick(() => {
+        setTimeout(() => openPicker(), 100);
+    });
 }
 
 function clearOrigin() {
+    stashOriginSelection();
     $('#origin_id').attr('placeholder', 'From');
     form.from = "";
     form.fromInput = "";
     selectedOriginDetails.value = null;
-    showOriginList.value = false;
+    showOriginList.value = true;
+    filteredOriginAirports.value = airportsForOrigin().slice(0, initialLoadLimit);
+    nextTick(() => {
+        document.getElementById('origin_id')?.focus();
+    });
 }
 
 function clearDestination() {
+    stashDestinationSelection();
     $('#destination_id').attr('placeholder', 'To');
     form.to = "";
     form.toInput = "";
     selectedDestinationDetails.value = null;
-    showDestinationList.value = false;
+    showDestinationList.value = true;
+    filteredDestinationAirports.value = airportsForDestination().slice(0, initialLoadLimit);
+    nextTick(() => {
+        document.getElementById('destination_id')?.focus();
+    });
+}
+
+function stageSearchResult(searchResult) {
+    const incomingFlights = searchResult.flights ?? [];
+    totalFlights.value = incomingFlights.length;
+    searchLogId.value = searchResult.search_log_id ?? null;
+    activeSearchAttemptId.value = searchResult.booking_attempt_id ?? null;
+    catalogIdentifier.value = searchResult.catalog_identifier ?? null;
+    selectedAirlines.value = [];
+    airlineSearch.value = '';
+    selectedStops.value = [];
+    selectedRefundTypes.value = [];
+    selectedLayovers.value = [];
+    layoverSearch.value = '';
+    selectedScheduleSegment.value = null;
+    startBookingTimer();
+
+    if (incomingFlights.length) {
+        const prices = incomingFlights.map(f => calcOutboundPriceRaw(f));
+        const minP = Math.floor(Math.min(...prices));
+        const maxP = Math.ceil(Math.max(...prices));
+        sliderMin.value = minP;
+        sliderMax.value = maxP;
+        priceRangeMin.value = minP;
+        priceRangeMax.value = maxP;
+    }
+
+    return incomingFlights;
+}
+
+function revealSearchResult(incomingFlights) {
+    flights.value = incomingFlights;
+    showSearchResults.value = true;
+}
+
+function onLoaderFadeAfterLeave() {
+    loaderFadeResolve?.();
+    loaderFadeResolve = null;
+}
+
+function waitForLoaderFadeOut() {
+    return new Promise(resolve => {
+        loaderFadeResolve = resolve;
+        setTimeout(() => {
+            if (!loaderFadeResolve) return;
+            loaderFadeResolve();
+            loaderFadeResolve = null;
+        }, LOADER_FADE_MS + 80);
+    });
+}
+
+function schedulePersistSearchResult() {
+    const run = () => { void persistSearchResult(); };
+    if (typeof requestIdleCallback === 'function') {
+        requestIdleCallback(run, { timeout: 1200 });
+    } else {
+        setTimeout(run, 0);
+    }
+}
+
+// Fade loader out first while results stay off-DOM, then reveal immediately after fade
+async function finishSearchLoading(searchResult, loaderStartedAt) {
+    const wait = loaderStartedAt
+        ? Math.max(0, LOADER_MIN_MS - (Date.now() - loaderStartedAt))
+        : 0;
+    if (wait) await new Promise(resolve => setTimeout(resolve, wait));
+
+    if (!searchResult) {
+        loadging.value = false;
+        showSearchResults.value = true;
+        return;
+    }
+
+    const incomingFlights = stageSearchResult(searchResult);
+    loadging.value = false;
+    await waitForLoaderFadeOut();
+    revealSearchResult(incomingFlights);
+    await nextTick();
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    if (incomingFlights.length) searchCollapsed.value = true;
+    schedulePersistSearchResult();
+}
+
+async function persistSearchResult() {
+    await nextTick();
+    searchStore.saveSearch({
+        form:                    { ...form },
+        flights:                 flights.value,
+        totalFlights:            totalFlights.value,
+        catalogIdentifier:       catalogIdentifier.value,
+        searchLogId:             searchLogId.value,
+        activeSearchAttemptId:   activeSearchAttemptId.value,
+        sliderMin:               sliderMin.value,
+        sliderMax:               sliderMax.value,
+        priceRangeMin:           priceRangeMin.value,
+        priceRangeMax:           priceRangeMax.value,
+        selectedOriginDetails:   selectedOriginDetails.value,
+        selectedDestinationDetails: selectedDestinationDetails.value,
+    });
 }
 
 async function Lowfaresearch() {
+    let loaderStartedAt = 0;
+    let searchResult = null;
     try {
         await finalizeSearchSession();
         showPricePanel.value = false;
         flights.value = [];
         totalFlights.value = 0;
+        showSearchResults.value = false;
+        loaderRunKey.value += 1;
+        loaderStartedAt = Date.now();
         loadging.value = true;
 
         const response = await axiosInstance.post("v2/search", form);
-
-        flights.value = response?.data?.flights ?? [];
-        totalFlights.value = flights.value.length;
-        searchLogId.value = response?.data?.search_log_id ?? null;
-        activeSearchAttemptId.value = response?.data?.booking_attempt_id ?? null;
-        catalogIdentifier.value = response?.data?.catalog_identifier ?? null;
-        selectedAirlines.value = [];
-        airlineSearch.value = '';
-        selectedStops.value = [];
-        selectedRefundTypes.value = [];
-        selectedLayovers.value = [];
-        layoverSearch.value = '';
-        selectedScheduleSegment.value = null;
-        startBookingTimer();
-        if (flights.value.length) searchCollapsed.value = true;
-
-        if (flights.value.length) {
-            const prices = flights.value.map(f => calcOutboundPriceRaw(f))
-            const minP = Math.floor(Math.min(...prices))
-            const maxP = Math.ceil(Math.max(...prices))
-            sliderMin.value = minP
-            sliderMax.value = maxP
-            priceRangeMin.value = minP
-            priceRangeMax.value = maxP
-        }
-
-        // Persist search state — survives navigation + hard refresh
-        searchStore.saveSearch({
-            form:                    { ...form },
-            flights:                 flights.value,
-            totalFlights:            totalFlights.value,
-            catalogIdentifier:       catalogIdentifier.value,
-            searchLogId:             searchLogId.value,
-            activeSearchAttemptId:   activeSearchAttemptId.value,
-            sliderMin:               sliderMin.value,
-            sliderMax:               sliderMax.value,
-            priceRangeMin:           priceRangeMin.value,
-            priceRangeMax:           priceRangeMax.value,
-            selectedOriginDetails:   selectedOriginDetails.value,
-            selectedDestinationDetails: selectedDestinationDetails.value,
-        })
-
-        await nextTick();
+        searchResult = response?.data ?? null;
     } catch (error) {
         console.log(error);
         Notification.showToast("e", error?.response?.data?.message ?? "Token generation failed.");
     } finally {
-        setTimeout(() => {
-            loadging.value = false;
-        }, 1000);
+        void finishSearchLoading(searchResult, loaderStartedAt);
     }
 }
 
@@ -966,6 +1234,8 @@ function swapLocations() {
     [selectedOriginDetails.value, selectedDestinationDetails.value] = [selectedDestinationDetails.value, selectedOriginDetails.value];
     [showOriginList.value, showDestinationList.value] = [showDestinationList.value, showOriginList.value];
     [filteredOriginAirports.value, filteredDestinationAirports.value] = [filteredDestinationAirports.value, filteredOriginAirports.value];
+    [lastOriginSelection.value, lastDestinationSelection.value] = [lastDestinationSelection.value, lastOriginSelection.value];
+    patchSavedFormAirports();
 }
 
 // Add this function to handle click
@@ -985,6 +1255,14 @@ const openReturnPicker = () => {
 </script>
 <template>
     <div class="search-page-layout">
+    <Transition name="search-loader-fade" @after-leave="onLoaderFadeAfterLeave">
+        <div v-show="loadging" class="search-cooking-overlay" aria-hidden="true">
+            <div :key="`${SEARCH_LOADER_TAG}-${loaderRunKey}`" class="search-cooking-loader-shell">
+                <SearchWingsLoader v-if="SEARCH_LOADER_TAG === 'wings'" id-prefix="search" />
+                <div v-else class="search-cooking-gif"></div>
+            </div>
+        </div>
+    </Transition>
 
     <!-- Compact search summary bar (visible after successful search) -->
     <div v-if="searchCollapsed" class="search-compact-bar">
@@ -995,7 +1273,12 @@ const openReturnPicker = () => {
                     <span class="compact-airport-code">{{ form.from }}</span>
                     <div class="compact-route-arrow">
                         <span class="compact-route-line"></span>
-                        <i class="bx bxs-plane compact-plane-icon"></i>
+                        <Plane
+                            class="compact-plane-icon compact-plane-icon--lucide"
+                            :size="14"
+                            :stroke-width="2"
+                            aria-hidden="true"
+                        />
                         <span v-if="form.Way === 2" class="compact-route-line compact-route-line--back"></span>
                     </div>
                     <span class="compact-airport-code">{{ form.to }}</span>
@@ -1010,7 +1293,12 @@ const openReturnPicker = () => {
             <div class="compact-divider-v"></div>
 
             <div class="compact-dates-block">
-                <i class="bx bx-calendar-alt compact-meta-icon"></i>
+                <CalendarDays
+                    class="compact-meta-icon compact-meta-icon--lucide"
+                    :size="15"
+                    :stroke-width="2"
+                    aria-hidden="true"
+                />
                 <div class="compact-dates-text">
                     <span class="compact-date-val">{{ formatCompactDate(form.dep_date) }}</span>
                     <template v-if="form.Way === 2 && form.arrival_date">
@@ -1023,7 +1311,13 @@ const openReturnPicker = () => {
             <div class="compact-divider-v"></div>
 
             <div class="compact-pax-block">
-                <i class="fa-regular fa-user compact-meta-icon"></i>
+                <component
+                    :is="totalTravellers > 1 ? Users : User"
+                    class="compact-meta-icon compact-meta-icon--lucide"
+                    :size="15"
+                    :stroke-width="2"
+                    aria-hidden="true"
+                />
                 <span>{{ totalTravellers }} Pax · {{ form.cabin_class }}</span>
             </div>
 
@@ -1063,7 +1357,15 @@ const openReturnPicker = () => {
         </div>
 
         <div class="compact-stats-strip">
-            <span><i class="bx bxs-plane"></i> {{ distinctAirlines.length }} Airlines</span>
+            <span>
+                <Globe
+                    class="compact-stats-lucide"
+                    :size="14"
+                    :stroke-width="2"
+                    aria-hidden="true"
+                />
+                {{ distinctAirlines.length }} Airlines
+            </span>
             <span class="compact-stats-dot">·</span>
             <span><i class="bx bx-git-branch"></i> {{ totalFlights }} Routes</span>
             <template v-if="flights.length > 0">
@@ -1072,7 +1374,7 @@ const openReturnPicker = () => {
             </template>
             <div class="compact-stats-spacer"></div>
             <span v-if="searchStore.isValid" class="compact-clear-btn" @click="clearAndReset">
-                Clear <span>✕</span>
+                Clear <span class="compact-clear-x">✕</span>
             </span>
         </div>
     </div>
@@ -1099,59 +1401,104 @@ const openReturnPicker = () => {
                         </div>
 
                         <div class="pax-panel-wrapper">
-                            <button class="search-pax-trigger" type="button" @click.stop="showPaxPanel = !showPaxPanel">
+                            <button class="search-pax-trigger" type="button" :class="{ open: showPaxPanel }" @click.stop="showCabinMenu = false; showPaxPanel = !showPaxPanel">
                                 <i class="fa-regular fa-user"></i>
                                 <span>PAX</span>
                                 <span>{{ paxSummary }}</span>
-                                <i class="fa-solid fa-angle-down"></i>
+                                <i class="fa-solid fa-angle-down search-pax-trigger-caret"></i>
                             </button>
 
+                            <Transition name="pax-popup">
                             <div v-if="showPaxPanel" class="search-pax-popup" @click.stop>
                                 <div class="popup-title">TRAVELLERS</div>
 
-                                <div class="popup-row">
-                                    <div>
-                                        <div class="row-name">Adults</div>
-                                        <div class="row-sub">12 years and above</div>
+                                <div class="popup-row pax-breakdown-row">
+                                    <div class="pax-row-left">
+                                        <i class="fa-solid fa-person pax-row-icon" aria-hidden="true"></i>
+                                        <div>
+                                            <div class="row-name">Adults</div>
+                                            <div class="row-sub">12 years &amp; above</div>
+                                        </div>
                                     </div>
-                                    <div class="input-group product-qty">
-                                        <button type="button" class="btn btn-light btn-number" @click="changePassenger('ADT', -1)">−</button>
-                                        <input type="text" name="adult" class="form-control input-number adult" :value="form.ADT" readonly>
-                                        <button type="button" class="btn btn-light btn-number" @click="changePassenger('ADT', 1)">+</button>
-                                    </div>
-                                </div>
-
-                                <div class="popup-row">
-                                    <div>
-                                        <div class="row-name">Children</div>
-                                        <div class="row-sub">Aged 2-11</div>
-                                    </div>
-                                    <div class="input-group product-qty">
-                                        <button type="button" class="btn btn-light btn-number" @click="changePassenger('CNN', -1)">−</button>
-                                        <input type="text" name="child" class="form-control input-number child" :value="form.CNN" readonly>
-                                        <button type="button" class="btn btn-light btn-number" @click="changePassenger('CNN', 1)">+</button>
+                                    <div class="pax-stepper">
+                                        <button type="button" class="pax-step-btn" :disabled="form.ADT <= 1" @click="changePassenger('ADT', -1)">−</button>
+                                        <span class="pax-step-val">{{ form.ADT }}</span>
+                                        <button type="button" class="pax-step-btn pax-step-btn--plus" :disabled="form.ADT >= 9" @click="changePassenger('ADT', 1)">+</button>
                                     </div>
                                 </div>
 
-                                <div class="popup-row">
-                                    <div>
-                                        <div class="row-name">Infants</div>
-                                        <div class="row-sub">Under 2 years</div>
+                                <div class="popup-row pax-breakdown-row">
+                                    <div class="pax-row-left">
+                                        <i class="fa-solid fa-child pax-row-icon" aria-hidden="true"></i>
+                                        <div>
+                                            <div class="row-name">Children</div>
+                                            <div class="row-sub">From 5 to under 12</div>
+                                        </div>
                                     </div>
-                                    <div class="input-group product-qty">
-                                        <button type="button" class="btn btn-light btn-number" @click="changePassenger('INF', -1)">−</button>
-                                        <input type="text" name="infant" class="form-control input-number infant" :value="form.INF" readonly>
-                                        <button type="button" class="btn btn-light btn-number" @click="changePassenger('INF', 1)">+</button>
+                                    <div class="pax-stepper">
+                                        <button type="button" class="pax-step-btn" :disabled="form.CNN <= 0" @click="changePassenger('CNN', -1)">−</button>
+                                        <span class="pax-step-val">{{ form.CNN }}</span>
+                                        <button type="button" class="pax-step-btn pax-step-btn--plus" :disabled="form.CNN >= 4" @click="changePassenger('CNN', 1)">+</button>
                                     </div>
                                 </div>
 
-                                <div class="popup-title cabin-class-title mb-2">CABIN CLASS</div>
-                                <div class="cabin-switcher">
-                                    <button type="button" :class="{ active: form.cabin_class === 'Economy' }" @click="form.cabin_class = 'Economy'">Economy</button>
-                                    <button type="button" :class="{ active: form.cabin_class === 'Business' }" @click="form.cabin_class = 'Business'">Business</button>
-                                    <button type="button" :class="{ active: form.cabin_class === 'First' }" @click="form.cabin_class = 'First'">First</button>
+                                <div class="popup-row pax-breakdown-row">
+                                    <div class="pax-row-left">
+                                        <i class="fa-solid fa-child-reaching pax-row-icon" aria-hidden="true"></i>
+                                        <div>
+                                            <div class="row-name">Kids</div>
+                                            <div class="row-sub">From 2 to under 5</div>
+                                        </div>
+                                    </div>
+                                    <div class="pax-stepper">
+                                        <button type="button" class="pax-step-btn" :disabled="form.KID <= 0" @click="changePassenger('KID', -1)">−</button>
+                                        <span class="pax-step-val">{{ form.KID }}</span>
+                                        <button type="button" class="pax-step-btn pax-step-btn--plus" :disabled="form.KID >= 4" @click="changePassenger('KID', 1)">+</button>
+                                    </div>
+                                </div>
+
+                                <div class="popup-row pax-breakdown-row">
+                                    <div class="pax-row-left">
+                                        <i class="fa-solid fa-baby pax-row-icon" aria-hidden="true"></i>
+                                        <div>
+                                            <div class="row-name">Infants</div>
+                                            <div class="row-sub">Under 2 years</div>
+                                        </div>
+                                    </div>
+                                    <div class="pax-stepper">
+                                        <button type="button" class="pax-step-btn" :disabled="form.INF <= 0" @click="changePassenger('INF', -1)">−</button>
+                                        <span class="pax-step-val">{{ form.INF }}</span>
+                                        <button type="button" class="pax-step-btn pax-step-btn--plus" :disabled="form.INF >= 4" @click="changePassenger('INF', 1)">+</button>
+                                    </div>
+                                </div>
+
+                                <div class="cabin-footer">
+                                    <div class="popup-title cabin-class-title">CABIN CLASS</div>
+                                    <div class="cabin-ok-row">
+                                        <div class="cabin-select-wrap" :class="{ open: showCabinMenu }">
+                                            <button type="button" class="cabin-select" @click.stop="toggleCabinMenu">
+                                                <i class="fa-solid fa-chair cabin-select-icon" aria-hidden="true"></i>
+                                                <span class="cabin-select-label">{{ form.cabin_class }}</span>
+                                                <i class="fa-solid fa-chevron-down cabin-select-caret" aria-hidden="true"></i>
+                                            </button>
+                                            <div v-if="showCabinMenu" class="cabin-select-menu" @click.stop>
+                                                <button
+                                                    v-for="cabin in cabinOptions"
+                                                    :key="cabin"
+                                                    type="button"
+                                                    class="cabin-select-option"
+                                                    :class="{ active: form.cabin_class === cabin }"
+                                                    @click="pickCabinClass(cabin)"
+                                                >
+                                                    {{ cabin }}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <button type="button" class="cabin-ok-btn" @click="closePaxPanel">OK</button>
+                                    </div>
                                 </div>
                             </div>
+                            </Transition>
                         </div>
                     </div>
 
@@ -1175,8 +1522,10 @@ const openReturnPicker = () => {
                                         <input id="origin_id" v-model="form.fromInput" name="origin_name" class="form-control origin_name"
                                         :class="{ 'has-value': form.from && !showOriginList}"
                                         @input="filterOriginAirports($event.target.value)"
-                                        @focus="onOriginFocus" autocomplete="off" />
-                                        <span v-if="form.from" @click="clearOrigin" class="clear-icon">✖</span>
+                                        @focus="onOriginFocus"
+                                        @keydown.enter="onOriginEnter"
+                                        autocomplete="off" />
+                                        <span v-if="form.from" @click.stop="clearOrigin" class="clear-icon">✖</span>
                                         <div v-if="showOriginList" id="origin_results" class="position-absolute w-100 mt-2" style="z-index: 1000; animation: fadeIn 0.3s ease-in-out">
                                             <SimpleBar style="max-height: 300px" class="search-results-simplebar">
                                                 <div v-for="airport in filteredOriginAirports" :key="airport.id" class="cursor-pointer border-bottom border-light" @click="selectOrigin(airport)">
@@ -1218,9 +1567,10 @@ const openReturnPicker = () => {
                                             :class="{ 'has-value': form.to && !showDestinationList }"
                                             @input="filterDestinationAirports($event.target.value)"
                                             @focus="onDestinationFocus"
+                                            @keydown.enter="onDestinationEnter"
                                             placeholder="To"
                                             autocomplete="off" />
-                                        <span v-if="form.to" @click="clearDestination" class="clear-icon">✖</span>
+                                        <span v-if="form.to" @click.stop="clearDestination" class="clear-icon">✖</span>
 
                                         <div v-if="showDestinationList" id="destination_results"
                                             class="position-absolute w-100 mt-2"
@@ -1281,7 +1631,7 @@ const openReturnPicker = () => {
                                             </div>
                                             <VueDatePicker
                                                 ref="datePickerRef"
-                                                :model-value="form.Way === 1 ? selectedDate.value : selectedDateRange.value"
+                                                :model-value="form.Way === 1 ? selectedDate : selectedDateRange"
                                                 @update:model-value="handleDateChange"
                                                 :enable-time-picker="false"
                                                 :format="formatDisplayDate"
@@ -1337,7 +1687,7 @@ const openReturnPicker = () => {
                                             </div>
                                             <VueDatePicker
                                                 ref="datePickerRef"
-                                                :model-value="form.Way === 1 ? selectedDate.value : selectedDateRange.value"
+                                                :model-value="form.Way === 1 ? selectedDate : selectedDateRange"
                                                 @update:model-value="handleDateChange"
                                                 :enable-time-picker="false"
                                                 :format="formatDisplayDate"
@@ -1385,6 +1735,7 @@ const openReturnPicker = () => {
                                             auto-apply
                                             :format="formatSelectedDate"
                                             @update:model-value="handleReturnDateChange"
+                                            :min-date="returnMinDate"
                                             :teleport="true"
                                             :auto-position="true"
                                             :dark="isDark"
@@ -1769,66 +2120,18 @@ const openReturnPicker = () => {
         <!-- left filter panel end -->
 
         <!-- result panel start -->
-        <div class="col-md-9 search-results-column">
+        <div
+            class="col-md-9 search-results-column"
+        >
             <div
                 class="search-results-scroll"
                 :class="{ 'is-scroll-hover': isResultsScrollHover }"
                 @mouseenter="isResultsScrollHover = true"
                 @mouseleave="isResultsScrollHover = false"
             >
-            <div class="row search-results-inner-row">
-                <!-- skeleton loader: shown while waiting for API -->
-                <template v-if="loadging">
-                    <div v-for="n in 5" :key="'sk-'+n" class="col-md-12 mb-3">
-                        <div class="card" style="border-radius:8px; overflow:hidden;">
-                            <div class="card-body p-3">
-                                <div class="row align-items-center">
-                                    <div class="col-md-2 col-3">
-                                        <div class="skeleton-box" style="width:50px;height:50px;border-radius:6px;"></div>
-                                        <div class="skeleton-box mt-2" style="width:80px;height:12px;border-radius:4px;"></div>
-                                    </div>
-                                    <div class="col-md-3 col-4">
-                                        <div class="skeleton-box" style="width:60px;height:18px;border-radius:4px;"></div>
-                                        <div class="skeleton-box mt-2" style="width:90px;height:12px;border-radius:4px;"></div>
-                                    </div>
-                                    <div class="col-md-3 col-3 text-center">
-                                        <div class="skeleton-box mx-auto" style="width:70px;height:12px;border-radius:4px;"></div>
-                                        <div class="skeleton-box mx-auto mt-2" style="width:40px;height:12px;border-radius:4px;"></div>
-                                    </div>
-                                    <div class="col-md-2 col-4">
-                                        <div class="skeleton-box" style="width:60px;height:18px;border-radius:4px;"></div>
-                                        <div class="skeleton-box mt-2" style="width:80px;height:12px;border-radius:4px;"></div>
-                                    </div>
-                                    <div class="col-md-2 col-4">
-                                        <div class="skeleton-box" style="width:100%;height:48px;border-radius:6px;"></div>
-                                    </div>
-                                </div>
-                                <hr class="my-2">
-                                <div class="row align-items-center">
-                                    <div class="col-md-2 col-3">
-                                        <div class="skeleton-box" style="width:50px;height:50px;border-radius:6px;"></div>
-                                        <div class="skeleton-box mt-2" style="width:80px;height:12px;border-radius:4px;"></div>
-                                    </div>
-                                    <div class="col-md-3 col-4">
-                                        <div class="skeleton-box" style="width:60px;height:18px;border-radius:4px;"></div>
-                                        <div class="skeleton-box mt-2" style="width:90px;height:12px;border-radius:4px;"></div>
-                                    </div>
-                                    <div class="col-md-3 col-3 text-center">
-                                        <div class="skeleton-box mx-auto" style="width:70px;height:12px;border-radius:4px;"></div>
-                                        <div class="skeleton-box mx-auto mt-2" style="width:40px;height:12px;border-radius:4px;"></div>
-                                    </div>
-                                    <div class="col-md-2 col-4">
-                                        <div class="skeleton-box" style="width:60px;height:18px;border-radius:4px;"></div>
-                                        <div class="skeleton-box mt-2" style="width:80px;height:12px;border-radius:4px;"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </template>
-
+            <div class="row search-results-inner-row" :class="{ 'search-results-reveal': showSearchResults }">
                 <div v-for="(flight, index) in filteredFlights" :key="index" class="col-md-12">
-                    <div class="card">
+                    <div class="card search-result-flight-card">
                         <div class="card-body">
                             <div class="d-flex align-items-stretch">
                                 <div class="flex-grow-1 min-w-0">
@@ -2057,11 +2360,19 @@ const openReturnPicker = () => {
                                 </div>
                                 <!-- price button: spans full height of both rows, centered -->
                                 <div class="price-cta-col d-flex align-items-center justify-content-center" style="width:190px;flex-shrink:0;padding:0 10px 0 22px;">
-                                    <button class="price-cta-btn w-100" data-bs-toggle="collapse"
-                                        :data-bs-target="`#flight-package-${index}`" :aria-controls="`flight-package-${index}`">
+                                    <button
+                                        class="price-cta-btn w-100"
+                                        :class="{ 'price-cta-btn--open': openFareFlightIndex === index }"
+                                        :aria-expanded="openFareFlightIndex === index"
+                                        @click="toggleFarePanel(index)"
+                                    >
                                         <div class="price-cta-btn__top">
                                             <span class="price-cta-btn__from-label">from</span>
-                                            <i class="fa-solid text-info fa-layer-group price-cta-btn__layers"></i>
+                                            <span
+                                                class="price-cta-btn__source"
+                                                :class="flight.outbound.content_source === 'NDC' ? 'price-cta-btn__source--ndc' : 'price-cta-btn__source--gds'"
+                                                :title="flight.outbound.content_source === 'NDC' ? 'NDC fare' : 'GDS fare'"
+                                            >{{ flight.outbound.content_source || 'GDS' }}</span>
                                         </div>
                                         <div class="price-cta-btn__amount">
                                             <span class="price-cta-btn__currency">BDT</span>
@@ -2079,7 +2390,7 @@ const openReturnPicker = () => {
                                             <span class="price-cta-btn__cabin">{{ flight.outbound.cabin || 'Economy' }}</span>
                                             <span class="price-cta-btn__hint text-info"><i class="fa-solid fa-tags me-1"></i>View fares</span>
                                         </div>
-                                        <div class="price-cta-btn__chevron">
+                                        <div class="price-cta-btn__chevron" :class="{ 'price-cta-btn__chevron--open': openFareFlightIndex === index }">
                                             <i class="fa-solid fa-chevron-down"></i>
                                         </div>
                                     </button>
@@ -3011,135 +3322,27 @@ const openReturnPicker = () => {
                     <!-- ./ end flight details2 -->
 
 
-                    <!-- Price Details -->
-                    <div :id="`flight-package-${index}`" class="accordion-collapse collapse m-0"
-                                    aria-labelledby="flush-headingpackage" data-bs-parent="#accordionFlushExample"
-                                    style="">
-                                    <div class="accordion-body">
-                                        <div class="card">
-                                            <div class="card-body">
-                                                <div class="brand-cards-scroll">
-                                                    <template v-if="flight.outbound.brand_options && flight.outbound.brand_options.length">
-                                                        <div v-for="(brand, bIdx) in flight.outbound.brand_options" :key="bIdx"
-                                                            class="brand-card-item">
-                                                            <div class="fare-card" style="height:100%;" :class="['fare-card--eco','fare-card--flex','fare-card--first'][bIdx] ?? 'fare-card--eco'">
-                                                                <!-- Header -->
-                                                                <div class="fare-card__header fare-card__header--slim">
-                                                                    <div class="fare-card__header-row">
-                                                                        <div class="fare-card__title-block">
-                                                                            <span class="fare-card__title">{{ brand.label }}</span>
-                                                                            <span class="fare-card__meta-inline">
-                                                                                <span>Class {{ brand.class_of_service }}</span>
-                                                                                <span v-if="brand.fare_basis_code">{{ brand.fare_basis_code }}</span>
-                                                                                <span v-if="brand.is_default_brand" class="fare-card__meta-tag">Default</span>
-                                                                            </span>
-                                                                        </div>
-                                                                        <label
-                                                                            v-if="brandHasAgentPricing(brand)"
-                                                                            class="fare-card__price-toggle fare-card__price-toggle--sm"
-                                                                            :title="isDualPrice(index, bIdx) ? 'Show selling price only' : 'Show selling and payable'"
-                                                                        >
-                                                                            <input
-                                                                                type="checkbox"
-                                                                                class="fare-card__price-toggle-input"
-                                                                                :checked="isDualPrice(index, bIdx)"
-                                                                                @change="toggleDualPrice(index, bIdx)"
-                                                                            />
-                                                                            <span class="fare-card__price-toggle-ui" aria-hidden="true"></span>
-                                                                        </label>
-                                                                    </div>
-                                                                    <div class="fare-card__header-row fare-card__header-row--price">
-                                                                        <template v-if="!isDualPrice(index, bIdx)">
-                                                                            <div class="fare-card__price-single">
-                                                                                <span class="fare-card__currency">{{ brand.currency }}</span>
-                                                                                <span class="fare-card__amount">{{ formatFareAmount(brandGrossFare(brand)) }}</span>
-                                                                            </div>
-                                                                        </template>
-                                                                        <template v-else>
-                                                                            <div class="fare-card__price-stack">
-                                                                                <div class="fare-card__price-line">
-                                                                                    <span class="fare-card__price-label">Selling</span>
-                                                                                    <span class="fare-card__price-value">
-                                                                                        <span class="fare-card__price-currency">{{ brand.currency }}</span>
-                                                                                        {{ formatFareAmount(brandGrossFare(brand)) }}
-                                                                                    </span>
-                                                                                </div>
-                                                                                <button
-                                                                                    type="button"
-                                                                                    class="fare-card__price-line fare-card__price-line--payable"
-                                                                                    :class="{ 'fare-card__price-line--interactive': canShowPayableBreakdown(brand) }"
-                                                                                    :title="canShowPayableBreakdown(brand) ? 'View payable breakdown' : undefined"
-                                                                                    @click.stop="openPayableBreakdown(brand)"
-                                                                                >
-                                                                                    <span class="fare-card__price-label">
-                                                                                        Payable
-                                                                                        <i
-                                                                                            v-if="canShowPayableBreakdown(brand)"
-                                                                                            class="fa-solid fa-circle-info fare-card__price-hint"
-                                                                                            aria-hidden="true"
-                                                                                        ></i>
-                                                                                    </span>
-                                                                                    <span class="fare-card__price-value">
-                                                                                        <span class="fare-card__price-currency">{{ brand.currency }}</span>
-                                                                                        {{ formatFareAmount(brandTotalPayable(brand)) }}
-                                                                                    </span>
-                                                                                </button>
-                                                                            </div>
-                                                                        </template>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="fare-card__divider"></div>
-                                                                <!-- Features -->
-                                                                <div class="fare-card__features">
-                                                                    <div v-for="(attr, aIdx) in brand.attributes" :key="aIdx" class="fare-card__feature">
-                                                                        <span class="fare-card__status-dot" :class="{
-                                                                            'fare-card__status-dot--ok':  attr.inclusion === 'Included',
-                                                                            'fare-card__status-dot--fee': attr.inclusion === 'Chargeable',
-                                                                            'fare-card__status-dot--no':  attr.inclusion === 'Not Offered',
-                                                                        }">
-                                                                            <i :class="{
-                                                                                'fa-solid fa-check':       attr.inclusion === 'Included',
-                                                                                'fa-solid fa-dollar-sign': attr.inclusion === 'Chargeable',
-                                                                                'fa-solid fa-xmark':       attr.inclusion === 'Not Offered',
-                                                                            }"></i>
-                                                                        </span>
-                                                                        <span class="fare-card__cat-icon">
-                                                                            <i :class="classIcon(attr.classification)"></i>
-                                                                        </span>
-                                                                        <span class="fare-card__feature-text" :class="{
-                                                                            'fare-card__feature-text--fee': attr.inclusion === 'Chargeable',
-                                                                            'fare-card__feature-text--no':  attr.inclusion === 'Not Offered',
-                                                                        }">
-                                                                            {{ classLabel(attr.classification) }} ({{ attr.inclusion }})
-                                                                        </span>
-                                                                    </div>
-                                                                </div>
-                                                                <!-- Book button -->
-                                                                <div class="fare-card__footer">
-                                                                    <button class="fare-card__book-btn" @click="selectFare(flight, brand)">
-                                                                        Select fare <i class="fa-solid fa-arrow-right ms-1"></i>
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </template>
-                                                    <div v-else class="col-12 text-center text-muted py-3">No brand options available.</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                    <!-- ./end Price Details -->
-
                 </div>
 
             </div>
-
             </div>
+
+
+
+
         </div>
         <!-- result panel end -->
     </div>
     </div>
+
+    <BrandedFaresPanel
+        :visible="openFareFlightIndex !== null"
+        :flight="openFareFlight"
+        :form="form"
+        @close="closeFarePanel"
+        @select="onBrandedFareSelect"
+        @payable-breakdown="openPayableBreakdown"
+    />
 
     <FlightPricePanel
         :visible="showPricePanel"
@@ -3159,25 +3362,24 @@ const openReturnPicker = () => {
         @close="closePayableBreakdown"
     />
 
-    <AppModal
-        :is-open="loadging"
-        :show-header="false"
-        :close-on-backdrop="false"
-        size="md"
-        max-width="440px"
-    >
-        <div class="search-cooking-modal">
-            <div class="search-cooking-animation" aria-hidden="true"></div>
-            <p class="search-cooking-text mb-0">Cooking..</p>
-        </div>
-    </AppModal>
-
 </template>
 
 <style>
-.page-content:has(.search-page-layout) {
+// Lock shell height so only filter/results panes scroll (no body/page-wrapper bar)
+body:has(.search-page-layout) {
+    overflow: hidden;
+}
+
+.page-wrapper:has(.search-page-layout) {
+    padding-bottom: 0;
     overflow: hidden;
     height: calc(100dvh - 60px);
+    box-sizing: border-box;
+}
+
+.page-content:has(.search-page-layout) {
+    overflow: hidden;
+    height: 100%;
     box-sizing: border-box;
     background: #eef1f7 !important;
 }
@@ -3262,18 +3464,18 @@ const openReturnPicker = () => {
 .search-filter-scroll,
 .search-results-scroll {
     scrollbar-gutter: stable;
-    scrollbar-width: thin;
+    scrollbar-width: auto;
     scrollbar-color: transparent transparent;
 }
 
 .search-filter-scroll.is-scroll-hover,
 .search-results-scroll.is-scroll-hover {
-    scrollbar-color: rgba(168, 156, 210, 0.75) transparent;
+    scrollbar-color: rgba(168, 156, 210, 0.85) transparent;
 }
 
 .search-filter-scroll::-webkit-scrollbar,
 .search-results-scroll::-webkit-scrollbar {
-    width: 6px;
+    width: 10px;
 }
 
 .search-filter-scroll::-webkit-scrollbar-track,
@@ -3285,7 +3487,7 @@ const openReturnPicker = () => {
 .search-results-scroll::-webkit-scrollbar-thumb {
     background: transparent;
     border-radius: 999px;
-    border: 2px solid transparent;
+    border: 1px solid transparent;
     background-clip: padding-box;
 }
 
@@ -3293,9 +3495,9 @@ const openReturnPicker = () => {
 .search-results-scroll.is-scroll-hover::-webkit-scrollbar-thumb {
     background: linear-gradient(
         180deg,
-        rgba(147, 168, 235, 0.72) 0%,
-        rgba(186, 168, 228, 0.78) 52%,
-        rgba(130, 210, 205, 0.72) 100%
+        rgba(147, 168, 235, 0.8) 0%,
+        rgba(186, 168, 228, 0.85) 52%,
+        rgba(130, 210, 205, 0.8) 100%
     );
     border-color: transparent;
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
@@ -3503,18 +3705,6 @@ const openReturnPicker = () => {
     color: #fff;
 }
 
-/* Skeleton shimmer */
-.skeleton-box {
-    background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.4s infinite;
-    display: block;
-}
-@keyframes shimmer {
-    0%   { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
-}
-
 /* Leading */
 
 .fcolor{
@@ -3675,27 +3865,27 @@ const openReturnPicker = () => {
 /* ── Price CTA button ──────────────────────────────────────── */
 .price-cta-btn {
     width: 100%;
-    border: none;
+    border: 1px solid rgba(124, 58, 237, 0.14);
     border-radius: 14px;
-    /* UNDO-V1: background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 55%, #1fa8a4 80%, #05b7b2 100%); */
-    background: linear-gradient(160deg, #05b7b2 0%, #1a9eb5 28%, #4e54c8 58%, #7c3aed 100%);
-    color: #fff;
+    /* BLUE (firoza) → SKY (purple), light pastel — same as compact/header */
+    background: linear-gradient(160deg, #d2f4f2 0%, #d6eef9 35%, #e2e0f8 70%, #ebe4fc 100%);
+    color: #0f172a;
     padding: 13px 15px 11px;
     cursor: pointer;
     position: relative;
     overflow: hidden;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
-    box-shadow: 0 4px 20px rgba(78,84,200,0.25), 0 2px 8px rgba(5,183,178,0.15);
+    box-shadow: none;
     text-align: left;
     display: block;
 }
 .price-cta-btn:hover {
     transform: translateY(-3px);
-    box-shadow: 0 8px 28px rgba(78,84,200,0.30), 0 4px 14px rgba(5,183,178,0.22);
+    box-shadow: 0 8px 24px rgba(124, 58, 237, 0.16), 0 4px 12px rgba(5, 183, 178, 0.12);
 }
 .price-cta-btn:active {
     transform: translateY(1px);
-    box-shadow: 0 2px 8px rgba(5,183,178,0.15);
+    box-shadow: none;
 }
 .price-cta-btn__top {
     display: flex;
@@ -3708,12 +3898,33 @@ const openReturnPicker = () => {
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 1.2px;
-    color: rgba(255,255,255,0.65);
+    color: #64748b;
 }
-.price-cta-btn__layers {
-    font-size: 11px;
-    color: rgba(255,255,255,0.55);
-    opacity: 1;
+.price-cta-btn__source {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 20px;
+    line-height: 1;
+    height: 18px;
+    white-space: nowrap;
+    border: 1px solid transparent;
+    box-sizing: border-box;
+}
+.price-cta-btn__source--gds {
+    background: rgba(78, 84, 200, 0.12);
+    border-color: rgba(78, 84, 200, 0.28);
+    color: #4c63d2;
+}
+.price-cta-btn__source--ndc {
+    background: rgba(245, 158, 11, 0.16);
+    border-color: rgba(245, 158, 11, 0.35);
+    color: #b45309;
 }
 .price-cta-btn__amount {
     display: flex;
@@ -3725,7 +3936,7 @@ const openReturnPicker = () => {
 .price-cta-btn__currency {
     font-size: 11px;
     font-weight: 600;
-    color: rgba(255,255,255,0.72);
+    color: #64748b;
     letter-spacing: 0.5px;
 }
 .price-cta-btn__number {
@@ -3735,16 +3946,8 @@ const openReturnPicker = () => {
     vertical-align: bottom;
     font-size: 22px;
     font-weight: 900;
-    color: #ffffff;
+    color: #0f172a;
     letter-spacing: -0.8px;
-}
-.price-rolling-sep {
-    display: inline-block;
-    font-size: 15px;
-    font-weight: 700;
-    opacity: 0.7;
-    align-self: flex-end;
-    margin-bottom: 0.08em;
 }
 .price-slip-wrap {
     display: inline-block;
@@ -3761,9 +3964,17 @@ const openReturnPicker = () => {
     from { transform: translateY(-110%); opacity: 0; }
     to   { transform: translateY(0);     opacity: 1; }
 }
+.price-rolling-sep {
+    display: inline-block;
+    font-size: 15px;
+    font-weight: 700;
+    opacity: 0.7;
+    align-self: flex-end;
+    margin-bottom: 0.08em;
+}
 .price-cta-btn__divider {
     height: 1px;
-    background: linear-gradient(90deg, rgba(255,255,255,0.22) 0%, rgba(5,183,178,0.35) 100%);
+    background: linear-gradient(90deg, rgba(5, 183, 178, 0.35) 0%, rgba(124, 58, 237, 0.28) 100%);
     margin: 9px 0 7px;
 }
 .price-cta-btn__cta {
@@ -3775,15 +3986,15 @@ const openReturnPicker = () => {
 .price-cta-btn__cabin {
     font-size: 11px;
     font-weight: 600;
-    color: rgba(255,255,255,0.88);
+    color: #475569;
     letter-spacing: 0.3px;
     white-space: nowrap;
 }
 .price-cta-btn__hint {
     font-size: 10px;
     font-weight: 600;
-    color: rgba(255,255,255,0.92);
-    background: rgba(5,183,178,0.28);
+    color: #0f766e !important;
+    background: rgba(5, 183, 178, 0.14);
     padding: 2px 8px;
     border-radius: 20px;
     white-space: nowrap;
@@ -3793,325 +4004,58 @@ const openReturnPicker = () => {
     text-align: center;
     margin-top: 6px;
     font-size: 11px;
-    color: rgba(255,255,255,0.55);
+    color: #94a3b8;
     animation: chevronBounce 1.4s ease-in-out infinite;
 }
 @keyframes chevronBounce {
     0%, 100% { transform: translateY(0); }
     50%       { transform: translateY(3px); }
 }
-
-/* ── Fare tier cards ───────────────────────────────────────── */
-.fare-card {
-    border-radius: 12px;
-    overflow: hidden;
-    border: 1px solid #e4e9f2;
-    background: #fff;
-    display: flex;
-    flex-direction: column;
-    transition: box-shadow 0.2s, transform 0.2s;
+.price-cta-btn--open {
+    box-shadow: none;
+    border-color: rgba(124, 58, 237, 0.28);
 }
-.fare-card:hover {
-    box-shadow: 0 8px 28px rgba(0,0,0,0.09);
-    transform: translateY(-2px);
+.price-cta-btn--open:hover {
+    box-shadow: 0 8px 24px rgba(124, 58, 237, 0.16), 0 4px 12px rgba(5, 183, 178, 0.12);
 }
-.fare-card--eco  { border-top: 4px solid #16B4A1; }
-.fare-card--flex { border-top: 4px solid #3B79F2; }
-.fare-card--first{ border-top: 4px solid #875ae9; }
-
-.fare-card__header {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 10px 12px 8px;
-    background: #f9fafb;
-    border-bottom: 1px solid #eef0f6;
+.price-cta-btn__chevron--open {
+    animation: none;
 }
-.fare-card__header--slim {
-    gap: 4px;
-}
-.fare-card__header-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    min-height: 0;
-}
-.fare-card__header-row--price {
-    justify-content: flex-end;
-    padding-top: 1px;
-}
-.fare-card__title-block {
-    min-width: 0;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-.fare-card__title {
-    font-size: 14px;
-    font-weight: 700;
-    color: #1a2436;
-    line-height: 1.2;
-    letter-spacing: -0.15px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.fare-card__meta-inline {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0;
-    font-size: 10px;
-    font-weight: 500;
-    color: #7b879f;
-    line-height: 1.2;
-}
-.fare-card__meta-inline > span:not(:last-child)::after {
-    content: '·';
-    margin: 0 5px;
-    color: #b8c0d0;
-    font-weight: 700;
-}
-.fare-card__meta-tag {
-    color: #5c6778;
-    font-weight: 600;
-}
-.fare-card__price-toggle {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    cursor: pointer;
-    margin: 0;
-    flex-shrink: 0;
-}
-.fare-card__price-toggle--sm {
-    min-height: 20px;
-    min-width: 32px;
-}
-.fare-card__price-toggle-input {
-    position: absolute;
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-.fare-card__price-toggle-ui {
-    width: 28px;
-    height: 16px;
-    border-radius: 999px;
-    background: #c5cae9;
-    position: relative;
-    transition: background 0.2s ease;
-}
-.fare-card__price-toggle-ui::after {
-    content: '';
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: #fff;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
-    transition: transform 0.2s ease;
-}
-.fare-card__price-toggle-input:checked + .fare-card__price-toggle-ui {
-    background: #3d5afe;
-}
-.fare-card__price-toggle-input:checked + .fare-card__price-toggle-ui::after {
-    transform: translateX(12px);
-}
-.fare-card__price-toggle-input:focus-visible + .fare-card__price-toggle-ui {
-    outline: 2px solid #3d5afe;
-    outline-offset: 1px;
-}
-.fare-card__price-single {
-    display: flex;
-    align-items: baseline;
-    gap: 5px;
-    font-variant-numeric: tabular-nums;
-}
-.fare-card__price-stack {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    width: 100%;
-    max-width: 100%;
-}
-.fare-card__price-line {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 3px 0;
-    font-variant-numeric: tabular-nums;
-    border-bottom: 1px solid #eef0f5;
-}
-.fare-card__price-line:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
-}
-.fare-card__price-line--payable {
-    padding-top: 2px;
-}
-.fare-card__price-line--payable .fare-card__price-label,
-.fare-card__price-line--payable .fare-card__price-value {
-    color: #1565c0;
-}
-.fare-card__price-line--interactive {
-    width: 100%;
-    border: none;
-    background: transparent;
-    text-align: inherit;
-    cursor: pointer;
-    transition: background 0.15s ease;
-}
-.fare-card__price-line--interactive:hover,
-.fare-card__price-line--interactive:focus-visible {
-    background: rgba(21, 101, 192, 0.08);
-    outline: none;
-}
-.fare-card__price-hint {
-    margin-left: 4px;
-    font-size: 9px;
-    opacity: 0.75;
-}
-.fare-card__price-label {
-    font-size: 10px;
-    font-weight: 600;
-    color: #8b97ad;
-    white-space: nowrap;
-}
-.fare-card__price-value {
-    font-size: 13px;
-    font-weight: 800;
-    color: #1a2436;
-    letter-spacing: -0.25px;
-    text-align: right;
-    white-space: nowrap;
-}
-.fare-card__price-line--payable .fare-card__price-value {
-    font-size: 15px;
-}
-.fare-card__price-currency {
-    font-size: 10px;
-    font-weight: 700;
-    margin-right: 3px;
-    opacity: 0.9;
-}
-.fare-card__currency {
-    font-size: 11px;
-    font-weight: 700;
-    color: #8b97ad;
-}
-.fare-card__amount {
-    font-size: 20px;
-    font-weight: 800;
-    color: #1a2436;
-    letter-spacing: -0.5px;
-}
-.fare-card__divider {
-    height: 1px;
-    background: #eef0f6;
-    margin: 0;
-}
-/* Brand card scroll layout */
-.brand-cards-scroll {
-    display: flex;
-    gap: 12px;
-    overflow-x: auto;
-    padding-bottom: 6px;
-    align-items: stretch;
-}
-.brand-cards-scroll::-webkit-scrollbar {
-    height: 4px;
-}
-.brand-cards-scroll::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 2px;
-}
-.brand-cards-scroll::-webkit-scrollbar-thumb {
-    background: #c5cae9;
-    border-radius: 2px;
-}
-.brand-card-item {
-    flex: 1 0 260px;
-    min-width: 260px;
-    max-width: 380px;
-    display: flex;
-    flex-direction: column;
+.price-cta-btn__chevron--open i {
+    transform: rotate(180deg);
+    transition: transform 0.3s ease;
 }
 
-.fare-card__features {
-    padding: 10px 18px;
-    flex: 1;
+html[data-bs-theme="dark"] .price-cta-btn {
+    background: linear-gradient(160deg, #1a2f35 0%, #1a2838 35%, #24204a 70%, #2a1f3c 100%);
+    border-color: rgba(124, 58, 237, 0.28);
+    color: #e2e8f0;
+    box-shadow: none;
 }
-.fare-card__feature {
-    display: flex;
-    align-items: center;
-    padding: 7px 0;
-    font-size: 13px;
-    border-bottom: 1px solid #f4f5fa;
+html[data-bs-theme="dark"] .price-cta-btn:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
-.fare-card__feature:last-child { border-bottom: none; }
-
-.fare-card__status-dot {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 9px;
-    flex-shrink: 0;
-    margin-right: 9px;
+html[data-bs-theme="dark"] .price-cta-btn__from-label,
+html[data-bs-theme="dark"] .price-cta-btn__currency,
+html[data-bs-theme="dark"] .price-cta-btn__cabin,
+html[data-bs-theme="dark"] .price-cta-btn__chevron {
+    color: #94a3b8;
 }
-.fare-card__status-dot--ok  { background: #e6f7f4; color: #0d9b6e; }
-.fare-card__status-dot--fee { background: #fff5e6; color: #d97706; }
-.fare-card__status-dot--no  { background: #f3f3f3; color: #b0b8c8; }
-
-.fare-card__cat-icon {
-    width: 20px;
-    font-size: 12px;
-    color: #9aa3b8;
-    flex-shrink: 0;
-    margin-right: 8px;
-    text-align: center;
+html[data-bs-theme="dark"] .price-cta-btn__number {
+    color: #f1f5f9;
 }
-.fare-card__feature-text {
-    color: #3a4563;
-    flex: 1;
+html[data-bs-theme="dark"] .price-cta-btn__source--gds {
+    background: rgba(129, 140, 248, 0.18);
+    border-color: rgba(129, 140, 248, 0.35);
+    color: #a5b4fc;
 }
-.fare-card__feature-text--fee { color: #d97706; }
-.fare-card__feature-text--no  { color: #b0b8c8; }
-
-.fare-card__footer {
-    padding: 14px 18px 18px;
-    display: flex;
-    justify-content: flex-end;
+html[data-bs-theme="dark"] .price-cta-btn__hint {
+    color: #5eead4 !important;
+    background: rgba(5, 183, 178, 0.2);
 }
-.fare-card__book-btn {
-    display: inline-flex;
-    align-items: center;
-    padding: 9px 20px;
-    text-align: center;
-    border: none;
-    outline: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 600;
-    text-decoration: none;
-    cursor: pointer;
-    transition: background 0.18s, box-shadow 0.18s;
-    letter-spacing: 0.2px;
+html[data-bs-theme="dark"] .price-cta-btn__divider {
+    background: linear-gradient(90deg, rgba(5, 183, 178, 0.35) 0%, rgba(167, 139, 250, 0.35) 100%);
 }
-.fare-card--eco  .fare-card__book-btn { background: #16B4A1; color: #fff; }
-.fare-card--eco  .fare-card__book-btn:hover { background: #0e9b8b; box-shadow: 0 4px 12px rgba(22,180,161,0.35); }
-.fare-card--flex .fare-card__book-btn { background: #3B79F2; color: #fff; }
-.fare-card--flex .fare-card__book-btn:hover { background: #2963d8; box-shadow: 0 4px 12px rgba(59,121,242,0.35); }
-.fare-card--first .fare-card__book-btn { background: #875ae9; color: #fff; }
-.fare-card--first .fare-card__book-btn:hover { background: #6e42cc; box-shadow: 0 4px 12px rgba(135,90,233,0.35); }
 
 @keyframes fadeIn {
     from { opacity: 0; }
@@ -4200,6 +4144,50 @@ const openReturnPicker = () => {
 .date-picker-wrapper .dp__input_icon {
     display: none;
 }
+
+/* Blocked calendar days: strikethrough so unavailable dates read as cut */
+.dp__cell_inner.dp__cell_disabled {
+    text-decoration: line-through;
+    text-decoration-thickness: 1.5px;
+    opacity: 0.45;
+    color: #9ca3af;
+}
+
+html[data-bs-theme="dark"] .dp__cell_inner.dp__cell_disabled {
+    color: rgba(255, 255, 255, 0.35);
+    opacity: 0.55;
+}
+
+/* Dual calendar: keep selected From–To range soft blue when reopened */
+.dp__menu {
+    --dp-primary-color: #5b9cf5;
+    --dp-primary-text-color: #fff;
+    --dp-range-between-dates-background-color: rgba(91, 156, 245, 0.22);
+    --dp-range-between-dates-text-color: #1e3a5f;
+    --dp-range-between-border-color: rgba(91, 156, 245, 0.22);
+    --dp-highlight-color: rgba(91, 156, 245, 0.18);
+}
+
+html[data-bs-theme="dark"] .dp__menu {
+    --dp-primary-color: #6ba8f7;
+    --dp-primary-text-color: #0b1220;
+    --dp-range-between-dates-background-color: rgba(107, 168, 247, 0.28);
+    --dp-range-between-dates-text-color: #e8f1ff;
+    --dp-range-between-border-color: rgba(107, 168, 247, 0.28);
+    --dp-highlight-color: rgba(107, 168, 247, 0.2);
+}
+
+.dp__cell_inner.dp__range_start,
+.dp__cell_inner.dp__range_end,
+.dp__cell_inner.dp__active_date {
+    background: var(--dp-primary-color) !important;
+    color: var(--dp-primary-text-color) !important;
+}
+
+.dp__cell_inner.dp__range_between {
+    background: var(--dp-range-between-dates-background-color) !important;
+    color: var(--dp-range-between-dates-text-color) !important;
+}
 </style>
 
 
@@ -4283,6 +4271,7 @@ const openReturnPicker = () => {
     height: 100%;
     min-height: 0;
     overflow: hidden;
+    position: relative;
 }
 
 .search-compact-bar {
@@ -4310,6 +4299,11 @@ const openReturnPicker = () => {
     flex-direction: column;
     min-height: 0;
     max-height: 100%;
+}
+
+.search-results-column {
+    position: relative;
+    overflow: hidden;
 }
 
 .search-filter-scroll,
@@ -4408,6 +4402,32 @@ const openReturnPicker = () => {
     padding: 14px;
     box-shadow: 0 18px 36px rgba(26, 34, 67, 0.2);
     z-index: 1200;
+    transform-origin: top right;
+}
+
+.search-pax-trigger-caret {
+    transition: transform 0.22s ease;
+}
+
+.search-pax-trigger.open .search-pax-trigger-caret {
+    transform: rotate(180deg);
+}
+
+.pax-popup-enter-active,
+.pax-popup-leave-active {
+    transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.pax-popup-enter-from,
+.pax-popup-leave-to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+}
+
+.pax-popup-enter-to,
+.pax-popup-leave-from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
 }
 
 .popup-title {
@@ -4419,7 +4439,133 @@ const openReturnPicker = () => {
 }
 
 .cabin-class-title {
-    margin-top: 14px;
+    margin-top: 0;
+    margin-bottom: 8px;
+}
+
+.cabin-footer {
+    margin-top: 12px;
+    padding-top: 4px;
+}
+
+.cabin-ok-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cabin-select-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+}
+
+.cabin-select-icon {
+    font-size: 12px;
+    color: #6b7cff;
+    flex-shrink: 0;
+}
+
+.cabin-select-caret {
+    margin-left: auto;
+    font-size: 10px;
+    color: #8b91a7;
+    flex-shrink: 0;
+    transition: transform 0.15s ease;
+}
+
+.cabin-select-wrap.open .cabin-select-caret {
+    transform: rotate(180deg);
+}
+
+.cabin-select {
+    width: 100%;
+    height: 42px;
+    padding: 0 12px;
+    border: 1px solid #e4e7f2;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #ffffff 0%, #f7f8fc 100%);
+    color: #2f3447;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(26, 34, 67, 0.04);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    text-align: left;
+}
+
+.cabin-select-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cabin-select:hover {
+    border-color: #c9d0ef;
+}
+
+.cabin-select-wrap.open .cabin-select {
+    border-color: #6b7cff;
+    box-shadow: 0 0 0 3px rgba(107, 124, 255, 0.18);
+}
+
+.cabin-select-menu {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: calc(100% + 8px);
+    z-index: 1300;
+    padding: 6px;
+    border-radius: 14px;
+    border: 1px solid #e4e7f2;
+    background: #fff;
+    box-shadow: 0 14px 28px rgba(26, 34, 67, 0.16);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    animation: cabinMenuIn 0.14s ease;
+}
+
+@keyframes cabinMenuIn {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.cabin-select-option {
+    border: 0;
+    background: transparent;
+    text-align: left;
+    padding: 10px 12px;
+    border-radius: 10px;
+    color: #2f3447;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+
+.cabin-select-option:hover {
+    background: #eef2ff;
+    color: #3b4fd4;
+}
+
+.cabin-select-option.active {
+    background: linear-gradient(90deg, #2b4fd8 0%, #8c2cc7 100%);
+    color: #fff;
 }
 
 .popup-row {
@@ -4427,8 +4573,27 @@ const openReturnPicker = () => {
     justify-content: space-between;
     gap: 10px;
     align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px dashed #e7e7ef;
+    padding: 10px 0;
+    border-bottom: 1px solid #edf0f5;
+}
+
+.pax-breakdown-row:has(+ .cabin-footer) {
+    border-bottom: none;
+}
+
+.pax-row-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.pax-row-icon {
+    width: 22px;
+    text-align: center;
+    font-size: 18px;
+    color: #9aa3b5;
+    flex-shrink: 0;
 }
 
 .row-name {
@@ -4442,49 +4607,65 @@ const openReturnPicker = () => {
     color: #7f869e;
 }
 
-.search-pax-popup .product-qty {
-    min-width: 102px;
-    max-width: 102px;
-    border: 1px solid #ececf2;
-    border-radius: 999px;
-    overflow: hidden;
-}
-
-.search-pax-popup .btn-number {
-    border: 0;
-    width: 34px;
-    background: #f7f7fb;
-    color: #4e556b;
-}
-
-.search-pax-popup .input-number {
-    border: 0;
-    box-shadow: none;
-    text-align: center;
-    font-weight: 600;
-    color: #30364a;
-}
-
-.cabin-switcher {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+.pax-stepper {
+    display: inline-flex;
+    align-items: center;
     gap: 10px;
-    margin-top: 8px;
+    flex-shrink: 0;
 }
 
-.cabin-switcher button {
+.pax-step-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
     border: 0;
-    border-radius: 12px;
-    background: #ececf2;
-    color: #4e556b;
-    height: 32px;
-    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #d6e8ff;
+    color: #2b6fd6;
+    font-size: 16px;
     font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
 }
 
-.cabin-switcher button.active {
+.pax-step-btn--plus {
+    background: #2b6fd6;
+    color: #fff;
+}
+
+.pax-step-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.pax-step-val {
+    min-width: 18px;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 700;
+    color: #2f3447;
+}
+
+.cabin-ok-btn {
+    min-width: 64px;
+    height: 40px;
+    padding: 0 18px;
+    border: 0;
+    border-radius: 10px;
     background: linear-gradient(90deg, #2b4fd8 0%, #8c2cc7 100%);
     color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.cabin-ok-btn:hover {
+    filter: brightness(1.05);
 }
 
 .search-panel-bottom {
@@ -4640,38 +4821,60 @@ const openReturnPicker = () => {
     display: none !important;
 }
 
-.app-modal-dialog:has(.search-cooking-modal) .app-modal-content {
-    background: #ffffff;
-    border: 1px solid #e8e4f8;
-}
-
-.search-cooking-modal {
+.search-cooking-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 50;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-width: 400px;
-    min-height: 360px;
-    padding: 2.5rem 2rem 2rem;
-    text-align: center;
-    background: #ffffff;
+    overflow: visible;
+    background: rgba(15, 23, 42, 0.145);
+    backdrop-filter: blur(2px);
+    pointer-events: auto;
 }
 
-.search-cooking-animation {
-    width: 240px;
-    height: 240px;
+html[data-bs-theme="dark"] .search-cooking-overlay {
+    background: rgba(0, 0, 0, 0.113);
+}
+
+.search-loader-fade-enter-active,
+.search-loader-fade-leave-active {
+    transition: opacity 0.22s ease;
+}
+
+.search-loader-fade-enter-from,
+.search-loader-fade-leave-to {
+    opacity: 0;
+}
+
+.search-results-reveal {
+    animation: search-results-in 0.18s ease-out;
+}
+
+@keyframes search-results-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.search-cooking-loader-shell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.search-cooking-gif {
+    width: 340px;
+    height: 340px;
     background: url('/theme/appimages/pp.gif') no-repeat center;
     background-size: contain;
-    border: 1px solid #8adfdb;
-    border-radius: 50%;
-}
-
-.search-cooking-text {
-    margin-top: 1.25rem;
-    color: #875ae9;
-    font-size: 1.25rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
+    filter: drop-shadow(0 10px 28px rgba(0, 0, 0, 0.28));
 }
 
 </style>
