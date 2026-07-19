@@ -1,16 +1,15 @@
 <?php
-
 namespace App\Http\Controllers\Admin\AirlineLogo;
 
-use App\Models\User;
-use Illuminate\Http\Request;
-use App\Services\HashIdService;
-use Yajra\DataTables\DataTables;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\File;
-use App\Models\AirlineLogo\AirlineLogo;
 use App\Http\Controllers\BaseController;
+use App\Models\AirlineLogo\AirlineLogo;
+use App\Models\User;
+use App\Services\HashIdService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use Yajra\DataTables\DataTables;
 
 class AirlineLogoController extends BaseController
 {
@@ -28,7 +27,7 @@ class AirlineLogoController extends BaseController
     public function index2()
     {
         $data = DB::table('airline_logos as al')
-            ->selectRaw('al.id as idd,al.created_at,al.updated_at,f_username(al.updated_by) updated_by,f_username(al.created_by) created_by,al.name as a_name,al.code as code,al.logo_path as logo,al.airline_business_type as busi_type,al.country_name as country')->get();
+            ->selectRaw('al.id as idd, al.created_at, al.updated_at,al.name as a_name,al.code as code, al.logo_path as logo,al.airline_business_type as busi_type,al.country_name as country')->get();
 
         return $data;
     }
@@ -49,29 +48,27 @@ class AirlineLogoController extends BaseController
             return $this->ErrorResponse($validator->errors()->all());
         }
 
-        $airline = new AirlineLogo;
-        $airline->name = $request->name;
-        $airline->code = $request->code;
-        $airline->country_name = $request->country;
+        $airline                        = new AirlineLogo;
+        $airline->name                  = $request->name;
+        $airline->code                  = $request->code;
+        $airline->country_name          = $request->country;
         $airline->airline_business_type = $request->airlines_business_type;
 
         if ($request->hasFile('airline_picture')) {
 
             $request_image = $request->file('airline_picture');
-            $image_name = $request->code . '.' . $request_image->extension();
+            $image_name    = $request->code . '.' . $request_image->extension();
 
             $image_path = public_path('/uploads/airlines/');
-            if (!File::exists($image_path)) {
+            if (! File::exists($image_path)) {
                 File::makeDirectory($image_path, 0777, true);
             }
-
 
             $request_image->move($image_path, $image_name);
             $airline->logo_path = 'uploads/airlines/' . $image_name;
         } else {
             $profilePicturePath = null;
         }
-
 
         $airline->created_by = $auth->id;
         $airline->save();
@@ -84,12 +81,12 @@ class AirlineLogoController extends BaseController
     public function edit(Request $request)
     {
         $id = hashid_decode(HashIdService::AIRLINE_LOGO, (string) $request->id);
-        if (!$id) {
+        if (! $id) {
             return $this->ErrorResponse('Airline not found.', [], 404);
         }
 
         $airline = AirlineLogo::find($id);
-        if (!$airline) {
+        if (! $airline) {
             return $this->ErrorResponse('Airline not found.', [], 404);
         }
 
@@ -99,27 +96,27 @@ class AirlineLogoController extends BaseController
     public function update(Request $request)
     {
         $auth = Auth::user();
-        $id = hashid_decode(HashIdService::AIRLINE_LOGO, (string) $request->airlines_id);
-        if (!$id) {
+        $id   = hashid_decode(HashIdService::AIRLINE_LOGO, (string) $request->airlines_id);
+        if (! $id) {
             return $this->ErrorResponse('Airline not found.', [], 404);
         }
 
         $airline = AirlineLogo::where('id', $id)->first();
-        if (!$airline) {
+        if (! $airline) {
             return $this->ErrorResponse('Airline not found.', [], 404);
         }
-        $airline->name = $request->name ?? $airline->name;
-        $airline->code = $request->code ?? $airline->code;
-        $airline->country_name = $request->country ?? $airline->country_name;
+        $airline->name                  = $request->name ?? $airline->name;
+        $airline->code                  = $request->code ?? $airline->code;
+        $airline->country_name          = $request->country ?? $airline->country_name;
         $airline->airline_business_type = $request->airlines_business_type ?? $airline->airline_business_type;
 
         if ($request->hasFile('airline_picture')) {
 
             $request_image = $request->file('airline_picture');
-            $image_name = $request->code . '.' . $request_image->extension();
+            $image_name    = $request->code . '.' . $request_image->extension();
 
             $image_path = public_path('/uploads/airlines/');
-            if (!File::exists($image_path)) {
+            if (! File::exists($image_path)) {
                 File::makeDirectory($image_path, 0777, true);
             }
 
@@ -133,7 +130,6 @@ class AirlineLogoController extends BaseController
             $profilePicturePath = null;
         }
 
-
         $airline->updated_by = $auth->id;
         $airline->save();
 
@@ -144,12 +140,12 @@ class AirlineLogoController extends BaseController
     {
         $id = hashid_decode(HashIdService::AIRLINE_LOGO, (string) $request->id);
 
-        if (!$id) {
+        if (! $id) {
             return $this->ErrorResponse('Airline not found.', [], 404);
         }
 
         $aircraft = AirlineLogo::where('id', $id)->first();
-        if (!$aircraft) {
+        if (! $aircraft) {
             return $this->ErrorResponse('Airline not found.', [], 404);
         }
 
