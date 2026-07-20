@@ -17,31 +17,85 @@ class GroupController extends BaseController
     public function index()
     {
 
+        // $data = DB::table('group_requests')
+        //     ->where('group_requests.agent_code', Auth::user()->agent->agent_code)
+        //     ->leftJoin('users as u', 'u.id', '=', 'group_requests.created_by')
+        //     ->leftJoin('users as u2', 'u2.id', '=', 'group_requests.updated_by')
+        //     ->leftJoin('agents as a', 'a.agent_code', '=', 'group_requests.agent_code')
+        //     ->leftJoin('group_request_segments', 'group_requests.id', '=', 'group_request_segments.group_request_id')
+        //     ->select('group_requests.*', 'u.name as createdby', 'u2.name as updatedby','a.name as agent_name',
+        //         DB::raw('f_username(NULLIF(group_requests.assigned_to, "")) as assigned_to_kam'),
+        //         DB::raw('GROUP_CONCAT(
+        //         CONCAT_WS("- ",
+        //             group_request_segments.origin,
+        //             group_request_segments.destination
+        //         )
+        //         ORDER BY group_request_segments.segment_order
+        //         SEPARATOR " | "
+        //     ) as segments_info'),
+        //         DB::raw('GROUP_CONCAT(
+        //         CONCAT_WS("- ",
+        //             DATE_FORMAT(group_request_segments.departure_date, "%d-%b-%Y %l:%i %p")
+        //         )
+        //         ORDER BY group_request_segments.segment_order
+        //         SEPARATOR " | "
+        //     ) as segments_date')
+        //     )
+        //     ->groupBy('group_requests.id');
+
         $data = DB::table('group_requests')
             ->where('group_requests.agent_code', Auth::user()->agent->agent_code)
             ->leftJoin('users as u', 'u.id', '=', 'group_requests.created_by')
             ->leftJoin('users as u2', 'u2.id', '=', 'group_requests.updated_by')
             ->leftJoin('agents as a', 'a.agent_code', '=', 'group_requests.agent_code')
             ->leftJoin('group_request_segments', 'group_requests.id', '=', 'group_request_segments.group_request_id')
-            ->select('group_requests.*', 'u.name as createdby', 'u2.name as updatedby','a.name as agent_name',
+            ->select(
+                'group_requests.id',
+                'group_requests.group_code',
+                'group_requests.created_at',
+                'group_requests.request_type',
+                'group_requests.origin',
+                'group_requests.destination',
+                'group_requests.return_origin',
+                'group_requests.return_destination',
+                'group_requests.departure_date',
+                'group_requests.assigned_to',
+                'group_requests.created_by',
+                'group_requests.updated_by',
+                // Add all other columns you need explicitly
+                'u.name as createdby',
+                'u2.name as updatedby',
+                'a.name as agent_name',
                 DB::raw('f_username(NULLIF(group_requests.assigned_to, "")) as assigned_to_kam'),
                 DB::raw('GROUP_CONCAT(
-                CONCAT_WS("- ",
-                    group_request_segments.origin,
-                    group_request_segments.destination
-                )
-                ORDER BY group_request_segments.segment_order
-                SEPARATOR " | "
-            ) as segments_info'),
-                DB::raw('GROUP_CONCAT(
-                CONCAT_WS("- ",
-                    DATE_FORMAT(group_request_segments.departure_date, "%d-%b-%Y %l:%i %p")
-                )
-                ORDER BY group_request_segments.segment_order
-                SEPARATOR " | "
-            ) as segments_date')
+            CONCAT_WS("- ",
+                group_request_segments.origin,
+                group_request_segments.destination
             )
-            ->groupBy('group_requests.id');
+            ORDER BY group_request_segments.segment_order
+            SEPARATOR " | "
+        ) as segments_info'),
+                DB::raw('GROUP_CONCAT(
+            CONCAT_WS("- ",
+                DATE_FORMAT(group_request_segments.departure_date, "%d-%b-%Y %l:%i %p")
+            )
+            ORDER BY group_request_segments.segment_order
+            SEPARATOR " | "
+        ) as segments_date')
+            )
+            ->groupBy('group_requests.id')
+            ->groupBy('group_requests.request_type')
+            ->groupBy('group_requests.origin')
+            ->groupBy('group_requests.destination')
+            ->groupBy('group_requests.return_origin')
+            ->groupBy('group_requests.return_destination')
+            ->groupBy('group_requests.departure_date')
+            ->groupBy('group_requests.assigned_to')
+            ->groupBy('group_requests.created_by')
+            ->groupBy('group_requests.updated_by')
+            ->groupBy('u.name')
+            ->groupBy('u2.name')
+            ->groupBy('a.name');
 
         return DataTables::of($data)
             ->addIndexColumn()
@@ -64,8 +118,7 @@ class GroupController extends BaseController
                 $route = "<i class='fa-regular fa-calendar me-1' style='font-size: 0.65rem;'></i> " . $row->departure_date;
 
                 return $route;
-            })
-            ->make(true);
+            })->make(true);
     }
 
     /**
@@ -213,7 +266,7 @@ class GroupController extends BaseController
             return $this->ErrorResponse('Group not found.', 'Group not found.');
         }
 
-        $group->status = 'Request Cancelled';
+        $group->status  = 'Request Cancelled';
         $group->remarks = $request->note;
         $group->save();
 
