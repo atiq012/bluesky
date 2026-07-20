@@ -8,7 +8,33 @@ import { useTpV2Workbench } from '../../composables/useTpV2Workbench'
 import { buildSelectionJson } from '../../utils/bookingSelectionJson'
 import { completePriceAttempt } from '../../utils/bookingAttemptSession'
 import { formatFareAmount } from '../../utils/dynamicRulePricingDisplay'
-import AgencyPricingBreakdown from '../common/AgencyPricingBreakdown.vue'
+import LoadingSpinner from '../common/LoadingSpinner.vue'
+
+// Scroll-reveal: fade+slide each section in as it enters the panel's scroll viewport (one-shot)
+const prefersReducedMotion = typeof window !== 'undefined'
+    && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+const vReveal = {
+    mounted(el) {
+        if (prefersReducedMotion || typeof IntersectionObserver === 'undefined') {
+            el.classList.add('fp-reveal-in')
+            return
+        }
+        el.classList.add('fp-reveal')
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('fp-reveal-in')
+                    observer.unobserve(entry.target)
+                }
+            })
+        }, { root: el.closest('.fp-body'), threshold: 0.12, rootMargin: '0px 0px -6% 0px' })
+        observer.observe(el)
+        el.__revealObserver = observer
+    },
+    unmounted(el) {
+        el.__revealObserver?.disconnect()
+    },
+}
 
 const props = defineProps({
     visible:           { type: Boolean, default: false },
@@ -56,7 +82,6 @@ const fareRulesSegments = ref([])
 const fareInfoTab = ref('breakdown')
 
 const dynamicPricing = computed(() => priceData.value?.dynamic_pricing ?? null)
-const hasDynamicPricing = computed(() => !!dynamicPricing.value?.rule_applied)
 
 watch(
     [() => props.visible, () => props.selectedBrand],
@@ -344,6 +369,7 @@ async function goBackToSearch() {
 }
 
 
+
 function formatTime(date, time) {
     if (!time) return ''
     const ts = new Date(`${date}T${time}`)
@@ -394,31 +420,69 @@ const inclusionIcon = (inc) => {
     if (inc === 'Chargeable')  return 'fa-solid fa-dollar-sign'
     return 'fa-solid fa-xmark'
 }
+// Providers send classification as either spaced ("Priority CheckIn") or
+// concatenated ("PriorityCheckIn") strings — normalize before lookup so both match.
+const normClass = (c) => String(c || '').replace(/[^a-z]/gi, '').toLowerCase()
+
 const CLASSIFICATION_LABEL = {
-    Refund:         'Refund',
-    Rebooking:      'Rebooking',
-    CheckedBag:     'Checked Baggage',
-    CarryOn:        'Carry-on',
-    WiFi:           'Wi-Fi',
-    Meals:          'Meals',
-    SeatAssignment: 'Seat Selection',
+    refund:                'Refund',
+    rebooking:             'Rebooking',
+    checkedbag:            'Checked Baggage',
+    carryon:               'Carry-on',
+    wifi:                  'Wi-Fi',
+    meals:                 'Meals',
+    seatassignment:        'Seat Selection',
+    mileageaccrual:        'Mileage Accrual',
+    upgrade:               'Upgrade',
+    upgrades:              'Upgrades',
+    loungeaccess:          'Lounge Access',
+    premiumseat:           'Premium Seat',
+    inflightentertainment: 'In-Flight Entertainment',
+    prioritycheckin:       'Priority Check-in',
+    priorityboarding:      'Priority Boarding',
+    prioritybaggage:       'Priority Baggage',
 }
 const CLASSIFICATION_ICON = {
-    Refund:              'fa-solid fa-rotate-left',
-    Rebooking:           'fa-solid fa-calendar-check',
-    CheckedBag:          'fa-solid fa-suitcase-rolling',
-    CarryOn:             'fa-solid fa-suitcase',
-    WiFi:                'fa-solid fa-wifi',
-    Meals:               'fa-solid fa-utensils',
-    SeatAssignment:      'fa-solid fa-chair',
-    'Priority CheckIn':  'fa-solid fa-person-walking-arrow-right',
-    'In Flight Entertainment': 'fa-solid fa-tv',
-    'Lounge Access':     'fa-solid fa-couch',
-    'Mileage Accrual':   'fa-solid fa-coins',
-    Upgrade:             'fa-solid fa-arrow-up',
+    refund:                'fa-solid fa-rotate-left',
+    rebooking:             'fa-solid fa-calendar-check',
+    checkedbag:            'fa-solid fa-suitcase-rolling',
+    carryon:               'fa-solid fa-suitcase',
+    wifi:                  'fa-solid fa-wifi',
+    meals:                 'fa-solid fa-utensils',
+    seatassignment:        'fa-solid fa-chair',
+    mileageaccrual:        'fa-solid fa-coins',
+    upgrade:               'fa-solid fa-arrow-up',
+    upgrades:              'fa-solid fa-arrow-up',
+    loungeaccess:          'fa-solid fa-couch',
+    premiumseat:           'fa-solid fa-star',
+    inflightentertainment: 'fa-solid fa-tv',
+    prioritycheckin:       'fa-solid fa-person-walking-arrow-right',
+    priorityboarding:      'fa-solid fa-door-open',
+    prioritybaggage:       'fa-solid fa-box',
 }
-const classificationIcon = (cls) => CLASSIFICATION_ICON[cls] ?? 'fa-solid fa-circle-question'
-const classLabel = (cls) => CLASSIFICATION_LABEL[cls] ?? cls
+const classificationIcon = (cls) => CLASSIFICATION_ICON[normClass(cls)] ?? 'fa-solid fa-circle-question'
+const classLabel = (cls) => CLASSIFICATION_LABEL[normClass(cls)] ?? cls
+
+// Icon color is per feature type (not inclusion status) so each amenity stays recognizable at a glance
+const CLASSIFICATION_COLOR_SLUG = {
+    refund:                'refund',
+    rebooking:             'rebooking',
+    checkedbag:            'checked-bag',
+    carryon:               'carry-on',
+    wifi:                  'wifi',
+    meals:                 'meals',
+    seatassignment:        'seat',
+    mileageaccrual:        'mileage',
+    upgrade:               'upgrade',
+    upgrades:              'upgrade',
+    loungeaccess:          'lounge',
+    premiumseat:           'premium-seat',
+    inflightentertainment: 'entertainment',
+    prioritycheckin:       'priority',
+    priorityboarding:      'priority-boarding',
+    prioritybaggage:       'priority-baggage',
+}
+const classColorSlug = (cls) => CLASSIFICATION_COLOR_SLUG[normClass(cls)] ?? 'default'
 
 const INCLUSION_ORDER = { Included: 0, Chargeable: 1, 'Not Offered': 2 }
 function sortedBrandAttributes(brand) {
@@ -428,8 +492,6 @@ function sortedBrandAttributes(brand) {
     )
 }
 
-const agencyPricingLineCount = computed(() => dynamicPricing.value?.pricing_breakdown?.length ?? 0)
-
 const agencyTotalPayable = computed(() =>
     Number(dynamicPricing.value?.total_payable ?? priceData.value?.total_price ?? 0)
 )
@@ -437,6 +499,8 @@ const agencyTotalPayable = computed(() =>
 const footerGrossFare = computed(() =>
     Number(priceData.value?.gross_fare ?? priceData.value?.gross_payment ?? priceData.value?.total_price ?? 0)
 )
+
+const payableExpanded = ref(false)
 
 const DEFAULT_AIRLINE_LOGO = '/uploads/airlines/default.svg'
 
@@ -554,7 +618,7 @@ function onHeaderLogoError(e) {
                     <template v-else-if="priceData">
 
                         <!-- Price Status Banner -->
-                        <div :class="['fp-status-banner', priceChanged ? 'fp-status-banner--warn' : 'fp-status-banner--ok']">
+                        <div v-reveal :class="['fp-status-banner', priceChanged ? 'fp-status-banner--warn' : 'fp-status-banner--ok']">
                             <i :class="priceChanged ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-circle-check'"></i>
                             <span v-if="priceChanged">
                                 Price updated by Travelport. Please review before proceeding.
@@ -562,10 +626,12 @@ function onHeaderLogoError(e) {
                             <span v-else>Price confirmed — same as displayed fare.</span>
                         </div>
 
-                        <!-- Flight Segments -->
+                        <!-- S1: Flight Segments -->
+                        <div class="fp-group">
                         <div
                             v-for="(product, pi) in priceData.products"
                             :key="pi"
+                            v-reveal
                             class="fp-section"
                             :class="product.direction === 'inbound' ? 'fp-section--inbound' : 'fp-section--outbound'"
                         >
@@ -630,23 +696,17 @@ function onHeaderLogoError(e) {
                                 </div>
                             </div>
                         </div>
+                        </div>
 
-                        <!-- Brand & Attributes -->
-                        <div v-if="priceData.brand" class="fp-section">
+                        <!-- S2: Fare Brand -->
+                        <div v-if="priceData.brand" v-reveal class="fp-section fp-group">
                             <div class="fp-section-label">
                                 <i class="fa-solid fa-tags me-2"></i>Fare Brand
+                                <span v-if="priceData.brand.tier" class="fp-brand-header-tier">| Tier {{ priceData.brand.tier }}</span>
+                                <span class="fp-brand-header-name ms-auto">{{ priceData.brand.name }}</span>
                             </div>
+                            <hr class="fp-section-divider">
                             <div class="fp-brand-card">
-                                <div class="fp-brand-top">
-                                    <img v-if="priceData.brand.image_url" :src="priceData.brand.image_url" class="fp-brand-img" alt="">
-                                    <div>
-                                        <div class="fp-brand-name">{{ priceData.brand.name }}</div>
-                                        <div class="fp-brand-meta">
-                                            <span class="fp-badge fp-badge--tier">Tier {{ priceData.brand.tier }}</span>
-                                            <span class="fp-badge fp-badge--code">{{ priceData.brand.code }}</span>
-                                        </div>
-                                    </div>
-                                </div>
                                 <div class="fp-attrs">
                                     <div
                                         v-for="(attr, aIdx) in sortedBrandAttributes(priceData.brand)"
@@ -656,22 +716,11 @@ function onHeaderLogoError(e) {
                                         <span class="fp-attr-part">
                                             <span
                                                 class="fp-attr-cat"
-                                                :class="{
-                                                    'fp-attr-cat--ok':  attr.inclusion === 'Included',
-                                                    'fp-attr-cat--fee': attr.inclusion === 'Chargeable',
-                                                    'fp-attr-cat--no':  attr.inclusion === 'Not Offered',
-                                                }"
+                                                :class="'fp-attr-cat--' + classColorSlug(attr.classification)"
                                             >
                                                 <i :class="classificationIcon(attr.classification)"></i>
                                             </span>
-                                            <span
-                                                class="fp-attr-text"
-                                                :class="{
-                                                    'fp-attr-text--ok':  attr.inclusion === 'Included',
-                                                    'fp-attr-text--fee': attr.inclusion === 'Chargeable',
-                                                    'fp-attr-text--no':  attr.inclusion === 'Not Offered',
-                                                }"
-                                            >{{ classLabel(attr.classification) }}</span>
+                                            <span class="fp-attr-text">{{ classLabel(attr.classification) }}</span>
                                         </span>
                                         <span class="fp-attr-part fp-attr-part--status">
                                             <span
@@ -698,8 +747,8 @@ function onHeaderLogoError(e) {
                             </div>
                         </div>
 
-                        <!-- Fare Breakdown / Fare Rules — shadcn in-cell tab style -->
-                        <div class="fp-section fp-fare-tabs-section">
+                        <!-- S3: Fare Breakdown / Fare Rules — shadcn in-cell tab style -->
+                        <div v-reveal class="fp-section fp-fare-tabs-section fp-group">
                             <div class="fp-fare-tabs-scroll">
                                 <div class="fp-fare-tabs" role="tablist">
                                     <button
@@ -767,7 +816,7 @@ function onHeaderLogoError(e) {
                                     </div>
 
                                     <details class="fp-tax-details" v-if="bd.taxes?.length">
-                                        <summary class="fp-tax-summary">View tax breakdown ({{ bd.taxes.length }} items)</summary>
+                                        <summary class="fp-tax-summary">View tax breakdown ({{ bd.taxes.length }} items) <i class="fa-solid fa-chevron-down fp-tax-summary__chevron"></i></summary>
                                         <div class="fp-tax-table">
                                             <div v-for="tax in bd.taxes" :key="tax.code" class="fp-tax-row">
                                                 <span class="fp-tax-code">{{ tax.code }}</span>
@@ -780,15 +829,15 @@ function onHeaderLogoError(e) {
 
                                 <div class="fp-gross-total">
                                     <div class="fp-gross-row">
-                                        <span>Base Fare</span>
+                                        <span><i class="fa-solid fa-ticket fp-gross-row__ico"></i>Base Fare</span>
                                         <span>{{ priceData.currency }} {{ priceData.base_fare.toLocaleString() }}</span>
                                     </div>
                                     <div class="fp-gross-row">
-                                        <span>Total Taxes</span>
+                                        <span><i class="fa-solid fa-landmark fp-gross-row__ico"></i>Total Taxes</span>
                                         <span>{{ priceData.currency }} {{ priceData.total_taxes.toLocaleString() }}</span>
                                     </div>
                                     <div class="fp-gross-row fp-gross-row--total">
-                                        <span>Gross Fare</span>
+                                        <span><i class="fa-solid fa-sack-dollar fp-gross-row__ico"></i>Gross Fare</span>
                                         <span>{{ priceData.currency }} {{ formatFareAmount(priceData.gross_fare ?? priceData.total_price) }}</span>
                                     </div>
                                 </div>
@@ -925,14 +974,15 @@ function onHeaderLogoError(e) {
                             </div>
                         </div>
 
-                        <!-- Penalties -->
-                        <div v-if="priceData.penalties?.change || priceData.penalties?.cancel" class="fp-section">
+                        <!-- S4: Penalties + Fare Validity -->
+                        <div class="fp-group">
+                        <div v-if="priceData.penalties?.change || priceData.penalties?.cancel" v-reveal class="fp-section">
                             <div class="fp-section-label">
                                 <i class="fa-solid fa-scale-balanced me-2"></i>Penalties
                             </div>
                             <div class="fp-penalties">
                                 <div v-if="priceData.penalties.change" class="fp-penalty-row fp-penalty--change">
-                                    <i class="fa-solid fa-calendar-check"></i>
+                                    <span class="fp-tile-ico fp-tile-ico--change" aria-hidden="true"><i class="fa-solid fa-calendar-check"></i></span>
                                     <div>
                                         <div class="fp-penalty-title">Change Fee</div>
                                         <div class="fp-penalty-meta">{{ priceData.penalties.change.applies_to?.replace('Per','Per ') }}</div>
@@ -943,7 +993,7 @@ function onHeaderLogoError(e) {
                                     </span>
                                 </div>
                                 <div v-if="priceData.penalties.cancel" class="fp-penalty-row fp-penalty--cancel">
-                                    <i class="fa-solid fa-ban"></i>
+                                    <span class="fp-tile-ico fp-tile-ico--cancel" aria-hidden="true"><i class="fa-solid fa-ban"></i></span>
                                     <div>
                                         <div class="fp-penalty-title">Cancellation Fee</div>
                                         <div class="fp-penalty-meta">{{ priceData.penalties.cancel.applies_to?.replace('Per','Per ') }}</div>
@@ -957,7 +1007,7 @@ function onHeaderLogoError(e) {
                         </div>
 
                         <!-- Restrictions -->
-                        <div v-if="priceData.restrictions?.length" class="fp-section">
+                        <div v-if="priceData.restrictions?.length" v-reveal class="fp-section">
                             <div class="fp-section-label">
                                 <i class="fa-solid fa-circle-info me-2"></i>Fare Restrictions
                             </div>
@@ -967,56 +1017,34 @@ function onHeaderLogoError(e) {
                         </div>
 
                         <!-- Deadlines -->
-                        <div class="fp-section">
+                        <div v-reveal class="fp-section">
+                            <div class="fp-section-label">
+                                <i class="fa-solid fa-calendar-day me-2"></i>Fare Validity
+                                <span v-if="priceData.validating_airline" class="fp-badge fp-badge--airline ms-auto">
+                                    <i class="fa-solid fa-plane-departure"></i> {{ priceData.validating_airline }}
+                                </span>
+                            </div>
                             <div class="fp-deadlines">
-                                <div v-if="priceData.payment_time_limit" class="fp-deadline-row">
-                                    <i class="fa-regular fa-clock text-danger"></i>
+                                <div v-if="priceData.payment_time_limit" class="fp-deadline-row fp-deadline--payment">
+                                    <span class="fp-tile-ico fp-tile-ico--payment" aria-hidden="true"><i class="fa-regular fa-clock"></i></span>
                                     <div>
                                         <div class="fp-deadline-label">Payment Deadline</div>
-                                        <div class="fp-deadline-val text-danger fw-bold">
+                                        <div class="fp-deadline-val fw-bold">
                                             {{ formatDeadline(priceData.payment_time_limit) }}
                                         </div>
                                     </div>
                                 </div>
-                                <div v-if="priceData.expiry_date" class="fp-deadline-row">
-                                    <i class="fa-regular fa-hourglass text-warning"></i>
+                                <div v-if="priceData.expiry_date" class="fp-deadline-row fp-deadline--expiry">
+                                    <span class="fp-tile-ico fp-tile-ico--expiry" aria-hidden="true"><i class="fa-regular fa-hourglass"></i></span>
                                     <div>
                                         <div class="fp-deadline-label">Fare Expires</div>
-                                        <div class="fp-deadline-val text-warning fw-bold">
+                                        <div class="fp-deadline-val fw-bold">
                                             {{ formatDeadline(priceData.expiry_date) }}
                                         </div>
                                     </div>
                                 </div>
-                                <div v-if="priceData.validating_airline" class="fp-deadline-row">
-                                    <i class="fa-solid fa-plane-departure text-info"></i>
-                                    <div>
-                                        <div class="fp-deadline-label">Validating Airline</div>
-                                        <div class="fp-deadline-val fw-bold">{{ priceData.validating_airline }}</div>
-                                    </div>
-                                </div>
                             </div>
                         </div>
-
-                        <div v-if="hasDynamicPricing" class="fp-section fp-dynamic-pricing">
-                            <div class="fp-section-label">
-                                <i class="fa-solid fa-calculator me-2"></i>Agency Pricing
-                            </div>
-                            <div class="fp-gross-total">
-                                <div class="fp-gross-row fp-gross-row--totals">
-                                    <span>Total Payable</span>
-                                    <span>{{ priceData.currency }} {{ formatFareAmount(agencyTotalPayable) }}</span>
-                                </div>
-                                <details v-if="agencyPricingLineCount" class="fp-tax-details">
-                                    <summary class="fp-tax-summary">
-                                        View agency pricing breakdown ({{ agencyPricingLineCount }} items)
-                                    </summary>
-                                    <AgencyPricingBreakdown
-                                        :pricing="dynamicPricing"
-                                        :currency="priceData.currency"
-                                        :gross-payment="priceData.gross_payment ?? priceData.total_price"
-                                    />
-                                </details>
-                            </div>
                         </div>
 
                     </template>
@@ -1025,28 +1053,39 @@ function onHeaderLogoError(e) {
                 <!-- Footer CTA — tall sticky bar: payable + gross + book -->
                 <div v-if="priceData && !loading" class="fp-footer">
                     <div class="fp-footer-prices">
-                        <div class="fp-footer-price-row fp-footer-price-row--payable">
+                        <button
+                            type="button"
+                            class="fp-footer-price-row fp-footer-price-row--payable fp-footer-price-row--toggle"
+                            :aria-expanded="payableExpanded"
+                            aria-label="Toggle total payable"
+                            @click="payableExpanded = !payableExpanded"
+                        >
                             <div class="fp-footer-price-meta">
                                 <span class="fp-footer-ico fp-footer-ico--payable" aria-hidden="true">
                                     <i class="fa-solid fa-receipt"></i>
                                 </span>
                                 <span class="fp-footer-price-label">Gross Fare</span>
                             </div>
-                            <div class="fp-footer-price-value">
-                                <span class="fp-footer-currency">{{ priceData.currency }}</span>
-                                <span class="fp-footer-amount">{{ formatFareAmount(footerGrossFare) }}</span>
-                            </div>
-                        </div>
-                        <div class="fp-footer-price-row fp-footer-price-row--gross">
-                            <div class="fp-footer-price-meta">
-                                <span class="fp-footer-ico fp-footer-ico--gross" aria-hidden="true">
-                                    <i class="fa-solid fa-wallet"></i>
-                                </span>
-                                <span class="fp-footer-price-label">Total Payable</span>
-                            </div>
-                            <div class="fp-footer-price-value">
-                                <span class="fp-footer-currency">{{ priceData.currency }}</span>
-                                <span class="fp-footer-amount-gross">{{ formatFareAmount(agencyTotalPayable) }}</span>
+                            <span class="fp-footer-currency">{{ priceData.currency }}</span>
+                            <span class="fp-footer-amount">{{ formatFareAmount(footerGrossFare) }}</span>
+                            <i
+                                class="fa-solid fa-chevron-down fp-footer-row-chevron"
+                                :class="{ 'fp-footer-row-chevron--open': payableExpanded }"
+                                aria-hidden="true"
+                            ></i>
+                        </button>
+                        <div class="fp-footer-payable-collapse" :class="{ 'fp-footer-payable-collapse--open': payableExpanded }">
+                            <div class="fp-footer-payable-inner">
+                                <div class="fp-footer-price-row fp-footer-price-row--gross">
+                                    <div class="fp-footer-price-meta">
+                                        <span class="fp-footer-ico fp-footer-ico--gross" aria-hidden="true">
+                                            <i class="fa-solid fa-wallet"></i>
+                                        </span>
+                                        <span class="fp-footer-price-label">Total Payable</span>
+                                    </div>
+                                    <span class="fp-footer-currency">{{ priceData.currency }}</span>
+                                    <span class="fp-footer-amount-gross">{{ formatFareAmount(agencyTotalPayable) }}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1080,12 +1119,12 @@ function onHeaderLogoError(e) {
                             :disabled="isInitiating"
                         >
                             <template v-if="isInitiating">
-                                <i class="fa-solid fa-spinner fa-spin"></i>
+                                <LoadingSpinner :inline="true" size="sm" class="text-white" />
                                 <span class="fp-book-btn__text">Processing...</span>
                             </template>
                             <template v-else>
                                 <i class="fa-solid fa-plane-departure fp-book-btn__lead"></i>
-                                <span class="fp-book-btn__text">Proceed to Booking</span>
+                                <span class="fp-book-btn__text">Proceed Booking</span>
                                 <i class="fa-solid fa-arrow-right fp-book-btn__arrow"></i>
                             </template>
                         </button>
@@ -1132,7 +1171,7 @@ function onHeaderLogoError(e) {
     align-items: center;
     gap: 12px;
     padding: 12px 16px;
-    /* Bluesky logo hues, very light tint */
+    /* Bluesky logo hues, very light tint — BLUE (firoza) → SKY (purple) */
     background: linear-gradient(90deg, #d2f4f2 0%, #d6eef9 35%, #e2e0f8 70%, #ebe4fc 100%);
     color: #0f172a;
     border-bottom: 1px solid rgba(124, 58, 237, 0.12);
@@ -1249,6 +1288,20 @@ html[data-bs-theme="dark"] .fp-close-btn:hover {
     margin-top: 10px;
 }
 
+/* ── Scroll reveal (v-reveal directive) ──── */
+.fp-reveal {
+    opacity: 0;
+    transform: translateY(16px);
+}
+.fp-reveal-in {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+    .fp-reveal, .fp-reveal-in { opacity: 1; transform: none; transition: none; }
+}
+
 /* ── Status banner ───────────────────────── */
 .fp-status-banner {
     display: flex;
@@ -1267,6 +1320,22 @@ html[data-bs-theme="dark"] .fp-close-btn:hover {
 
 /* ── Section ─────────────────────────────── */
 .fp-section { margin-bottom: 14px; }
+
+/* ── Section groups (S1 Flight, S2 Fare Brand, S3 Fare Breakdown/Rules,
+   S4 Penalties+Validity) — a distinct card per group so the panel reads
+   as clearly separated blocks instead of one continuous flow ── */
+.fp-group {
+    background: var(--bs-tertiary-bg, #f8fafc);
+    border: 1px solid var(--bs-border-color, #e2e8f0);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 28px;
+}
+.fp-group > .fp-section:last-child { margin-bottom: 0; }
+html[data-bs-theme="dark"] .fp-group {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: var(--bs-border-color, #334155);
+}
 .fp-section-label {
     font-size: 11px;
     font-weight: 700;
@@ -1275,6 +1344,12 @@ html[data-bs-theme="dark"] .fp-close-btn:hover {
     margin-bottom: 8px;
     display: flex;
     align-items: center;
+}
+.fp-section-divider {
+    border: none;
+    border-top: 1px solid var(--bs-border-color, #e2e8f0);
+    margin: 0 0 12px;
+    opacity: 0.7;
 }
 .fp-section--outbound .fp-section-label { color: #027de2; }
 .fp-section--inbound .fp-section-label { color: #00ab55; }
@@ -1390,14 +1465,12 @@ html[data-bs-theme="dark"] .fp-close-btn:hover {
 .fp-badge--cos    { background: #def1ec; color: #12ce69; }
 .fp-badge--fare   { background: #fff3cd; color: #856404; }
 .fp-badge--type   { background: #e0f2fe; color: #0369a1; }
-.fp-badge--tier   { background: #f3e8ff; color: #7e22ce; }
-.fp-badge--code   { background: #f1f5f9; color: #475569; }
+.fp-badge--airline { background: rgba(8, 145, 178, 0.14); color: #0e7490; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; }
 [data-bs-theme="dark"] .fp-badge--fare  { background: #44370a; color: #fbbf24; }
 [data-bs-theme="dark"] .fp-badge--cabin { background: #2d1e5a; color: #a78bfa; }
 [data-bs-theme="dark"] .fp-badge--cos   { background: rgba(18, 206, 105, 0.12); color: #6ee7b7; }
 [data-bs-theme="dark"] .fp-badge--type  { background: rgba(3, 105, 161, 0.2); color: #7dd3fc; }
-[data-bs-theme="dark"] .fp-badge--tier  { background: rgba(126, 34, 206, 0.2); color: #d8b4fe; }
-[data-bs-theme="dark"] .fp-badge--code  { background: rgba(71, 85, 105, 0.25); color: #94a3b8; }
+[data-bs-theme="dark"] .fp-badge--airline { background: rgba(34, 211, 238, 0.2); color: #67e8f9; }
 
 /* ── Segment card dark overrides ─────────── */
 [data-bs-theme="dark"] .fp-section--outbound .fp-segment-card {
@@ -1431,7 +1504,12 @@ html[data-bs-theme="dark"] .fp-close-btn:hover {
 
 /* ── Fare tabs — shadcn "tabs-in-cell" look ─ */
 .fp-fare-tabs-section { padding-top: 2px; }
+/* Compact button-group, hugs its own content and sits at the right —
+   not a full-width bar; the selected tab gets its own background (no
+   separate sliding indicator, since the two labels differ in width) */
 .fp-fare-tabs-scroll {
+    display: flex;
+    justify-content: flex-end;
     margin-bottom: 12px;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -1443,74 +1521,50 @@ html[data-bs-theme="dark"] .fp-close-btn:hover {
 }
 .fp-fare-tabs {
     display: inline-flex;
-    width: 100%;
-    min-width: max-content;
-    height: auto;
-    padding: 0;
-    margin: 0;
-    gap: 0;
-    background: var(--bs-body-bg, #fff);
-    border-radius: 0;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    flex-shrink: 0;
+    padding: 3px;
+    gap: 2px;
+    background: var(--bs-tertiary-bg, #f1f5f9);
+    border-radius: 9px;
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.05);
 }
 .fp-fare-tab {
-    position: relative;
-    flex: 1 1 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    min-height: 40px;
-    padding: 10px 14px;
-    margin: 0 0 0 -1px;
-    border: 1px solid var(--bs-border-color, #e2e8f0);
-    border-radius: 0;
-    background: var(--bs-body-bg, #fff);
+    gap: 5px;
+    padding: 6px 11px;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
     color: var(--bs-secondary-color, #64748b);
-    font-size: 12px;
+    font-size: 11.5px;
     font-weight: 600;
     letter-spacing: 0.01em;
     white-space: nowrap;
     cursor: pointer;
-    overflow: hidden;
-    transition: background 0.15s, color 0.15s;
-}
-.fp-fare-tab:first-child {
-    margin-left: 0;
-    border-radius: 6px 0 0 6px;
-}
-.fp-fare-tab:last-child {
-    border-radius: 0 6px 6px 0;
-}
-/* Active bottom primary bar (shadcn after:h-0.5) */
-.fp-fare-tab::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 2px;
-    background: transparent;
-    pointer-events: none;
+    transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 .fp-fare-tab__ico {
-    font-size: 13px;
+    font-size: 11px;
     opacity: 0.6;
+    transition: opacity 0.2s ease, color 0.2s ease;
 }
 .fp-fare-tab--active {
-    background: var(--bs-tertiary-bg, #f1f5f9);
-    color: var(--bs-body-color, #0f172a);
-    z-index: 1;
-}
-.fp-fare-tab--active::after {
-    background: #7944eb;
+    background: var(--bs-body-bg, #fff);
+    color: #7944eb;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(121, 68, 235, 0.12);
 }
 .fp-fare-tab--active .fp-fare-tab__ico {
-    opacity: 0.85;
+    opacity: 1;
     color: #7944eb;
 }
 .fp-fare-tab:hover:not(.fp-fare-tab--active) {
-    background: rgba(148, 163, 184, 0.08);
+    color: var(--bs-body-color, #1e293b);
+}
+.fp-fare-tab:focus-visible {
+    outline: 2px solid #7944eb;
+    outline-offset: 2px;
 }
 .fp-fare-tab__pulse {
     width: 7px;
@@ -1524,20 +1578,19 @@ html[data-bs-theme="dark"] .fp-close-btn:hover {
     50% { opacity: 1; transform: scale(1); }
 }
 html[data-bs-theme="dark"] .fp-fare-tabs {
-    background: transparent;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+    background: rgba(255, 255, 255, 0.04);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 html[data-bs-theme="dark"] .fp-fare-tab {
-    background: var(--bs-body-bg, #1a1d24);
-    border-color: var(--bs-border-color, #334155);
     color: #94a3b8;
 }
-html[data-bs-theme="dark"] .fp-fare-tab--active {
-    background: rgba(148, 163, 184, 0.12);
+html[data-bs-theme="dark"] .fp-fare-tab:hover:not(.fp-fare-tab--active) {
     color: #e2e8f0;
 }
-html[data-bs-theme="dark"] .fp-fare-tab--active::after {
-    background: #a78bfa;
+html[data-bs-theme="dark"] .fp-fare-tab--active {
+    background: rgba(255, 255, 255, 0.08);
+    color: #c4b5fd;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(196, 181, 253, 0.18);
 }
 html[data-bs-theme="dark"] .fp-fare-tab--active .fp-fare-tab__ico {
     color: #c4b5fd;
@@ -1550,15 +1603,16 @@ html[data-bs-theme="dark"] .fp-fare-tab--active .fp-fare-tab__ico {
 
 /* ── Price breakdown ─────────────────────── */
 .fp-price-pax-block {
-    background: var(--bs-tertiary-bg, #f8f9fa);
-    border: 1px solid var(--bs-border-color, #e2e8f0);
-    border-left: 3px solid #7944eb;
+    background: rgba(121, 68, 235, 0.08);
+    border: 1px solid rgba(121, 68, 235, 0.2);
     border-radius: 8px;
     padding: 12px;
     margin-bottom: 8px;
 }
-.fp-price-pax-block--child { border-left-color: #059669; }
-.fp-price-pax-block--infant { border-left-color: #d97706; }
+html[data-bs-theme="dark"] .fp-price-pax-block {
+    background: rgba(196, 181, 253, 0.12);
+    border-color: rgba(196, 181, 253, 0.25);
+}
 .fp-pax-header {
     display: flex; align-items: center; gap: 8px;
     font-size: 13px; font-weight: 600; margin-bottom: 8px;
@@ -1728,12 +1782,18 @@ html[data-bs-theme="dark"] .fp-rule-card--in .fp-rule-dir { color: #6ee7b7; }
 /* Tax details */
 .fp-tax-details { margin-top: 6px; }
 .fp-tax-summary {
-    font-size: 11px; color: #7944eb; cursor: pointer;
+    font-size: 11px; font-weight: 600; color: #7944eb; cursor: pointer;
     list-style: none; user-select: none;
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 4px; margin: -2px -4px; border-radius: 4px;
+    transition: background 0.15s ease;
 }
 .fp-tax-summary::-webkit-details-marker { display: none; }
-.fp-tax-summary:hover { text-decoration: underline; }
-.fp-dynamic-pricing .fp-tax-details { margin-top: 8px; }
+.fp-tax-summary__chevron { font-size: 9px; transition: transform 0.15s ease; }
+details[open] > .fp-tax-summary .fp-tax-summary__chevron { transform: rotate(180deg); }
+.fp-tax-summary:hover { background: rgba(121, 68, 235, 0.1); }
+.fp-tax-summary:focus-visible { outline: 2px solid #7944eb; outline-offset: 2px; }
+html[data-bs-theme="dark"] .fp-tax-summary:hover { background: rgba(196, 181, 253, 0.14); }
 .fp-tax-table  { margin-top: 6px; display: flex; flex-direction: column; gap: 2px; }
 .fp-tax-row    { display: flex; align-items: center; gap: 6px; font-size: 10px; }
 .fp-tax-code   { font-weight: 700; color: #7944eb; width: 28px; flex-shrink: 0; }
@@ -1754,31 +1814,24 @@ html[data-bs-theme="dark"] .fp-rule-card--in .fp-rule-dir { color: #6ee7b7; }
 .fp-gross-total {
     background: linear-gradient(135deg, #7944eb14, #4a6ef514);
     border: 1.5px solid #7944eb33;
-    border-radius: 8px;
-    padding: 10px 14px;
+    border-radius: 12px;
+    padding: 12px 16px;
     margin-top: 4px;
+    box-shadow: 0 2px 8px rgba(121, 68, 235, 0.08);
 }
-.fp-gross-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; color: var(--bs-body-color); }
+html[data-bs-theme="dark"] .fp-gross-total { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); }
+.fp-gross-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding: 4px 0; color: var(--bs-body-color); }
+.fp-gross-row__ico { width: 16px; margin-right: 8px; font-size: 10px; color: var(--bs-secondary-color, #7b879f); text-align: center; }
+.fp-gross-row--total .fp-gross-row__ico { color: #7944eb; font-size: 12px; }
 .fp-gross-row--total {
     border-top: 1.5px solid #7944eb44;
     margin-top: 4px;
-    padding-top: 6px;
+    padding-top: 8px;
     font-size: 15px;
     font-weight: 700;
     color: #7944eb;
 }
 
-.fp-gross-row--totals {
-    margin-top: 4px;
-    padding-top: 6px;
-    font-size: 15px;
-    font-weight: 700;
-    color: #7944eb;
-}
-
-.fp-dynamic-pricing {
-    margin-top: 12px;
-}
 .fp-gross-row--subtotal {
     font-weight: 600;
 }
@@ -1812,14 +1865,26 @@ html[data-bs-theme="dark"] .fp-gross-row--deduction span:last-child {
 /* ── Brand card ──────────────────────────── */
 .fp-brand-card {
     background: var(--bs-tertiary-bg, #f8f9fa);
-    border: 1px solid var(--bs-border-color, #e2e8f0);
     border-radius: 10px;
-    padding: 14px;
+    padding: 2px;
 }
-.fp-brand-top { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-.fp-brand-img { height: 36px; object-fit: contain; border-radius: 4px; }
-.fp-brand-name { font-size: 14px; font-weight: 700; color: var(--bs-body-color); }
-.fp-brand-meta { display: flex; gap: 5px; margin-top: 3px; }
+/* Brand name + tier moved into the section header — normal case, not the
+   label's uppercase/letter-spaced treatment */
+.fp-brand-header-tier {
+    margin-left: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: normal;
+    color: var(--bs-secondary-color, #7b879f);
+}
+.fp-brand-header-name {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: none;
+    letter-spacing: normal;
+    color: var(--bs-body-color, #1a2436);
+}
 .fp-attrs { display: flex; flex-direction: column; }
 .fp-attr-row {
     display: flex;
@@ -1827,9 +1892,7 @@ html[data-bs-theme="dark"] .fp-gross-row--deduction span:last-child {
     justify-content: space-between;
     gap: 8px;
     padding: 5px 0;
-    border-bottom: 1px solid var(--bs-border-color, #f4f5fa);
 }
-.fp-attr-row:last-child { border-bottom: none; }
 .fp-attr-part {
     display: inline-flex;
     align-items: center;
@@ -1849,12 +1912,39 @@ html[data-bs-theme="dark"] .fp-gross-row--deduction span:last-child {
     line-height: 1;
     color: var(--bs-secondary-color, #8b97ad);
 }
-.fp-attr-cat--ok  { color: #0d9b6e; }
-.fp-attr-cat--fee { color: #d97706; }
-.fp-attr-cat--no  { color: #9aa3b5; }
-html[data-bs-theme="dark"] .fp-attr-cat--ok  { color: #6ee7b7; }
-html[data-bs-theme="dark"] .fp-attr-cat--fee { color: #fbbf24; }
-html[data-bs-theme="dark"] .fp-attr-cat--no  { color: #6b7280; }
+/* One color per feature type, independent of inclusion status */
+.fp-attr-cat--refund      { color: #7c3aed; }
+.fp-attr-cat--rebooking   { color: #0891b2; }
+.fp-attr-cat--checked-bag { color: #92400e; }
+.fp-attr-cat--carry-on    { color: #2563eb; }
+.fp-attr-cat--wifi        { color: #0d9488; }
+.fp-attr-cat--meals       { color: #ea580c; }
+.fp-attr-cat--seat        { color: #16a34a; }
+.fp-attr-cat--mileage     { color: #ca8a04; }
+.fp-attr-cat--upgrade     { color: #db2777; }
+.fp-attr-cat--lounge      { color: #7e22ce; }
+.fp-attr-cat--premium-seat { color: #4f46e5; }
+.fp-attr-cat--entertainment { color: #e11d48; }
+.fp-attr-cat--priority    { color: #65a30d; }
+.fp-attr-cat--priority-boarding { color: #a21caf; }
+.fp-attr-cat--priority-baggage  { color: #b45309; }
+.fp-attr-cat--default     { color: #64748b; }
+html[data-bs-theme="dark"] .fp-attr-cat--refund      { color: #c4b5fd; }
+html[data-bs-theme="dark"] .fp-attr-cat--rebooking   { color: #67e8f9; }
+html[data-bs-theme="dark"] .fp-attr-cat--checked-bag { color: #fbbf24; }
+html[data-bs-theme="dark"] .fp-attr-cat--carry-on    { color: #93c5fd; }
+html[data-bs-theme="dark"] .fp-attr-cat--wifi        { color: #5eead4; }
+html[data-bs-theme="dark"] .fp-attr-cat--meals       { color: #fdba74; }
+html[data-bs-theme="dark"] .fp-attr-cat--seat        { color: #86efac; }
+html[data-bs-theme="dark"] .fp-attr-cat--mileage     { color: #fde047; }
+html[data-bs-theme="dark"] .fp-attr-cat--upgrade     { color: #f9a8d4; }
+html[data-bs-theme="dark"] .fp-attr-cat--lounge      { color: #d8b4fe; }
+html[data-bs-theme="dark"] .fp-attr-cat--premium-seat { color: #a5b4fc; }
+html[data-bs-theme="dark"] .fp-attr-cat--entertainment { color: #fda4af; }
+html[data-bs-theme="dark"] .fp-attr-cat--priority    { color: #bef264; }
+html[data-bs-theme="dark"] .fp-attr-cat--priority-boarding { color: #e879f9; }
+html[data-bs-theme="dark"] .fp-attr-cat--priority-baggage  { color: #fcd34d; }
+html[data-bs-theme="dark"] .fp-attr-cat--default     { color: #94a3b8; }
 .fp-attr-dot {
     box-sizing: border-box;
     width: 16px;
@@ -1906,20 +1996,46 @@ html[data-bs-theme="dark"] .fp-attr-text--ok  { color: #6ee7b7; }
 html[data-bs-theme="dark"] .fp-attr-text--fee { color: #fbbf24; }
 html[data-bs-theme="dark"] .fp-attr-text--no  { color: #6b7280; }
 
-/* ── Penalties ───────────────────────────── */
-.fp-penalties { display: flex; flex-direction: column; gap: 8px; }
-.fp-penalty-row {
-    display: flex; align-items: center; gap: 12px;
-    padding: 10px 14px; border-radius: 8px;
-    font-size: 12px;
+/* ── Icon badge (shared by penalty & deadline tiles) ── */
+.fp-tile-ico {
+    width: 26px; height: 26px; border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 11px; flex-shrink: 0;
 }
+.fp-tile-ico--change  { background: rgba(37, 99, 235, 0.14); color: #1e40af; }
+.fp-tile-ico--cancel  { background: rgba(220, 38, 38, 0.14); color: #991b1b; }
+.fp-tile-ico--payment { background: rgba(220, 38, 38, 0.14); color: #b91c1c; }
+.fp-tile-ico--expiry  { background: rgba(217, 119, 6, 0.16); color: #b45309; }
+html[data-bs-theme="dark"] .fp-tile-ico--change  { background: rgba(96, 165, 250, 0.2); color: #93c5fd; }
+html[data-bs-theme="dark"] .fp-tile-ico--cancel  { background: rgba(248, 113, 113, 0.2); color: #fca5a5; }
+html[data-bs-theme="dark"] .fp-tile-ico--payment { background: rgba(248, 113, 113, 0.2); color: #fca5a5; }
+html[data-bs-theme="dark"] .fp-tile-ico--expiry  { background: rgba(251, 191, 36, 0.2); color: #fcd34d; }
+
+/* ── Penalties ───────────────────────────── */
+.fp-penalties {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 8px;
+}
+.fp-penalty-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px; border-radius: 10px;
+    font-size: 12px; min-width: 0;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.fp-penalty-row:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+}
+.fp-penalty-row > div { min-width: 0; }
 .fp-penalty--change { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
 .fp-penalty--cancel { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
 [data-bs-theme="dark"] .fp-penalty--change { background: #1e3a5f; border-color: #3b82f6; color: #93c5fd; }
 [data-bs-theme="dark"] .fp-penalty--cancel { background: #450a0a; border-color: #ef4444; color: #fca5a5; }
-.fp-penalty-title { font-weight: 600; }
-.fp-penalty-meta  { font-size: 10px; opacity: 0.75; }
-.fp-penalty-amount { font-size: 14px; font-weight: 700; }
+.fp-penalty-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fp-penalty-meta  { font-size: 10px; opacity: 0.75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fp-penalty-amount { font-size: 13px; font-weight: 700; white-space: nowrap; }
 
 /* ── Restrictions ────────────────────────── */
 .fp-restrictions {
@@ -1930,17 +2046,45 @@ html[data-bs-theme="dark"] .fp-attr-text--no  { color: #6b7280; }
 }
 
 /* ── Deadlines ───────────────────────────── */
-.fp-deadlines { display: flex; flex-direction: column; gap: 8px; }
-.fp-deadline-row {
-    display: flex; align-items: flex-start; gap: 12px;
-    padding: 8px 12px;
-    background: var(--bs-tertiary-bg, #f8f9fa);
-    border: 1px solid var(--bs-border-color, #e2e8f0);
-    border-radius: 8px;
-    font-size: 12px;
+.fp-deadlines {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 8px;
 }
-.fp-deadline-label { font-size: 10px; color: var(--bs-secondary-color, #6b7280); }
-.fp-deadline-val   { font-size: 13px; }
+.fp-deadline-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    min-width: 0;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.fp-deadline-row:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+}
+.fp-deadline-row > div { min-width: 0; }
+.fp-deadline-label { font-size: 10px; color: var(--bs-secondary-color, #6b7280); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fp-deadline-val   { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.fp-deadline--payment { background: #fef2f2; border: 1px solid #fecaca; }
+.fp-deadline--payment .fp-deadline-val { color: #b91c1c; }
+.fp-deadline--expiry { background: #fffbeb; border: 1px solid #fde68a; }
+.fp-deadline--expiry .fp-deadline-val { color: #b45309; }
+
+html[data-bs-theme="dark"] .fp-deadline--payment { background: #450a0a; border-color: #ef4444; }
+html[data-bs-theme="dark"] .fp-deadline--payment .fp-deadline-val { color: #fca5a5; }
+html[data-bs-theme="dark"] .fp-deadline--expiry { background: #451a03; border-color: #f59e0b; }
+html[data-bs-theme="dark"] .fp-deadline--expiry .fp-deadline-val { color: #fcd34d; }
+html[data-bs-theme="dark"] .fp-penalty-row,
+html[data-bs-theme="dark"] .fp-deadline-row { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
+html[data-bs-theme="dark"] .fp-penalty-row:hover,
+html[data-bs-theme="dark"] .fp-deadline-row:hover { box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4); }
+@media (prefers-reduced-motion: reduce) {
+    .fp-penalty-row, .fp-deadline-row { transition: none; }
+    .fp-penalty-row:hover, .fp-deadline-row:hover { transform: none; }
+}
 
 /* ── Footer ──────────────────────────────── */
 .fp-footer {
@@ -1969,11 +2113,14 @@ html[data-bs-theme="dark"] .fp-footer {
     flex: 1;
     padding: 14px 16px;
 }
+/* Single-level grid, trailing columns fixed-width — meta's 1fr absorbs any
+   outer width variance (button padding etc.) so currency/amount/chevron
+   pin to identical x on every row regardless of label length or font-size */
 .fp-footer-price-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr 28px 78px 16px;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
+    column-gap: 6px;
 }
 .fp-footer-price-meta {
     display: flex;
@@ -2015,16 +2162,12 @@ html[data-bs-theme="dark"] .fp-footer-ico--gross {
     color: var(--bs-secondary-color, #6b7280);
     white-space: nowrap;
 }
-.fp-footer-price-value {
-    display: flex;
-    align-items: baseline;
-    gap: 5px;
-    min-width: 0;
-}
 .fp-footer-currency {
     font-size: 11px;
     color: var(--bs-secondary-color, #6b7280);
     font-weight: 700;
+    text-align: left;
+    white-space: nowrap;
 }
 .fp-footer-amount {
     font-size: 22px;
@@ -2032,6 +2175,8 @@ html[data-bs-theme="dark"] .fp-footer-ico--gross {
     color: #7944eb;
     font-variant-numeric: tabular-nums;
     line-height: 1.1;
+    text-align: right;
+    white-space: nowrap;
 }
 .fp-footer-amount-gross {
     font-size: 15px;
@@ -2039,10 +2184,74 @@ html[data-bs-theme="dark"] .fp-footer-ico--gross {
     color: var(--bs-body-color, #1a2436);
     font-variant-numeric: tabular-nums;
     line-height: 1.1;
+    text-align: right;
+    white-space: nowrap;
 }
 .fp-footer-price-row--payable .fp-footer-price-label { color: #7944eb; }
 html[data-bs-theme="dark"] .fp-footer-amount { color: #c4b5fd; }
 html[data-bs-theme="dark"] .fp-footer-price-row--payable .fp-footer-price-label { color: #c4b5fd; }
+
+/* Gross Fare row doubles as the disclosure trigger for Total Payable */
+/* Zero padding/margin/border (box-sizing safe) so this <button>'s grid
+   track math is pixel-identical to the plain <div> row below it — the
+   hover highlight is drawn on a ::before overlay instead of real padding */
+.fp-footer-price-row--toggle {
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+    border: none;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+}
+.fp-footer-price-row--toggle::before {
+    content: '';
+    position: absolute;
+    inset: -4px -6px;
+    border-radius: 8px;
+    background: transparent;
+    transition: background 0.15s ease;
+    pointer-events: none;
+}
+.fp-footer-price-row--toggle:hover::before { background: rgba(121, 68, 235, 0.06); }
+.fp-footer-price-row--toggle:focus-visible { outline: 2px solid #7944eb; outline-offset: 2px; }
+.fp-footer-row-chevron {
+    justify-self: center;
+    font-size: 11px;
+    color: #7944eb;
+    opacity: 0.55;
+    transition: transform 0.25s ease, opacity 0.2s ease;
+    animation: fp-chevron-pulse 1.8s ease-in-out infinite;
+}
+.fp-footer-row-chevron--open {
+    transform: rotate(180deg);
+    opacity: 0.9;
+    animation: none;
+}
+@keyframes fp-chevron-pulse {
+    0%, 100% { opacity: 0.4; transform: translateY(0); }
+    50% { opacity: 1; transform: translateY(2px); }
+}
+html[data-bs-theme="dark"] .fp-footer-price-row--toggle:hover::before { background: rgba(196, 181, 253, 0.1); }
+html[data-bs-theme="dark"] .fp-footer-row-chevron { color: #c4b5fd; }
+
+/* CSS-grid collapse — no JS height measurement needed */
+.fp-footer-payable-collapse {
+    display: grid;
+    grid-template-rows: 0fr;
+    width: 100%;
+    transition: grid-template-rows 0.3s ease;
+}
+.fp-footer-payable-collapse--open { grid-template-rows: 1fr; }
+.fp-footer-payable-inner { width: 100%; overflow: hidden; min-height: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+    .fp-footer-row-chevron { animation: none; }
+    .fp-footer-payable-collapse { transition: none; }
+}
 html[data-bs-theme="dark"] .fp-footer-amount-gross { color: var(--bs-body-color, #dee2e6); }
 
 /* Full-height narrow CTA — flush right edge (red-box layout) */
@@ -2052,19 +2261,19 @@ html[data-bs-theme="dark"] .fp-footer-amount-gross { color: var(--bs-body-color,
     text-decoration: none;
     border: none;
     border-radius: 0;
-    width: 125px;
-    min-width: 125px;
-    max-width: 125px;
+    width: 168px;
+    min-width: 168px;
+    max-width: 168px;
     align-self: stretch;
     min-height: 100%;
-    padding: 10px 8px;
-    font-size: 11px;
+    padding: 10px 12px;
+    font-size: 12px;
     font-weight: 700;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.01em;
     line-height: 1.25;
     cursor: pointer;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
     justify-content: center;
     gap: 8px;
@@ -2073,8 +2282,7 @@ html[data-bs-theme="dark"] .fp-footer-amount-gross { color: var(--bs-body-color,
 }
 .fp-book-btn__text {
     text-align: center;
-    white-space: normal;
-    max-width: 4.6em;
+    white-space: nowrap;
 }
 .fp-book-btn__lead {
     font-size: 15px;
@@ -2182,7 +2390,7 @@ html[data-bs-theme="dark"] .fp-alt-btn {
     }
     .fp-book-btn__text {
         max-width: none;
-        white-space: nowrap;
+        /* white-space: nowrap; */
     }
 }
 </style>

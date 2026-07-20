@@ -16,6 +16,7 @@ import '../../../css/search-dark.css'
 import FlightPricePanel from './FlightPricePanel.vue'
 import BrandedFaresPanel from './BrandedFaresPanel.vue'
 import SearchWingsLoader from './SearchWingsLoader.vue'
+import SearchWingsBuildLoader from './SearchWingsBuildLoader.vue'
 import AppTooltip from '../common/AppTooltip.vue'
 import AgencyPayableBreakdownModal from '../common/AgencyPayableBreakdownModal.vue'
 import { completePriceAttempt, completeSearchAttempt } from '../../utils/bookingAttemptSession'
@@ -73,7 +74,7 @@ const LOADER_MIN_MS = 1000;
 const LOADER_FADE_MS = 220;
 let loaderFadeResolve = null;
 // Loader test tag: 'wings' | 'gif'
-const SEARCH_LOADER_TAG = 'wings';
+const SEARCH_LOADER_TAG = 'gif';
 
 const fareRulesData           = ref({})
 const fareRulesLoading        = ref({})
@@ -1255,14 +1256,16 @@ const openReturnPicker = () => {
 </script>
 <template>
     <div class="search-page-layout">
-    <Transition name="search-loader-fade" @after-leave="onLoaderFadeAfterLeave">
-        <div v-show="loadging" class="search-cooking-overlay" aria-hidden="true">
-            <div :key="`${SEARCH_LOADER_TAG}-${loaderRunKey}`" class="search-cooking-loader-shell">
-                <SearchWingsLoader v-if="SEARCH_LOADER_TAG === 'wings'" id-prefix="search" />
-                <div v-else class="search-cooking-gif"></div>
+    <Teleport to="body">
+        <Transition name="search-loader-fade" @after-leave="onLoaderFadeAfterLeave">
+            <div v-show="loadging" class="search-cooking-overlay" aria-hidden="true">
+                <div :key="`${SEARCH_LOADER_TAG}-${loaderRunKey}`" class="search-cooking-loader-shell">
+                    <SearchWingsLoader v-if="SEARCH_LOADER_TAG === 'wings'" id-prefix="search" />
+                    <SearchWingsBuildLoader v-else />
+                </div>
             </div>
-        </div>
-    </Transition>
+        </Transition>
+    </Teleport>
 
     <!-- Compact search summary bar (visible after successful search) -->
     <div v-if="searchCollapsed" class="search-compact-bar">
@@ -4822,20 +4825,20 @@ html[data-bs-theme="dark"] .dp__menu {
 }
 
 .search-cooking-overlay {
-    position: absolute;
+    position: fixed;
     inset: 0;
-    z-index: 50;
+    z-index: 9999;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: visible;
-    background: rgba(15, 23, 42, 0.145);
-    backdrop-filter: blur(2px);
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(6px);
     pointer-events: auto;
 }
 
 html[data-bs-theme="dark"] .search-cooking-overlay {
-    background: rgba(0, 0, 0, 0.113);
+    background: rgba(0, 0, 0, 0.65);
 }
 
 .search-loader-fade-enter-active,
@@ -4869,12 +4872,5 @@ html[data-bs-theme="dark"] .search-cooking-overlay {
     justify-content: center;
 }
 
-.search-cooking-gif {
-    width: 340px;
-    height: 340px;
-    background: url('/theme/appimages/pp.gif') no-repeat center;
-    background-size: contain;
-    filter: drop-shadow(0 10px 28px rgba(0, 0, 0, 0.28));
-}
 
 </style>

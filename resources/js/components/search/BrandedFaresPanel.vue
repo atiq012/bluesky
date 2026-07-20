@@ -118,29 +118,69 @@ function onPayableClick(brand) {
     emit('payable-breakdown', brand)
 }
 
+// Providers send classification as either spaced ("Priority CheckIn") or
+// concatenated ("PriorityCheckIn") strings — normalize before lookup so both match.
+const normClass = (c) => String(c || '').replace(/[^a-z]/gi, '').toLowerCase()
+
 const CLASSIFICATION_LABEL = {
-    Refund:         'Refund',
-    Rebooking:      'Rebooking',
-    CheckedBag:     'Checked Baggage',
-    CarryOn:        'Carry-on',
-    WiFi:           'Wi-Fi',
-    Meals:          'Meals',
-    SeatAssignment: 'Seat Selection',
+    refund:                'Refund',
+    rebooking:             'Rebooking',
+    checkedbag:            'Checked Baggage',
+    carryon:               'Carry-on',
+    wifi:                  'Wi-Fi',
+    meals:                 'Meals',
+    seatassignment:        'Seat Selection',
+    mileageaccrual:        'Mileage Accrual',
+    upgrade:               'Upgrade',
+    upgrades:              'Upgrades',
+    loungeaccess:          'Lounge Access',
+    premiumseat:           'Premium Seat',
+    inflightentertainment: 'In-Flight Entertainment',
+    prioritycheckin:       'Priority Check-in',
+    priorityboarding:      'Priority Boarding',
+    prioritybaggage:       'Priority Baggage',
 }
 const CLASSIFICATION_ICON = {
-    Refund:            'fa-solid fa-rotate-left',
-    Rebooking:         'fa-solid fa-calendar-check',
-    CheckedBag:        'fa-solid fa-suitcase-rolling',
-    CarryOn:           'fa-solid fa-suitcase',
-    WiFi:              'fa-solid fa-wifi',
-    Meals:             'fa-solid fa-utensils',
-    SeatAssignment:    'fa-solid fa-chair',
-    'Mileage Accrual': 'fa-solid fa-coins',
-    Upgrade:           'fa-solid fa-arrow-up',
-    'Lounge Access':   'fa-solid fa-couch',
+    refund:                'fa-solid fa-rotate-left',
+    rebooking:             'fa-solid fa-calendar-check',
+    checkedbag:            'fa-solid fa-suitcase-rolling',
+    carryon:               'fa-solid fa-suitcase',
+    wifi:                  'fa-solid fa-wifi',
+    meals:                 'fa-solid fa-utensils',
+    seatassignment:        'fa-solid fa-chair',
+    mileageaccrual:        'fa-solid fa-coins',
+    upgrade:               'fa-solid fa-arrow-up',
+    upgrades:              'fa-solid fa-arrow-up',
+    loungeaccess:          'fa-solid fa-couch',
+    premiumseat:           'fa-solid fa-star',
+    inflightentertainment: 'fa-solid fa-tv',
+    prioritycheckin:       'fa-solid fa-person-walking-arrow-right',
+    priorityboarding:      'fa-solid fa-door-open',
+    prioritybaggage:       'fa-solid fa-box',
 }
-const classLabel = (c) => CLASSIFICATION_LABEL[c] ?? c
-const classIcon = (c) => CLASSIFICATION_ICON[c] ?? 'fa-solid fa-circle-question'
+const classLabel = (c) => CLASSIFICATION_LABEL[normClass(c)] ?? c
+const classIcon = (c) => CLASSIFICATION_ICON[normClass(c)] ?? 'fa-solid fa-circle-question'
+
+// Icon color is per feature type (not inclusion status) so each amenity stays recognizable at a glance
+const CLASSIFICATION_COLOR_SLUG = {
+    refund:                'refund',
+    rebooking:             'rebooking',
+    checkedbag:            'checked-bag',
+    carryon:               'carry-on',
+    wifi:                  'wifi',
+    meals:                 'meals',
+    seatassignment:        'seat',
+    mileageaccrual:        'mileage',
+    upgrade:               'upgrade',
+    upgrades:              'upgrade',
+    loungeaccess:          'lounge',
+    premiumseat:           'premium-seat',
+    inflightentertainment: 'entertainment',
+    prioritycheckin:       'priority',
+    priorityboarding:      'priority-boarding',
+    prioritybaggage:       'priority-baggage',
+}
+const classColorSlug = (c) => CLASSIFICATION_COLOR_SLUG[normClass(c)] ?? 'default'
 
 const INCLUSION_ORDER = { Included: 0, Chargeable: 1, 'Not Offered': 2 }
 const FEATURE_PREVIEW = 7
@@ -263,6 +303,10 @@ function tierClass(bIdx) {
                                 <div class="fare-card__divider"></div>
                                 <div class="fare-card__features">
                                     <div
+                                        class="fare-card__feature-list"
+                                        :class="{ 'fare-card__feature-list--scroll': hiddenFeatureCount(brand.attributes) > 0 }"
+                                    >
+                                    <div
                                         v-for="(attr, aIdx) in visibleAttributes(brand.attributes, bIdx)"
                                         :key="aIdx"
                                         class="fare-card__feature"
@@ -270,22 +314,11 @@ function tierClass(bIdx) {
                                         <span class="fare-card__feature-part">
                                             <span
                                                 class="fare-card__cat-icon"
-                                                :class="{
-                                                    'fare-card__cat-icon--ok':  attr.inclusion === 'Included',
-                                                    'fare-card__cat-icon--fee': attr.inclusion === 'Chargeable',
-                                                    'fare-card__cat-icon--no':  attr.inclusion === 'Not Offered',
-                                                }"
+                                                :class="'fare-card__cat-icon--' + classColorSlug(attr.classification)"
                                             >
                                                 <i :class="classIcon(attr.classification)"></i>
                                             </span>
-                                            <span
-                                                class="fare-card__feature-text"
-                                                :class="{
-                                                    'fare-card__feature-text--ok':  attr.inclusion === 'Included',
-                                                    'fare-card__feature-text--fee': attr.inclusion === 'Chargeable',
-                                                    'fare-card__feature-text--no':  attr.inclusion === 'Not Offered',
-                                                }"
-                                            >{{ classLabel(attr.classification) }}</span>
+                                            <span class="fare-card__feature-text">{{ classLabel(attr.classification) }}</span>
                                         </span>
                                         <span class="fare-card__feature-part fare-card__feature-part--status">
                                             <span
@@ -311,6 +344,7 @@ function tierClass(bIdx) {
                                                 }"
                                             >{{ attr.inclusion }}</span>
                                         </span>
+                                    </div>
                                     </div>
                                     <button
                                         v-if="hiddenFeatureCount(brand.attributes) > 0"
@@ -717,6 +751,21 @@ html[data-bs-theme="dark"] .fare-card__price--clickable:focus-visible {
     padding: 6px 12px 8px;
 }
 
+.fare-card__feature-list--scroll {
+    /* Lock to 7-row height so Show more scrolls instead of growing the card */
+    height: 182px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #c7d7f5 transparent;
+}
+.fare-card__feature-list--scroll::-webkit-scrollbar { width: 5px; }
+.fare-card__feature-list--scroll::-webkit-scrollbar-track { background: transparent; }
+.fare-card__feature-list--scroll::-webkit-scrollbar-thumb { background: #c7d7f5; border-radius: 10px; }
+html[data-bs-theme="dark"] .fare-card__feature-list--scroll {
+    scrollbar-color: #374151 transparent;
+}
+html[data-bs-theme="dark"] .fare-card__feature-list--scroll::-webkit-scrollbar-thumb { background: #374151; }
+
 .fare-card__feature {
     display: flex;
     align-items: center;
@@ -782,12 +831,39 @@ html[data-bs-theme="dark"] .fare-card__more:hover {
     flex-shrink: 0;
     line-height: 1;
 }
-.fare-card__cat-icon--ok  { color: #0d9b6e; }
-.fare-card__cat-icon--fee { color: #d97706; }
-.fare-card__cat-icon--no  { color: #9aa3b5; }
-html[data-bs-theme="dark"] .fare-card__cat-icon--ok  { color: #6ee7b7; }
-html[data-bs-theme="dark"] .fare-card__cat-icon--fee { color: #fbbf24; }
-html[data-bs-theme="dark"] .fare-card__cat-icon--no  { color: #6b7280; }
+/* One color per feature type, independent of inclusion status */
+.fare-card__cat-icon--refund      { color: #7c3aed; }
+.fare-card__cat-icon--rebooking   { color: #0891b2; }
+.fare-card__cat-icon--checked-bag { color: #92400e; }
+.fare-card__cat-icon--carry-on    { color: #2563eb; }
+.fare-card__cat-icon--wifi        { color: #0d9488; }
+.fare-card__cat-icon--meals       { color: #ea580c; }
+.fare-card__cat-icon--seat        { color: #16a34a; }
+.fare-card__cat-icon--mileage     { color: #ca8a04; }
+.fare-card__cat-icon--upgrade     { color: #db2777; }
+.fare-card__cat-icon--lounge      { color: #7e22ce; }
+.fare-card__cat-icon--premium-seat { color: #4f46e5; }
+.fare-card__cat-icon--entertainment { color: #e11d48; }
+.fare-card__cat-icon--priority    { color: #65a30d; }
+.fare-card__cat-icon--priority-boarding { color: #a21caf; }
+.fare-card__cat-icon--priority-baggage  { color: #b45309; }
+.fare-card__cat-icon--default     { color: #64748b; }
+html[data-bs-theme="dark"] .fare-card__cat-icon--refund      { color: #c4b5fd; }
+html[data-bs-theme="dark"] .fare-card__cat-icon--rebooking   { color: #67e8f9; }
+html[data-bs-theme="dark"] .fare-card__cat-icon--checked-bag { color: #fbbf24; }
+html[data-bs-theme="dark"] .fare-card__cat-icon--carry-on    { color: #93c5fd; }
+html[data-bs-theme="dark"] .fare-card__cat-icon--wifi        { color: #5eead4; }
+html[data-bs-theme="dark"] .fare-card__cat-icon--meals       { color: #fdba74; }
+html[data-bs-theme="dark"] .fare-card__cat-icon--seat        { color: #86efac; }
+html[data-bs-theme="dark"] .fare-card__cat-icon--mileage     { color: #fde047; }
+html[data-bs-theme="dark"] .fare-card__cat-icon--upgrade     { color: #f9a8d4; }
+html[data-bs-theme="dark"] .fare-card__cat-icon--lounge      { color: #d8b4fe; }
+html[data-bs-theme="dark"] .fare-card__cat-icon--premium-seat { color: #a5b4fc; }
+html[data-bs-theme="dark"] .fare-card__cat-icon--entertainment { color: #fda4af; }
+html[data-bs-theme="dark"] .fare-card__cat-icon--priority    { color: #bef264; }
+html[data-bs-theme="dark"] .fare-card__cat-icon--priority-boarding { color: #e879f9; }
+html[data-bs-theme="dark"] .fare-card__cat-icon--priority-baggage  { color: #fcd34d; }
+html[data-bs-theme="dark"] .fare-card__cat-icon--default     { color: #94a3b8; }
 
 .fare-card__status-dot {
     box-sizing: border-box;

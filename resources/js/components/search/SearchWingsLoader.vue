@@ -9,6 +9,7 @@ const isBrand = props.variant === 'brand';
 const mintId = `${props.idPrefix}-mint`;
 const blueId = `${props.idPrefix}-blue`;
 const purpleId = `${props.idPrefix}-purple`;
+const loaderText = 'Fuelling...'.split('');
 </script>
 
 <template>
@@ -16,8 +17,8 @@ const purpleId = `${props.idPrefix}-purple`;
         <div class="search-wings-stage">
             <svg
                 viewBox="0 0 600 340"
-                :width="isBrand ? 40 : 220"
-                :height="isBrand ? 22 : 124"
+                :width="isBrand ? 40 : 157"
+                :height="isBrand ? 22 : 89"
                 style="overflow:visible;flex-shrink:0"
             >
                 <defs>
@@ -56,6 +57,14 @@ const purpleId = `${props.idPrefix}-purple`;
                 </g>
             </svg>
         </div>
+        <div v-if="!isBrand" class="search-wings-loader-text" aria-label="Fuelling...">
+            <span
+                v-for="(ch, i) in loaderText"
+                :key="i"
+                class="search-wings-loader-text-letter"
+                :style="{ animationDelay: `${i * 0.08}s` }"
+            >{{ ch === ' ' ? ' ' : ch }}</span>
+        </div>
     </div>
 </template>
 
@@ -70,18 +79,33 @@ const purpleId = `${props.idPrefix}-purple`;
 }
 
 .search-wings-loader--loader {
-    width: 280px;
-    height: 280px;
-    border-radius: 50%;
-    background: #ffffff;
-    border: 1px solid #8adfdb;
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+    width: 200px;
+    height: 200px;
+    flex-direction: column;
+    gap: 6px;
     animation: bsw-enter 0.5s ease-out;
 }
 
-html[data-bs-theme="dark"] .search-wings-loader--loader {
-    background: #1e2430;
-    border-color: #3a9e98;
+.search-wings-loader-text {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #cbdbf2;
+    letter-spacing: 0.02em;
+}
+
+html[data-bs-theme="dark"] .search-wings-loader-text {
+    color: #cbd5e1;
+}
+
+.search-wings-loader-text-letter {
+    display: inline-block;
+    white-space: pre;
+    animation: bsw-text-wave 1.1s ease-in-out infinite;
+}
+
+@keyframes bsw-text-wave {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-5px); }
 }
 
 .search-wings-loader--brand {
@@ -101,8 +125,8 @@ html[data-bs-theme="dark"] .search-wings-loader--loader {
 }
 
 .search-wings-loader--loader .search-wings-stage {
-    width: 240px;
-    height: 170px;
+    width: 172px;
+    height: 122px;
     padding-bottom: 10px;
 }
 
