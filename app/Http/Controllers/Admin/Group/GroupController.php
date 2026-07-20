@@ -42,6 +42,7 @@ class GroupController extends BaseController
                 'group_requests.child_traveler',
                 'group_requests.infant_traveler',
                 'group_requests.total_traveler',
+                'group_requests.status',
                 // Add all other columns you need explicitly
                 'u.name as createdby',
                 'u2.name as updatedby',
@@ -83,6 +84,7 @@ class GroupController extends BaseController
             ->groupBy('group_requests.child_traveler')
             ->groupBy('group_requests.infant_traveler')
             ->groupBy('group_requests.total_traveler')
+            ->groupBy('group_requests.status')
             ->groupBy('u.name')
             ->groupBy('u2.name')
             ->groupBy('a.name')
