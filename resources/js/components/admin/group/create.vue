@@ -11,6 +11,7 @@ import AppDatePicker from '../../common/AppDateTimePicker.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
+const datePickerOptions = ref({});
 
 // ---- Trip type (One Way / Round Way / Multi City) ----
 const tripType = ref('oneway');
@@ -58,8 +59,15 @@ function addFlight() {
 function removeFlight(index) {
     if (multiCityFlights.value.length > 2) {
         multiCityFlights.value.splice(index, 1);
+        if (errors.value.multiCityFlights) {
+            errors.value.multiCityFlights.splice(index, 1);
+        }
     }
 }
+
+// ---- Validation state ----
+const errors = ref({});
+const submitAttempted = ref(false);
 
 // Reset fields on trip type change
 watch(tripType, (newType) => {
@@ -77,7 +85,140 @@ watch(tripType, (newType) => {
     } else {
         form.value.flightNo = '';
     }
+    // Field set changes with trip type, so drop stale errors
+    errors.value = {};
+    submitAttempted.value = false;
 });
+
+// Clear individual field errors as the user fixes them
+watch(form, () => {
+    if (!submitAttempted.value) return;
+    clearResolvedErrors();
+}, { deep: true });
+
+watch(multiCityFlights, () => {
+    if (!submitAttempted.value) return;
+    clearResolvedErrors();
+}, { deep: true });
+
+function clearResolvedErrors() {
+    const e = { ...errors.value };
+
+    if (e.groupType && form.value.groupType) delete e.groupType;
+    if (e.from && form.value.from) delete e.from;
+    if (e.to && form.value.to) delete e.to;
+    if (e.departureDate && form.value.departureDate) delete e.departureDate;
+    if (e.returnFrom && form.value.returnFrom) delete e.returnFrom;
+    if (e.returnTo && form.value.returnTo) delete e.returnTo;
+    if (e.returnDate && form.value.returnDate) delete e.returnDate;
+    if (e.flightNo && form.value.flightNo) delete e.flightNo;
+    if (e.preferredAirlines && form.value.preferredAirlines) delete e.preferredAirlines;
+    if (e.preferredClass && form.value.preferredClass) delete e.preferredClass;
+    if (e.code && form.value.code) delete e.code;
+    if (e.adult && Number(form.value.adult) >= 1) delete e.adult;
+    if (e.children && form.value.children !== '' && form.value.children !== null) delete e.children;
+    if (e.infants && form.value.infants !== '' && form.value.infants !== null) delete e.infants;
+    if (e.perPersonFare && form.value.perPersonFare) delete e.perPersonFare;
+    if (e.detailsRequirements && form.value.detailsRequirements && form.value.detailsRequirements.trim()) delete e.detailsRequirements;
+
+    if (e.multiCityFlights) {
+        const updated = multiCityFlights.value.map((flight, idx) => {
+            const segErr = e.multiCityFlights[idx];
+            if (!segErr) return undefined;
+            const newSegErr = { ...segErr };
+            if (newSegErr.from && flight.from) delete newSegErr.from;
+            if (newSegErr.to && flight.to) delete newSegErr.to;
+            if (newSegErr.departureDate && flight.departureDate) delete newSegErr.departureDate;
+            return Object.keys(newSegErr).length ? newSegErr : undefined;
+        });
+        if (updated.every((s) => !s)) {
+            delete e.multiCityFlights;
+        } else {
+            e.multiCityFlights = updated;
+        }
+    }
+
+    errors.value = e;
+}
+
+function isEmpty(val) {
+    return val === '' || val === null || val === undefined;
+}
+
+function validateForm() {
+    const newErrors = {};
+
+    // ---- Group Type (all trip types) ----
+    if (isEmpty(form.value.groupType)) {
+        newErrors.groupType = 'Group Type is required.';
+    }
+
+    // ---- Trip-type specific route/date fields ----
+    if (tripType.value === 'oneway') {
+        if (isEmpty(form.value.from)) newErrors.from = 'From is required.';
+        if (isEmpty(form.value.to)) newErrors.to = 'To is required.';
+        if (isEmpty(form.value.departureDate)) newErrors.departureDate = 'Departure Date is required.';
+        if (isEmpty(form.value.flightNo)) newErrors.flightNo = 'Flight No. is required.';
+    } else if (tripType.value === 'roundway') {
+        if (isEmpty(form.value.from)) newErrors.from = 'From is required.';
+        if (isEmpty(form.value.to)) newErrors.to = 'To is required.';
+        if (isEmpty(form.value.departureDate)) newErrors.departureDate = 'Departure Date is required.';
+        if (isEmpty(form.value.returnFrom)) newErrors.returnFrom = 'Return From is required.';
+        if (isEmpty(form.value.returnTo)) newErrors.returnTo = 'Return To is required.';
+        if (isEmpty(form.value.returnDate)) newErrors.returnDate = 'Return Date is required.';
+        if (isEmpty(form.value.flightNo)) newErrors.flightNo = 'Flight No. is required.';
+    } else if (tripType.value === 'multicity') {
+        const segmentErrors = [];
+        multiCityFlights.value.forEach((flight, idx) => {
+            const segErr = {};
+            if (isEmpty(flight.from)) segErr.from = 'From is required.';
+            if (isEmpty(flight.to)) segErr.to = 'To is required.';
+            if (isEmpty(flight.departureDate)) segErr.departureDate = 'Departure Date is required.';
+            segmentErrors[idx] = Object.keys(segErr).length ? segErr : undefined;
+        });
+        if (segmentErrors.some((s) => s)) {
+            newErrors.multiCityFlights = segmentErrors;
+        }
+    }
+
+    // ---- Flight Preferences (all trip types) ----
+    if (isEmpty(form.value.preferredAirlines)) newErrors.preferredAirlines = 'Preferred Airlines is required.';
+    if (isEmpty(form.value.preferredClass)) newErrors.preferredClass = 'Preferred Class is required.';
+    if (isEmpty(form.value.code)) newErrors.code = 'Code (RBD) is required.';
+
+    // ---- Passengers (all trip types) ----
+    if (isEmpty(form.value.adult) || Number(form.value.adult) < 1) {
+        newErrors.adult = 'At least 1 adult is required.';
+    }
+    // if (isEmpty(form.value.children)) {
+    //     newErrors.children = 'Children is required (enter 0 if none).';
+    // }
+    // if (isEmpty(form.value.infants)) {
+    //     newErrors.infants = 'Infants is required (enter 0 if none).';
+    // }
+
+    // ---- Fare (all trip types) ----
+    if (isEmpty(form.value.perPersonFare)) {
+        newErrors.perPersonFare = 'Per Person Requested Fare is required.';
+    }
+
+    // ---- Requirements (all trip types) ----
+    if (isEmpty(form.value.detailsRequirements) || !form.value.detailsRequirements.trim()) {
+        newErrors.detailsRequirements = 'Details Requirements is required.';
+    }
+
+    errors.value = newErrors;
+    return Object.keys(newErrors).length === 0;
+}
+
+function focusFirstError() {
+    requestAnimationFrame(() => {
+        const el = document.querySelector('.has-error, .field-input.input-error, .field-select.input-error');
+        if (el && el.scrollIntoView) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    });
+}
 
 // ---- Total passengers ----
 const totalPassengers = computed(() => {
@@ -135,6 +276,13 @@ function goBack() {
 }
 
 async function submitForm() {
+    submitAttempted.value = true;
+
+    if (!validateForm()) {
+        focusFirstError();
+        return;
+    }
+
     const payload = {
         tripType: tripType.value,
         ...form.value,
@@ -186,10 +334,11 @@ async function submitForm() {
                                 <h5>Group Information</h5>
                             </div>
                             <div class="row g-3">
-                                <div class="col-md-12">
-                                    <label class="field-label">Group Type</label>
+                                <div class="col-md-12" :class="{ 'has-error': errors.groupType }">
+                                    <label class="field-label">Group Type <span class="required-star">*</span></label>
                                     <Select2 v-model="form.groupType" :options="groupTypeOptions" :clearable="false"
                                         value-key="value" label-key="label" />
+                                    <span v-if="errors.groupType" class="error-text">{{ errors.groupType }}</span>
                                 </div>
                             </div>
                         </div>
@@ -204,19 +353,22 @@ async function submitForm() {
                                     <h5>{{ tripType === 'roundway' ? 'Outbound Flight' : 'Flight Details' }}</h5>
                                 </div>
                                 <div class="row g-3">
-                                    <div class="col-md-4">
+                                    <div class="col-md-4" :class="{ 'has-error': errors.from }">
                                         <SingleSectorPickerField v-model="form.from" label="From"
                                             all-label="All Departure Airports" entity-name="airports"
                                             :options="airportOptions" />
+                                        <span v-if="errors.from" class="error-text">{{ errors.from }}</span>
                                     </div>
-                                    <div class="col-md-4">
+                                    <div class="col-md-4" :class="{ 'has-error': errors.to }">
                                         <SingleSectorPickerField v-model="form.to" label="To"
                                             all-label="All Departure Airports" entity-name="airports"
                                             :options="airportOptions" />
+                                        <span v-if="errors.to" class="error-text">{{ errors.to }}</span>
                                     </div>
-                                    <div class="col-md-4">
-                                        <label class="field-label">Departure Date</label>
+                                    <div class="col-md-4" :class="{ 'has-error': errors.departureDate }">
+                                        <label class="field-label">Departure Date <span class="required-star">*</span></label>
                                         <AppDatePicker v-model="form.departureDate" :options="datePickerOptions" :enableTimePicker="true"  :inputClass="`form-control form-control-md`"/>
+                                        <span v-if="errors.departureDate" class="error-text">{{ errors.departureDate }}</span>
                                     </div>
                                 </div>
                             </div>
@@ -230,20 +382,23 @@ async function submitForm() {
                                         <h5>Return Flight</h5>
                                     </div>
                                     <div class="row g-3">
-                                        <div class="col-md-4">
+                                        <div class="col-md-4" :class="{ 'has-error': errors.returnFrom }">
                                             <SingleSectorPickerField v-model="form.returnFrom" label="Return From"
                                                 all-label="Return From" entity-name="airports"
                                                 :options="airportOptions" />
+                                            <span v-if="errors.returnFrom" class="error-text">{{ errors.returnFrom }}</span>
                                         </div>
-                                        <div class="col-md-4">
+                                        <div class="col-md-4" :class="{ 'has-error': errors.returnTo }">
 
                                             <SingleSectorPickerField v-model="form.returnTo" label="Return To"
                                                 all-label="Return From" entity-name="airports"
                                                 :options="airportOptions"/>
+                                            <span v-if="errors.returnTo" class="error-text">{{ errors.returnTo }}</span>
                                         </div>
-                                        <div class="col-md-4">
-                                            <label class="field-label">Return Date</label>
+                                        <div class="col-md-4" :class="{ 'has-error': errors.returnDate }">
+                                            <label class="field-label">Return Date <span class="required-star">*</span></label>
                                             <AppDatePicker v-model="form.returnDate" :options="datePickerOptions" :enableTimePicker="true"  :inputClass="`form-control form-control-md`"/>
+                                            <span v-if="errors.returnDate" class="error-text">{{ errors.returnDate }}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -257,31 +412,38 @@ async function submitForm() {
                                     <h5>Flight Preferences</h5>
                                 </div>
                                 <div class="row g-3">
-                                    <div class="col-md-6">
+                                    <div class="col-md-6" :class="{ 'has-error': errors.preferredAirlines }">
                                         <SingleSectorPickerField v-model="form.preferredAirlines"
                                             label="Preferred Airlines" all-label="To" entity-name="airports"
                                             :options="airlinesOptions" />
+                                        <span v-if="errors.preferredAirlines" class="error-text">{{ errors.preferredAirlines }}</span>
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="field-label">Flight No.</label>
-                                        <input v-model="form.flightNo" type="text" class="field-input"
+                                        <label class="field-label">Preferred Flight No. <span class="required-star">*</span></label>
+                                        <input v-model="form.flightNo" type="text"
+                                            class="field-input" :class="{ 'input-error': errors.flightNo }"
                                             placeholder="Flight No." />
+                                        <span v-if="errors.flightNo" class="error-text">{{ errors.flightNo }}</span>
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="field-label">Preferred Class</label>
-                                        <select v-model="form.preferredClass" class="field-select">
+                                        <label class="field-label">Preferred Class <span class="required-star">*</span></label>
+                                        <select v-model="form.preferredClass" class="field-select"
+                                            :class="{ 'input-error': errors.preferredClass }">
                                             <option value="" disabled selected>Select Class</option>
                                             <option v-for="opt in preferredClassOptions" :key="opt" :value="opt">{{
                                                 opt }}</option>
                                         </select>
+                                        <span v-if="errors.preferredClass" class="error-text">{{ errors.preferredClass }}</span>
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="field-label">Code (RBD)</label>
-                                        <select v-model="form.code" class="field-select">
+                                        <label class="field-label">Code (RBD) <span class="required-star">*</span></label>
+                                        <select v-model="form.code" class="field-select"
+                                            :class="{ 'input-error': errors.code }">
                                             <option value="" disabled selected>Code</option>
                                             <option v-for="opt in rbdCodeOptions" :key="opt" :value="opt">{{ opt }}
                                             </option>
                                         </select>
+                                        <span v-if="errors.code" class="error-text">{{ errors.code }}</span>
                                     </div>
                                 </div>
                             </div>
@@ -306,17 +468,20 @@ async function submitForm() {
                                         </button>
                                     </div>
                                     <div class="row g-3">
-                                        <div class="col-md-4">
+                                        <div class="col-md-4" :class="{ 'has-error': errors.multiCityFlights?.[index]?.from }">
                                             <SingleSectorPickerField v-model="flight.from" label="From" all-label="From"
                                                 entity-name="airports" :options="airportOptions" />
+                                            <span v-if="errors.multiCityFlights?.[index]?.from" class="error-text">{{ errors.multiCityFlights[index].from }}</span>
                                         </div>
-                                        <div class="col-md-4">
+                                        <div class="col-md-4" :class="{ 'has-error': errors.multiCityFlights?.[index]?.to }">
                                             <SingleSectorPickerField v-model="flight.to" label="From" all-label="To"
                                                 entity-name="airports" :options="airportOptions" />
+                                            <span v-if="errors.multiCityFlights?.[index]?.to" class="error-text">{{ errors.multiCityFlights[index].to }}</span>
                                         </div>
-                                        <div class="col-md-4">
-                                            <label class="field-label">Departure Date</label>
+                                        <div class="col-md-4" :class="{ 'has-error': errors.multiCityFlights?.[index]?.departureDate }">
+                                            <label class="field-label">Departure Date <span class="required-star">*</span></label>
                                             <AppDatePicker v-model="flight.departureDate" :options="datePickerOptions" :enableTimePicker="true"  :inputClass="`form-control form-control-md`"/>
+                                            <span v-if="errors.multiCityFlights?.[index]?.departureDate" class="error-text">{{ errors.multiCityFlights[index].departureDate }}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -334,26 +499,31 @@ async function submitForm() {
                                     <h5>Flight Preferences</h5>
                                 </div>
                                 <div class="row g-3">
-                                    <div class="col-md-6">
+                                    <div class="col-md-6" :class="{ 'has-error': errors.preferredAirlines }">
                                         <SingleSectorPickerField v-model="form.preferredAirlines"
                                             label="Preferred Airlines" all-label="To" entity-name="airports"
                                             :options="airlinesOptions" />
+                                        <span v-if="errors.preferredAirlines" class="error-text">{{ errors.preferredAirlines }}</span>
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="field-label">Preferred Class</label>
-                                        <select v-model="form.preferredClass" class="field-select">
+                                        <label class="field-label">Preferred Class <span class="required-star">*</span></label>
+                                        <select v-model="form.preferredClass" class="field-select"
+                                            :class="{ 'input-error': errors.preferredClass }">
                                             <option value="" disabled selected>Select Class</option>
                                             <option v-for="opt in preferredClassOptions" :key="opt" :value="opt">{{
                                                 opt }}</option>
                                         </select>
+                                        <span v-if="errors.preferredClass" class="error-text">{{ errors.preferredClass }}</span>
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="field-label">Code (RBD)</label>
-                                        <select v-model="form.code" class="field-select">
+                                        <label class="field-label">Code (RBD) <span class="required-star">*</span></label>
+                                        <select v-model="form.code" class="field-select"
+                                            :class="{ 'input-error': errors.code }">
                                             <option value="" disabled selected>Code</option>
                                             <option v-for="opt in rbdCodeOptions" :key="opt" :value="opt">{{ opt }}
                                             </option>
                                         </select>
+                                        <span v-if="errors.code" class="error-text">{{ errors.code }}</span>
                                     </div>
                                 </div>
                             </div>
@@ -369,19 +539,25 @@ async function submitForm() {
                             </div>
                             <div class="row g-3">
                                 <div class="col-6 col-md-3">
-                                    <label class="field-label">Adult</label>
-                                    <input v-model="form.adult" type="number" min="0" class="field-input"
+                                    <label class="field-label">Adult <span class="required-star">*</span></label>
+                                    <input v-model="form.adult" type="number" min="0"
+                                        class="field-input" :class="{ 'input-error': errors.adult }"
                                         placeholder="Adults" />
+                                    <span v-if="errors.adult" class="error-text">{{ errors.adult }}</span>
                                 </div>
                                 <div class="col-6 col-md-3">
-                                    <label class="field-label">Children</label>
-                                    <input v-model="form.children" type="number" min="0" class="field-input"
+                                    <label class="field-label">Children </label>
+                                    <input v-model="form.children" type="number" min="0"
+                                        class="field-input" :class="{ 'input-error': errors.children }"
                                         placeholder="Children" />
+                                    <span v-if="errors.children" class="error-text">{{ errors.children }}</span>
                                 </div>
                                 <div class="col-6 col-md-3">
-                                    <label class="field-label">Infants</label>
-                                    <input v-model="form.infants" type="number" min="0" class="field-input"
+                                    <label class="field-label">Infants </label>
+                                    <input v-model="form.infants" type="number" min="0"
+                                        class="field-input" :class="{ 'input-error': errors.infants }"
                                         placeholder="Infants" />
+                                    <span v-if="errors.infants" class="error-text">{{ errors.infants }}</span>
                                 </div>
                                 <div class="col-6 col-md-3">
                                     <label class="field-label">Total Passengers</label>
@@ -412,9 +588,11 @@ async function submitForm() {
                                     </div>
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="field-label">Per Person Requested Fare ({{ form.currency }})</label>
-                                    <input v-model="form.perPersonFare" type="number" min="0" class="field-input"
+                                    <label class="field-label">Per Person Requested Fare ({{ form.currency }}) <span class="required-star">*</span></label>
+                                    <input v-model="form.perPersonFare" type="number" min="0"
+                                        class="field-input" :class="{ 'input-error': errors.perPersonFare }"
                                         placeholder="Enter Fare" />
+                                    <span v-if="errors.perPersonFare" class="error-text">{{ errors.perPersonFare }}</span>
                                 </div>
                             </div>
                         </div>
@@ -437,10 +615,11 @@ async function submitForm() {
                                     </select>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="field-label">Details Requirements</label>
+                                    <label class="field-label">Details Requirements <span class="required-star">*</span></label>
                                     <textarea v-model="form.detailsRequirements" rows="4"
-                                        class="field-input field-textarea"
+                                        class="field-input field-textarea" :class="{ 'input-error': errors.detailsRequirements }"
                                         placeholder="Enter details requirements of your group"></textarea>
+                                    <span v-if="errors.detailsRequirements" class="error-text">{{ errors.detailsRequirements }}</span>
                                 </div>
                             </div>
                         </div>
@@ -653,6 +832,10 @@ export default {
     margin-bottom: 0.4rem;
 }
 
+.required-star {
+    color: #ef4444;
+}
+
 .field-input {
     width: 100%;
     padding: 0.55rem 0.85rem;
@@ -704,6 +887,33 @@ export default {
 .field-select:focus {
     border-color: #3b82f6;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* ─── Validation states ─────────────────────────── */
+.field-input.input-error,
+.field-select.input-error {
+    border-color: #ef4444;
+    background-color: #fef2f2;
+}
+
+.field-input.input-error:focus,
+.field-select.input-error:focus {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
+.has-error :deep(input),
+.has-error :deep(.select2-selection),
+.has-error :deep(.form-control) {
+    border-color: #ef4444 !important;
+}
+
+.error-text {
+    display: block;
+    color: #ef4444;
+    font-size: 0.75rem;
+    margin-top: 0.35rem;
+    line-height: 1.3;
 }
 
 /* ─── Date Input ────────────────────────────────── */
