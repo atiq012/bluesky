@@ -16,11 +16,14 @@ class GroupController extends BaseController
      */
     public function index()
     {
+
         $data = DB::table('group_requests')
+            ->where('group_requests.agent_code', Auth::user()->agent->agent_code)
             ->leftJoin('users as u', 'u.id', '=', 'group_requests.created_by')
             ->leftJoin('users as u2', 'u2.id', '=', 'group_requests.updated_by')
+            ->leftJoin('agents as a', 'a.agent_code', '=', 'group_requests.agent_code')
             ->leftJoin('group_request_segments', 'group_requests.id', '=', 'group_request_segments.group_request_id')
-            ->select('group_requests.*', 'u.name as createdby', 'u2.name as updatedby',
+            ->select('group_requests.*', 'u.name as createdby', 'u2.name as updatedby','a.name as agent_name',
                 DB::raw('f_username(NULLIF(group_requests.assigned_to, "")) as assigned_to_kam'),
                 DB::raw('GROUP_CONCAT(
                 CONCAT_WS("- ",
