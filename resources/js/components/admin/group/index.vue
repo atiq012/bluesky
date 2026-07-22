@@ -72,8 +72,10 @@ function statusConfig(status) {
             return { cls: 'status-pill status-inactive', icon: 'fa-solid fa-circle', label: 'New Request' };
         case 'On Process':
             return { cls: 'status-pill status-inactive', icon: 'fa-solid fa-circle', label: 'On Process' };
-        case 'Price Offered':
-            return { cls: 'status-pill status-expired', icon: 'fa-solid fa-circle', label: 'Price Offered' };
+        case 'Price offer':
+            return { cls: 'status-pill status-price-offer', icon: 'fa-solid fa-circle', label: 'Price Offer' };
+        case 'Offer confirmed':
+            return { cls: 'status-pill status-price-offer', icon: 'fa-solid fa-circle', label: 'Offer Confirmed' };
         case 'Decline':
             return { cls: 'status-pill status-expired', icon: 'fa-solid fa-circle', label: 'Decline' };
         case 'Confirmed':
@@ -90,6 +92,14 @@ function statusConfig(status) {
 function canDelete(row) {
     if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'On Process') {
         return false
+    }
+}
+
+function groupAssignDetails(row) {
+    if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'On Process'  ) {
+        return false;
+    } else {
+        return true;
     }
 }
 
@@ -115,11 +125,13 @@ async function getListValues() {
 }
 
 function handleView(item) {
+
     router.push({ name: 'requestGroupView', params: { id: item.id } });
 }
 
-function handleEdit(item) {
-    // router.push({ name: 'myGroupEdit', params: { id: item.id } });
+function handleGroup(item) {
+
+    router.push({ name: 'viewOfferPrice', params: { id: item.id } });
 }
 
 function handleCopy(item) {
@@ -389,15 +401,7 @@ getListValues();
                     </template>
                     <!-- KAM -->
                     <template #kam="{ value: row }">
-                        <!-- <div class="status-cell" v-if="row.assigned_to">
-                            <span class="cell-link">
-                                <i class="fa-regular fa-user"></i>
-                                {{ row.assigned_to_kam ?? '-' }}
-                            </span>
-                        </div>
-                        <div v-else>
-                            -
-                        </div> -->
+
                         <CreatedInfo :name="row?.assigned_to_kam" :date="row?.assigned_date" />
 
                     </template>
@@ -424,9 +428,15 @@ getListValues();
 
                     <!-- Action -->
                     <template #action="{ value: row }">
-                        <ActionButtons :item="row" :show-edit="false" :show-view="true" :show-copy="true"
-                            :show-delete="canDelete(row)" :show-authorize="false" copy-label="PNR" @edit="handleEdit"
-                            @view="handleView" @copy="handlePnr" @delete="handleDelete" />
+                        <ActionButtons :item="row"
+                        :show-edit="false"                            :showGroupAssign="groupAssignDetails(row)"
+                        :show-view="true" :show-copy="true"
+                        :show-delete="canDelete(row)"
+                        :show-authorize="false" copy-label="PNR"
+                        @view="handleView"
+                        @copy="handlePnr"
+                        @view-group="handleGroup"
+                        @delete="handleDelete" />
                     </template>
                 </AppDataTable>
             </div>
@@ -760,7 +770,11 @@ getListValues();
     background: #fff2f2;
     border: 1px solid #f4c5c5;
 }
-
+.status-price-offer {
+    color: #b0c845;
+    background: #f2fffb;
+    border: 1px solid #e8f4c5;
+}
 .status-other {
     color: #586c8f;
     background: #f1f5fb;
@@ -832,6 +846,12 @@ getListValues();
 
 [data-bs-theme="dark"] .status-expired {
     color: #f87171;
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+[data-bs-theme="dark"] .status-price-offer {
+    color: #d2f871;
     background: rgba(239, 68, 68, 0.15);
     border-color: rgba(239, 68, 68, 0.3);
 }

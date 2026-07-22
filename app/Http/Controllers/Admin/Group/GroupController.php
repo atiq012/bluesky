@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin\Group;
 use App\Http\Controllers\BaseController;
 use App\Models\GroupRequest\GroupRequest;
 use App\Models\GroupRequest\GroupRequestSegment;
+use App\Models\GroupRequest\PriceOffer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -236,6 +237,29 @@ class GroupController extends BaseController
         return $this->SuccessResponse($groupData, 'Group retrieved successfully for editing.');
     }
 
+    public function showOffer(Request $request)
+    {
+        $groupId = $request->id;
+
+        if (! $groupId) {
+            return $this->ErrorResponse('Group ID is required for editing.', 'Group PNR ID is required for editing.');
+        }
+
+        $groupData = GroupRequest::with(['segments','agent'])->find($groupId);
+
+        if (! $groupData) {
+            return $this->ErrorResponse('Group not found.', 'Group PNR not found.');
+        }
+
+        //  offer price
+        $offer = PriceOffer::with(['segments', 'paymentTerms', 'groupRequest'])
+            ->where('group_req_id', $groupId)
+            ->first();
+        // return $offer and $groupData
+
+        return $this->SuccessResponse([$offer, $groupData], 'Group retrieved successfully for editing.');
+    }
+
     /**
      * Update the specified resource in storage.
      */
@@ -265,5 +289,29 @@ class GroupController extends BaseController
         $group->save();
 
         return $this->SuccessResponse($group, 'Group deleted successfully.');
+    }
+
+    /**
+     * Decline a group request.
+     */
+    public function DeclineGroup(Request $request)
+    {
+        $id = $request->id;
+
+        if (! $id) {
+            return $this->ErrorResponse('Group ID is required.', 'Group ID is required.');
+        }
+
+        $group = GroupRequest::find($id);
+
+        if (! $group) {
+            return $this->ErrorResponse('Group not found.', 'Group not found.');
+        }
+
+        $group->status       = 'Decline';
+        $group->decline_note = $request->note;
+        $group->save();
+
+        return $this->SuccessResponse($group, 'Group declined successfully.');
     }
 }
