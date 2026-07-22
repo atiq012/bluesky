@@ -244,6 +244,7 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('/v2/booking/sessions/{id}/response-download', [BookingAttemptAdminController::class, 'downloadSessionResponse'])->name('booking.v2.sessions.response-download');
 });
 Route::get('airports', [AreaController::class, 'airports']);
+Route::get('districts', [AreaController::class, 'districts']);
 
 Route::post('/agent/registration', [AgentController::class, 'registration']);
 

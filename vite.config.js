@@ -6,21 +6,23 @@ import path from "path";
 export default defineConfig({
     server: {
         host: "0.0.0.0",
-        port: 5173,
+        port: 5174,
         strictPort: true,
         cors: {
             origin: [
                 "http://bluesky.lo",
                 "http://localhost:8081",
                 "http://127.0.0.1:8081",
-                "http://localhost:5173",
-                "http://127.0.0.1:5173",
+                "http://localhost:5174",
+                "http://127.0.0.1:5174",
                 "http://127.0.0.1:8000",
+                "http://127.0.0.1:8001", 
+                "http://localhost:8001",
             ],
         },
         hmr: {
             host: "localhost",
-            port: 5173,
+            port: 5174,
         },
         watch: {
             usePolling: true,

@@ -9,6 +9,10 @@ import ImageCropUpload from "../common/ImageCropUpload.vue";
 import PhoneInput from "../common/PhoneInput.vue";
 import AgencyLegalModal from "./AgencyLegalModal.vue";
 import { AGENCY_TERMS_OF_SERVICE, AGENCY_PRIVACY_POLICY } from "../../content/agencyLegalDocuments.js";
+import axios from "axios";
+import NIDInput from "../common/NIDInput.vue";
+
+
 const authStore = useAuthStore();
 import { useRouter } from 'vue-router';
 const router = useRouter();
@@ -38,9 +42,9 @@ const form = reactive({
     postalCode: "",
     cacNumber: "",
     tradeLicense: "",
-    agencyType: "IATA",
+    agencyType: "Non-IATA",
     iataNumber: "",
-    hajjType: "Hajj",
+    hajjType: "Non-Hajj",
     hajjNumber: "",
     logoFile: null,
     logoName: "",
@@ -133,16 +137,37 @@ const countryOptions = [
     { value: 'United States', label: 'United States' },
 ];
 
-const cityOptions = [
-    { value: 'Dhaka', label: 'Dhaka' },
-    { value: 'Chittagong', label: 'Chittagong' },
-    { value: 'Sylhet', label: 'Sylhet' },
-    { value: 'Khulna', label: 'Khulna' },
-    { value: 'Rajshahi', label: 'Rajshahi' },
-    { value: 'Barisal', label: 'Barisal' },
-    { value: 'Rangpur', label: 'Rangpur' },
-    { value: 'Mymensingh', label: 'Mymensingh' },
-];
+// const cityOptions = [
+//     { value: 'Dhaka', label: 'Dhaka' },
+//     { value: 'Chittagong', label: 'Chittagong' },
+//     { value: 'Sylhet', label: 'Sylhet' },
+//     { value: 'Khulna', label: 'Khulna' },
+//     { value: 'Rajshahi', label: 'Rajshahi' },
+//     { value: 'Barisal', label: 'Barisal' },
+//     { value: 'Rangpur', label: 'Rangpur' },
+//     { value: 'Mymensingh', label: 'Mymensingh' },
+// ];
+
+const cityOptions = ref([]);
+
+async function getDistrict() {
+    try {
+        const response = await axios.get('/api/districts');
+        console.log(response);
+        
+        const sortedData = response.data.sort((a, b) => a.name.localeCompare(b.name));
+
+        cityOptions.value = sortedData.map(item => ({
+            value: item.id,
+            label: item.name,
+           
+        }));
+    } catch (error) {
+        console.error("Failed to fetch districts:", error);
+    }
+}
+
+
 
 // Helpers
 function validateEmail(e) {
@@ -237,6 +262,13 @@ function validateStep1() {
     errors.address = !form.address.trim();
     errors.agencyPhone = form.agencyPhone.trim().length < 4;
 
+    const iataValidation = /^\d+$/;
+    const hajjValidation = /^[A-Za-z0-9/-]+$/;
+    const tradeValidation = /^[A-Za-z0-9/-]+$/;
+
+    errors.iata = form.agencyType==='IATA' && (!form.iataNumber.trim() || !iataValidation.test(!form.iataNumber.trim()));
+    errors.hajj = form.hajjType==='Hajj' && (!form.hajjNumber.trim() || !hajjValidation.test(form.hajjNumber.trim()));
+    errors.trade = !form.tradeLicense.trim() || !tradeValidation.test(form.tradeLicense.trim());
     return (
         !errors.agencyName &&
         !errors.establishedDate &&
@@ -244,7 +276,10 @@ function validateStep1() {
         !errors.country &&
         !errors.city &&
         !errors.address &&
-        !errors.agencyPhone
+        !errors.agencyPhone &&
+        !errors.trade &&
+        !errors.iata &&
+        !errors.hajj
     );
 }
 
@@ -565,6 +600,9 @@ watch(() => form.agencyEmail, v => { if (v) errors.agencyEmail = false; });
 watch(() => form.agencyPhone, v => { if (v?.trim()) errors.agencyPhone = false; });
 watch(() => form.country, v => { if (v) errors.country = false; });
 watch(() => form.city, v => { if (v) errors.city = false; });
+watch(() => form.tradeLicense, v => { if (v) errors.trade = false; });
+watch(() => form.iataNumber, v => { if (v) errors.iata = false; });
+watch(() => form.hajjNumber, v => { if (v) errors.hajj = false; });
 watch(() => form.address, v => { if (v?.trim()) errors.address = false; });
 watch(() => form.firstName, v => { if (v?.trim()) errors.firstName = false; });
 watch(() => form.designation, v => { if (v?.trim()) errors.lastName = false; });
@@ -575,9 +613,17 @@ watch(() => form.userPhone, v => { if (v?.trim()) errors.userPhone = false; });
 watch(() => form.agreeTerms, v => { if (v) errors.agreeTerms = false; });
 
 function init() {
-    const saved = parseInt(sessionStorage.getItem(STEP_KEY), 10);
-    const startStep = (saved >= 1 && saved <= totalSteps) ? saved : 1;
-    showPane(startStep);
+    // const saved = parseInt(sessionStorage.getItem(STEP_KEY), 10);
+    // const startStep = (saved >= 1 && saved <= totalSteps) ? saved : 1;
+    // showPane(startStep);
+    // requestAnimationFrame(() => {
+    //     requestAnimationFrame(() => {
+    //         document.body.classList.remove('preload');
+    //     });
+    // });
+
+    sessionStorage.removeItem(STEP_KEY); // Clear saved step
+    showPane(1); // Always start at Step 1 on page refresh
     requestAnimationFrame(() => {
         requestAnimationFrame(() => {
             document.body.classList.remove('preload');
@@ -595,6 +641,7 @@ const handleKeyDown = (e) => {
 onMounted(() => {
     window.addEventListener('keydown', handleKeyDown);
     init();
+    getDistrict();
 });
 
 onUnmounted(() => {
@@ -687,42 +734,23 @@ onUnmounted(() => {
                                 <AppDatePicker v-model="form.establishedDate" :max-date="todayMaxDate"
                                     placeholder="Select established date"
                                     :input-class="errors.establishedDate === true ? 'form-control is-invalid' : errors.establishedDate === false ? 'form-control' : 'form-control'"
-                                    input-style="border-radius: 10px; padding: 10px 14px 10px 2.25rem; font-size: .9rem; color: #3F4754; border: 1.5px solid #E2E8F0; cursor: pointer;" />
-                                <div class="invalid-feedback" v-show="errors.establishedDate === true">Please select a
-                                    valid established date (today or earlier).</div>
+                                    input-style="border-radius: 10px; padding: 10px 14px 10px 2.25rem; font-size: .9rem; color: #3F4754; cursor: pointer;" />
+                                <!-- <div class="invalid-feedback" v-show="errors.establishedDate === true">Please select a
+                                    valid established date (today or earlier).</div> -->
+                                <div v-if="errors.establishedDate === true" class="invalid-feedback d-block">
+                                    Please select a valid established date (today or earlier).
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <EmailInput v-model="form.agencyEmail" label="Email" :required="true"
                                     placeholder="agency@email.com" input-class="form-control"
-                                    input-style="border-radius: 10px; padding: 10px 14px; font-size: .9rem; color: #3F4754; border: 1.5px solid #E2E8F0;"
+                                    input-style="border-radius: 10px; padding: 10px 14px; font-size: .9rem; color: #3F4754;"
                                     :error="errors.agencyEmail === true ? 'Please enter a valid email address.' : ''" />
                             </div>
                             <div class="col-md-6">
                                 <PhoneInput v-model="form.agencyPhone" v-model:dial-code="form.agencyCountryDial"
                                     label="Phone" :required="true"
                                     :error="errors.agencyPhone === true ? 'Please enter a valid phone number.' : ''" />
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Country <span class="text-danger">*</span></label>
-                                <div :class="{ 'select2-error': errors.country === true }">
-                                    <Select2 v-model="form.country" :options="countryOptions" :clearable="false"
-                                        control-class="form-control"
-                                        control-style="border-radius: 10px; padding: 10px 14px; font-size: .9rem; color: #3F4754; border: 1.5px solid #E2E8F0;"
-                                        @update:modelValue="v => { if (v) errors.country = false }" />
-                                </div>
-                                <div v-if="errors.country === true" class="invalid-feedback d-block">Please select a
-                                    country.</div>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">City <span class="text-danger">*</span></label>
-                                <div :class="{ 'select2-error': errors.city === true }">
-                                    <Select2 v-model="form.city" :options="cityOptions" :clearable="false"
-                                        control-class="form-control"
-                                        control-style="border-radius: 10px; padding: 10px 14px; font-size: .9rem; color: #3F4754; border: 1.5px solid #E2E8F0;"
-                                        @update:modelValue="v => { if (v) errors.city = false }" />
-                                </div>
-                                <div v-if="errors.city === true" class="invalid-feedback d-block">Please select a city.
-                                </div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Address <span class="text-danger">*</span></label>
@@ -733,26 +761,54 @@ onUnmounted(() => {
                                 <div class="invalid-feedback">Please enter the address.</div>
                             </div>
                             <div class="col-md-6">
+                                <label class="form-label">District <span class="text-danger">*</span></label>
+                                <div :class="{ 'select2-error': errors.city === true }">
+                                    <Select2 v-model="form.city" :options="cityOptions" :clearable="true"
+                                        control-class="form-control" 
+                                        control-style="border-radius: 10px; padding: 10px 14px; font-size: .9rem; color: #3F4754; border: 1.5px solid #E2E8F0;"
+                                        @update:modelValue="v => { if (v) errors.city = false }" />
+                                </div>
+                                <div v-if="errors.city === true" class="invalid-feedback d-block">Please select a District.
+                                </div>
+                            </div>
+                            <div class="col-md-6">
                                 <label class="form-label">Postal Code</label>
                                 <input type="text" class="form-control" placeholder="Postal code"
                                     v-model="form.postalCode">
                             </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Country <span class="text-danger">*</span></label>
+                                <div :class="{ 'select2-error': errors.country === true }">
+                                    <Select2 v-model="form.country" :options="countryOptions" :clearable="true"
+                                        control-class="form-control"
+                                        control-style="border-radius: 10px; padding: 10px 14px; font-size: .9rem; color: #3F4754; border: 1.5px solid #E2E8F0;"
+                                        @update:modelValue="v => { if (v) errors.country = false }" />
+                                </div>
+                                <div v-if="errors.country === true" class="invalid-feedback d-block">Please select a
+                                    country.</div>
+                            </div>
+                            
                             <div class="col-md-6">
                                 <label class="form-label">Civil Aviation Certificate Number</label>
                                 <input type="text" class="form-control" placeholder="CAC number"
                                     v-model="form.cacNumber">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Trade License Number</label>
+                                <label class="form-label">Trade License Number
+                                    <span class="text-danger">*</span>
+                                </label>
                                 <input type="text" class="form-control" placeholder="Trade license number"
-                                    v-model="form.tradeLicense">
+                                    v-model="form.tradeLicense" :class="{ 'is-invalid': errors.trade === true, 'is-valid': errors.trade === false }"
+                                    required>
+                                <div class="invalid-feedback">Please enter a valid trade license.</div>
                             </div>
                             <!-- Agency Type Radio & IATA Field -->
                             <div class="col-md-6">
                                 <div class="radio-group" id="agencyTypeGroup">
                                     <div class="form-check">
                                         <input class="form-check-input" type="radio" name="agencyType" id="typeIata"
-                                            value="IATA" v-model="form.agencyType">
+                                            value="IATA" v-model="form.agencyType"
+                                            >
                                         <label class="form-check-label" for="typeIata">IATA</label>
                                     </div>
                                     <div class="form-check">
@@ -769,7 +825,9 @@ onUnmounted(() => {
 
                                 <div class="mt-2" v-if="showIataField">
                                     <input type="text" id="iata_field" class="form-control"
-                                        :placeholder="iataPlaceholder" v-model="form.iataNumber">
+                                        :placeholder="iataPlaceholder" v-model="form.iataNumber"
+                                        :class="{ 'is-invalid': errors.iata === true, 'is-valid': errors.iata === false && form.iataNumber?.trim()}">
+                                    <div class="invalid-feedback">Please enter a valid IATA number.</div>
                                 </div>
                             </div>
 
@@ -790,7 +848,9 @@ onUnmounted(() => {
 
                                 <div class="mt-2" v-if="showHajjField">
                                     <input type="text" id="hajjno_field" class="form-control"
-                                        :placeholder="hajjPlaceholder" v-model="form.hajjNumber">
+                                        :placeholder="hajjPlaceholder" v-model="form.hajjNumber"
+                                        :class="{ 'is-invalid': errors.hajj === true, 'is-valid': errors.hajj === false && form.hajjNumber?.trim() }">
+                                    <div class="invalid-feedback">Please enter a valid hajj license number.</div>
                                 </div>
                             </div>
                             <div class="col-12">
@@ -994,12 +1054,16 @@ onUnmounted(() => {
                                 <div class="invalid-feedback">Please enter designation.</div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">NID Number <span class="text-danger">*</span></label>
+                                <!-- <label class="form-label">NID Number <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" placeholder="NID Number"
                                     v-model="form.nidNumber"
                                     :class="{ 'is-invalid': errors.nidNumber === true, 'is-valid': errors.nidNumber === false }"
                                     required>
-                                <div class="invalid-feedback">Please enter a valid NID number.</div>
+                                <div class="invalid-feedback">Please enter a valid NID number.</div> -->
+                                <NIDInput v-model="form.nidNumber" label="NID Number" :required="true"
+                                    placeholder="NID Number" input-class="form-control"
+                                    input-style="border-radius: 10px; padding: 10px 14px; font-size: .9rem; color: #3F4754;"
+                                    :error="errors.nidNumber === true ? 'Please enter a valid NID number.' : ''" />
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Birth Date <span class="text-danger">*</span></label>
@@ -1365,6 +1429,7 @@ body.preload *::after {
     font-size: .9rem;
     color: #3F4754;
     transition: border-color .25s cubic-bezier(.4, 0, .2, 1), box-shadow .25s cubic-bezier(.4, 0, .2, 1);
+    
 }
 
 .form-control:focus,
@@ -1683,7 +1748,8 @@ textarea.form-control {
 /* ── Validation ──────────────────────────────────── */
 .form-control.is-invalid,
 .form-select.is-invalid,
-.phone-group.is-invalid {
+.phone-group.is-invalid
+:deep(.form-control.is-invalid) {
     border-color: #EF4444 !important;
     box-shadow: 0 0 0 3px rgba(239, 68, 68, .12) !important;
 }
