@@ -7,6 +7,7 @@ const props = defineProps({
     item: { type: Object, required: true },
     showMore: { type: Boolean, default: false },
     showView: { type: Boolean, default: false },
+    showGroupAssign: { type: Boolean, default: false },
     showEdit: { type: Boolean, default: true },
     showPrint: { type: Boolean, default: false },
     showLogs: { type: Boolean, default: false },
@@ -68,7 +69,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits([
-    'more', 'view', 'edit', 'delete', 'print', 'logs', 'showStatusModal', 'statusChange', 'reverse', 'coming',
+    'more', 'view','view-group', 'edit', 'delete', 'print', 'logs', 'showStatusModal', 'statusChange', 'reverse', 'coming',
     'fund-request', 'place-order', 'receive', 'fund-processing', 'funds-ready', 'give-advance', 'authorize',
     'payment-history', 'return', 'download-request', 'download-response', 'issue-ticket', 'cancel-booking', 'history', 'void-ticket',
 ]);
@@ -96,7 +97,7 @@ const filteredStatusChangeOptions = computed(() => {
 const hasStatusChangeOptions = computed(() => filteredStatusChangeOptions.value.length > 0);
 
 const visibleCount = computed(() => [
-    props.showMore, props.showView, props.showEdit, props.showDelete,
+    props.showMore, props.showView,props.showGroupAssign, props.showEdit, props.showDelete,
     props.showPrint, props.showLogs, props.showStatusModal,
     props.showStatusChange && hasStatusChangeOptions.value,
     props.showReverse, props.showComing, props.showFundRequest,
@@ -118,6 +119,7 @@ const simpleActions = computed(() => {
     const defs = [
         { key: 'more', show: props.showMore, label: props.moreLabel || 'More Actions', icon: 'fa-solid fa-ellipsis-vertical', btnClass: 'action-btn-more' },
         { key: 'view', show: props.showView, label: props.viewLabel || 'View', icon: 'fa-solid fa-fire-flame-curved', btnClass: 'action-btn-view' },
+        { key: 'view-group', show: props.showGroupAssign, label: props.viewLabel || 'Show Offer Price', icon: 'fa-solid fa-check', btnClass: 'action-btn-group-assign', disabled: props.viewDisabled },
         { key: 'edit', show: props.showEdit, label: props.editLabel || 'Edit', icon: 'fa-solid fa-pencil', btnClass: 'action-btn-edit' },
         { key: 'delete', show: props.showDelete, label: props.deleteLabel || 'Delete', icon: 'fa-solid fa-trash', btnClass: 'action-btn-delete' },
         { key: 'logs', show: props.showLogs, label: props.logsLabel || 'Logs', icon: 'fa-solid fa-file-lines', btnClass: 'action-btn-logs' },
