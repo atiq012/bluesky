@@ -103,10 +103,18 @@ function handleDelete(item) {
         ],
         onClosed: async (instance, toast, closedBy) => {
             if (closedBy === 'yes') {
-                await axiosInstance.post('deleteTraveler', { id: item.idd });
-                getListValues();
-                Notification.showToast('s', 'Successfully Traveler Deleted.');
-            }
+                try {
+                    await axiosInstance.post('deleteTraveler', { id: item.idd });
+
+                    // refresh list and wait for it
+                    await getListValues();
+
+                    Notification.showToast('s', 'Successfully Traveler Deleted.');
+                    } catch (error) {
+                        console.error(error);
+                        Notification.showToast('e', 'Failed to delete traveler.');
+                    }
+                }
         },
     });
 }
@@ -288,9 +296,11 @@ getListValues();
                         </div> -->
                         <!-- :show-view="true" -->
                         <ActionButtons :item="row" :show-edit="true" :show-delete="true" :show-view="true"
-                            :show-authorize="true" authorize-label="Approve" @view="handleView"
+                            :show-authorize="false" 
+                            @view="handleView" @edit="handleEdit" @delete="handleDelete"
                             :loading-item-id="loadingItemId" :loading-action="loadingAction"
                             @authorize="handleApproval" />
+                        
                     </template>
                 </AppDataTable>
             </div>

@@ -132,6 +132,21 @@ class TravelerController extends Controller
         //
     }
 
+    public function fetchTravelerById(Request $request)
+    {
+         $traveler = Traveller::find($request->id);
+        if (! $traveler) {
+            return response()->json(['message' => 'Traveler not found.', 'types' => 'e'], 404);
+        }
+        // Append file size if passport image exists
+        if ($traveler->passport_path && File::exists(public_path($traveler->passport_path))) {
+            $traveler->passport_file_size = File::size(public_path($traveler->passport_path));
+        } else {
+            $traveler->passport_file_size = 0;
+        }
+        return response()->json($traveler);
+    }
+
     /**
      * Update the specified resource in storage.
      */
@@ -202,11 +217,11 @@ class TravelerController extends Controller
             }
             $traveler->delete();
             $success = '';
-            return $this->SuccessResponse($success, 'Successfully Traveler deleted.');
+            return response()->json(['message' => 'Successfully Traveler deleted.', 'types' => 's']);
 
         } else {
             $error = 'Id can not be null.';
-            return $this->ErrorResponse($error);
+            return response()->json(['message' => 'Id can not be null.', 'types' => 'e'], 400);
 
         }
     }

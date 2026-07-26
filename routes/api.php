@@ -176,6 +176,8 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('/deleteTraveler', [TravelerController::class, 'destroy'])->name('traveler.destroy');
     Route::post('/traveler/data/update', [TravelerController::class, 'update'])->name('traveler.update');
     Route::post('get-travelers-data-by-search', [TravelerController::class, 'search'])->name('traveler.search');
+    Route::get('fetchTraveler', [TravelerController::class, 'fetchTravelerById'])->name('traveler.fetchById');
+
 
     // deposit section
     Route::get('getDeposit', [DepositController::class, 'index'])->name('deposit.getDeposit');

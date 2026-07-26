@@ -25,6 +25,7 @@ const props = defineProps({
     enableTimePicker: { type: Boolean, default: false },
     multiCalendars: { type: [Boolean, Object], default: true },
     maxDate: { type: [Date, String, Number], default: null },
+    minDate: { type: [Date, String, Number], default: null },
 });
 
 const emit = defineEmits(['update:modelValue']);
@@ -187,6 +188,7 @@ const { isDarkMode } = storeToRefs(authStore);
         :clearable="clearable"
         :enable-time-picker="enableTimePicker"
         :max-date="maxDate"
+        :min-date="minDate"
         :auto-apply="true"
         :dark="isDarkMode"
         :format="formats"
@@ -207,10 +209,11 @@ const { isDarkMode } = storeToRefs(authStore);
                 :placeholder="placeholder"
                 :disabled="disabled"
                 readonly
+                style="padding-left: 2.25rem; cursor: pointer;"
             />
         </template>
 
-        <template v-if="multiDates" #dp-input>
+        <template v-else #dp-input>
             <div
                 class="dp__input dp__input--multi d-flex flex-wrap align-items-center gap-1"
                 :class="inputClass"
