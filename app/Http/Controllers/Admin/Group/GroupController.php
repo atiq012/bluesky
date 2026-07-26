@@ -308,7 +308,7 @@ class GroupController extends BaseController
             return $this->ErrorResponse('Group not found.', 'Group not found.');
         }
 
-        $group->status       = 'Decline';
+        $group->status       = 'Offer declined';
         $group->decline_note = $request->note;
         $group->save();
 

@@ -67,6 +67,7 @@ function wayTypeConfig(wayType) {
 }
 
 function statusConfig(status) {
+
     switch ((status || '')) {
         case 'New Request':
             return { cls: 'status-pill status-inactive', icon: 'fa-solid fa-circle', label: 'New Request' };
@@ -90,13 +91,13 @@ function statusConfig(status) {
 }
 
 function canDelete(row) {
-    if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'On Process') {
+    if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'On Process' ||  row.status == 'Offer confirmed') {
         return false
     }
 }
 
 function groupAssignDetails(row) {
-    if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'On Process'  ) {
+    if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'On Process' ||  row.status == 'New Request') {
         return false;
     } else {
         return true;

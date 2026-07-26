@@ -231,14 +231,15 @@ const totalPassengers = computed(() => {
 
 // ---- Options ----
 const groupTypeOptions = [
-    { value: 'tour', label: 'Tour' },
-    { value: 'corporate_travel', label: 'Corporate Travel' },
-    { value: 'hajj', label: 'Hajj' },
-    { value: 'umrah', label: 'Umrah' },
-    { value: 'sports', label: 'Sports' },
-    { value: 'family_event', label: 'Family Event' },
-    { value: 'labour', label: 'Labour' },
-    { value: 'mice', label: 'MICE' }
+    { value: 'Tour', label: 'Tour' },
+    { value: 'Corporate', label: 'Corporate ' },
+    { value: 'Student', label: 'Student' },
+    { value: 'Hajj', label: 'Hajj' },
+    { value: 'Umrah', label: 'Umrah' },
+    { value: 'Sports', label: 'Sports' },
+    { value: 'Family Event', label: 'Family Event' },
+    { value: 'Labour', label: 'Labour' },
+    { value: 'Mice', label: 'MICE' }
 ];
 
 // ─── Dropdown data ───
