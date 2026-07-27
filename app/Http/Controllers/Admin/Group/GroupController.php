@@ -26,6 +26,7 @@ class GroupController extends BaseController
             ->select(
                 'group_requests.id',
                 'group_requests.request_type',
+                'group_requests.group_type',
                 'group_requests.created_at',
                 'group_requests.group_code',
                 'group_requests.origin',
