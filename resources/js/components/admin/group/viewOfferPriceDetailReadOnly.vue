@@ -511,7 +511,7 @@ async function handleDecline() {
                                     </div>
 
                                     <!-- Est. Total Fare -->
-                                    <div class="est-total-fare-row">
+                                    <!-- <div class="est-total-fare-row">
                                         <div class="est-total-fare-box">
                                             <span class="est-label">Est. Total Fare [{{ currency }}]</span>
                                             <span class="est-value">{{ formatCurrency(estTotalFare, currency) }}</span>
@@ -520,10 +520,10 @@ async function handleDecline() {
                                             <span class="est-label">Est. Total Fare [BDT]</span>
                                             <span class="est-value">{{ formatCurrency(estTotalFareBDT, 'BDT') }}</span>
                                         </div>
-                                    </div>
+                                    </div> -->
 
                                     <!-- Markup & Service Charge -->
-                                    <div class="markup-row">
+                                    <!-- <div class="markup-row">
                                         <div class="markup-field">
                                             <label class="field-label">Markup</label>
                                             <div class="readonly-inline">
@@ -538,7 +538,7 @@ async function handleDecline() {
                                                 <span class="readonly-type">{{ offerData.service_charge_type || 'Flat' }}</span>
                                             </div>
                                         </div>
-                                    </div>
+                                    </div> -->
 
                                     <!-- Net Payable -->
                                     <div class="net-payable-row">
