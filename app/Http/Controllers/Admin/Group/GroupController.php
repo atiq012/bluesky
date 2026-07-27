@@ -27,6 +27,7 @@ class GroupController extends BaseController
                 'group_requests.id',
                 'group_requests.request_type',
                 'group_requests.group_type',
+                'group_requests.preferred_flight',
                 'group_requests.created_at',
                 'group_requests.group_code',
                 'group_requests.origin',
@@ -69,6 +70,8 @@ class GroupController extends BaseController
             )
             ->groupBy('group_requests.id')
             ->groupBy('group_requests.request_type')
+            ->groupBy('group_requests.group_type',)
+            ->groupBy('group_requests.preferred_flight')
             ->groupBy('group_requests.group_code')
             ->groupBy('group_requests.origin')
             ->groupBy('group_requests.destination')
