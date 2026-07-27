@@ -316,7 +316,7 @@ getListValues();
                         <div class="airline-cell">
                             <div class="cell-main">
                                 <i class="fa-solid fa-plane-departure me-1 table-icon"></i>
-                                {{ row.airline || 'Qatar Airline' }}
+                                {{ row.preferred_flight }}
                             </div>
                             <div class="cell-link">PNR : {{ row.pnr || '-' }}</div>
 
