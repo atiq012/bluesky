@@ -4,7 +4,12 @@ import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
 import { useAuthStore } from "../../../stores/authStore";
 import axiosInstance from "../../../axiosInstance";
 
-import { ref, onMounted, reactive } from "vue";
+import { ref, onMounted, reactive, watch} from "vue";
+import AppButton from '../../common/AppButton.vue';
+import ImageUploader from '../../common/ImageUploader.vue';
+import { useRouter } from 'vue-router';
+
+
 const authStore = useAuthStore();
 //**** create function start
 const form = reactive({
@@ -13,12 +18,64 @@ const form = reactive({
     phone: '', dept_name: '', desg: '',
 });
 
+const errors = reactive({
+    name: null, 
+    email: null, 
+    staff_id: null, 
+    phone: null, 
+    dept_name: null, 
+    
+});
 
+const router = useRouter();
+function goBack() {
+    router.push({ name: 'UserList' });
+}
+
+const submitting = ref(false);
+const profileImages = ref([]);
+
+watch(() => form.name,      v => { if (v)        errors.name = null; });
+watch(() => form.email,     v => { if (v)        errors.email = null; });
+watch(() => form.staff_id,  v => { if (v)        errors.staff_id = null; });
+watch(() => form.phone,     v => { if (v)        errors.phone = null; });
+watch(() => form.dept_name, v => { if (v)        errors.dept_name = null; });
+watch(profileImages, (newVal) => {
+    form.profile_picture = newVal.length > 0 ? newVal[0].file : null;
+}, { deep: true });
+
+
+function validate(type) {
+    // Reset all
+    Object.keys(errors).forEach(k => errors[k] = null);
+    const validEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const validPhoneRegex = /^(?:\+?[1-9]\d{7,14}|0\d{7,14})$/;
+
+
+    if (!form.name.trim()) 
+        errors.name = 'Please enter a name.';
+    if (!form.email.trim() || !validEmailRegex.test(form.email.trim())) 
+        errors.email = 'Please enter a valid email address.';    
+    if (!form.staff_id.trim()) 
+        errors.staff_id = 'Please enter a staff ID.';
+    if (!form.phone.trim() || !validPhoneRegex.test(form.phone.trim())) 
+        errors.phone = 'Please enter a valid phone number.';
+    if (!form.dept_name.trim()) 
+        errors.dept_name = 'Please enter a department name.';
+    
+    
+    return !Object.values(errors).some(Boolean);
+}
 
 async function save() {
+    if (!validate()) {
+        return;
+    }
+
+    submitting.value = true;
     // console.log(form);
     try {
-
+        
         // const response = await axiosInstance.post("/external-user/save", form);
         const authStore = useAuthStore();
         const accessToken = authStore.decryptWithAES(authStore.token);
@@ -32,15 +89,18 @@ async function save() {
         });
 
         document.getElementById("addUserform").reset();
-        previewImage.value = '';
+        //previewImage.value = '';
+        profileImages.value = []; 
 
         Notification.showToast('s', response.data.message);
-
+        router.push({ name: 'UserList' });
 
 
     } catch (error) {
         ErrorCatch.CatchError(error);
 
+    } finally {
+        submitting.value = false;
     }
 }
 const previewImage = ref('');
@@ -83,7 +143,7 @@ function triggerFileInput() {
             <div class="card-body p-4">
                 <div class="row g-4">
                     <!-- Profile Image -->
-                    <div class="col-lg-2">
+                    <!-- <div class="col-lg-2">
                         <label class="form-label">Profile Image</label>
 
                         <div class="profile-upload-box" @click="triggerFileInput">
@@ -100,37 +160,68 @@ function triggerFileInput() {
                         <button type="button" class="choose-file-btn" @click="triggerFileInput">Choose File</button>
                         <input type="file" id="profile-picture" ref="profilePicture" class="d-none"
                             @change="handleFileChange" accept="image/*">
+                    </div> -->
+
+                    <div class="col-lg-3">
+                        <label class="form-label">Profile Image</label>
+                        <ImageUploader v-model="profileImages" :max-files="1" preview-size="large"/>
                     </div>
 
                     <!-- Form Fields -->
-                    <div class="col-lg-10">
+                    <div class="col-lg-8">
                         <div class="row g-4">
                             <div class="col-md-6">
-                                <label for="name" class="form-label">Name</label>
+                                <label for="name" class="form-label">Name
+                                    <span class="text-danger">*</span>
+                                </label>
                                 <input type="text" class="form-control custom-input" id="name"
-                                    placeholder="Enter Your Name" v-model="form.name">
+                                    placeholder="Enter Your Name" v-model="form.name" :class="{ 'is-invalid': errors.name }">
+                                <div v-if="errors.name" class="invalid-feedback d-block">
+                                    {{ errors.name }}   
+                                </div>
                             </div>
                             <div class="col-md-6">
-                                <label for="staff_id" class="form-label">Staff ID</label>
+                                <label for="staff_id" class="form-label">Staff ID
+                                    <span class="text-danger">*</span>
+                                </label>
                                 <input type="text" class="form-control custom-input" id="staff_id"
-                                    placeholder="Enter Your Staff ID" v-model="form.staff_id">
+                                    placeholder="Enter Your Staff ID" v-model="form.staff_id" :class="{ 'is-invalid': errors.staff_id }">
+                                <div v-if="errors.staff_id" class="invalid-feedback d-block">
+                                    {{ errors.staff_id }}
+                                </div>
                             </div>
 
                             <div class="col-md-6">
-                                <label for="email" class="form-label">Email</label>
+                                <label for="email" class="form-label">Email
+                                    <span class="text-danger">*</span>
+                                </label>
                                 <input type="email" class="form-control custom-input" id="email"
-                                    placeholder="Enter Your Email" v-model="form.email">
+                                    placeholder="Enter Your Email" v-model="form.email" :class="{ 'is-invalid': errors.email }">
+                                <div v-if="errors.email" class="invalid-feedback d-block">
+                                    {{ errors.email }}
+                                </div>
                             </div>
                             <div class="col-md-6">
-                                <label for="phone" class="form-label">Phone</label>
-                                <input type="number" class="form-control custom-input" id="phone"
-                                    placeholder="Enter Your Phone Number" v-model="form.phone">
+                                <label for="phone" class="form-label">Phone
+                                    <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control custom-input" id="phone"
+                                    placeholder="Enter Your Phone Number" v-model="form.phone" :class="{ 'is-invalid': errors.phone }">
+                                <div v-if="errors.phone" class="invalid-feedback d-block">
+                                    {{ errors.phone }}
+                                </div>
                             </div>
 
                             <div class="col-md-6">
-                                <label for="deptment_id1" class="form-label">Department</label>
+                                <label for="deptment_id1" class="form-label">Department
+                                    <span class="text-danger">*</span>
+                                </label>
                                 <input type="text" class="form-control custom-input" id="deptment_id1"
-                                    placeholder="Enter Department Name" v-model="form.deptment_id">
+                                    placeholder="Enter Department Name" v-model="form.dept_name" :class="{ 'is-invalid': errors.dept_name }">
+                                
+                                <div v-if="errors.dept_name" class="invalid-feedback d-block">
+                                    {{ errors.dept_name }}
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <label for="desg_id1" class="form-label">Designation</label>
@@ -142,9 +233,11 @@ function triggerFileInput() {
                 </div>
             </div>
 
-            <div class="card-footer bg-white mb-3">
-                <button type="button" @click="save()" class="btn btn-save px-4 float-end ms-2 mb-3">Save</button>
-                <button type="button" class="btn btn-back px-4 float-end mb-3" @click="$router.go(-1)">Back</button>
+            <div class="card-footer bg-white mb-3 gap-3 d-flex justify-content-end">
+                <AppButton variant="cancel" @click="goBack"/>
+                <AppButton variant="save" label="Save" :loading="submitting" @click="save()" />
+                <!-- <button type="button" @click="save()" class="btn btn-save px-4 float-end ms-2 mb-3">Save</button> -->
+                <!-- <button type="button" class="btn btn-back px-4 float-end mb-3" @click="$router.go(-1)">Back</button> -->
             </div>
         </form>
     </div>

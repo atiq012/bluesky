@@ -102,7 +102,7 @@ async function fetchTravelerData() {
         const travelerId = props.ids;
         const response = await axiosInstance.get('fetchTraveler', { params: { id: travelerId } });
         const d = response.data;
-        console.log('Fetched traveler data:', d);
+        //console.log('Fetched traveler data:', d);
         if (d) {
             form.pax_id = d.id;
             form.title = d.title || '';
