@@ -67,12 +67,12 @@ function wayTypeConfig(wayType) {
 }
 
 function statusConfig(status) {
-
+    console.log(status);
     switch ((status || '')) {
         case 'New Request':
             return { cls: 'status-pill status-inactive', icon: 'fa-solid fa-circle', label: 'New Request' };
-        case 'On Process':
-            return { cls: 'status-pill status-inactive', icon: 'fa-solid fa-circle', label: 'On Process' };
+        case 'Accepted':
+            return { cls: 'status-pill status-inactive', icon: 'fa-solid fa-circle', label: 'Accepted' };
         case 'Price offer':
             return { cls: 'status-pill status-price-offer', icon: 'fa-solid fa-circle', label: 'Price Offer' };
         case 'Offer confirmed':
@@ -93,13 +93,13 @@ function statusConfig(status) {
 }
 
 function canDelete(row) {
-    if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'On Process' ||  row.status == 'Offer confirmed') {
+    if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'Accepted' ||  row.status == 'Offer confirmed') {
         return false
     }
 }
 
 function groupAssignDetails(row) {
-    if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'On Process' ||  row.status == 'New Request') {
+    if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'Accepted' ||  row.status == 'New Request') {
         return false;
     } else {
         return true;
