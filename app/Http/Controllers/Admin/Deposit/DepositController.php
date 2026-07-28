@@ -49,7 +49,7 @@ class DepositController extends BaseController
                 'nullable'
             ],
             'issued_bank'      => [
-                Rule::requiredIf(fn () => in_array($request->payment_type, ['MFS', 'Cheque', 'Bank_Transfer', 'Credit_Request'])),
+                Rule::requiredIf(fn () => in_array($request->payment_type, ['MFS', 'Cheque', 'Bank_Transfer'])),
                 'nullable'
             ],
             'reference_number' => ['required', 'string', 'max:100'],
@@ -137,6 +137,7 @@ class DepositController extends BaseController
                 $depo->created_by     = auth()->user()->id;
                 $depo->save();
             } else if ($request->payment_type == 'Credit_Request') {
+                //$autoRefNo = 'CR' . date('YmdHis');
 
                 $depo                  = new Deposit;
                 $depo->type            = 'Credit Request';
@@ -146,7 +147,7 @@ class DepositController extends BaseController
                 $depo->charge          = $request->service_charge;
                 $depo->total           = $request->total_amount;
                 $depo->issued_bank     = $request->issued_bank;
-                $depo->reference_no =  $request->reference_number;
+                $depo->reference_no    = $request->reference_number;
                 $depo->reference_date = date('Y-m-d', strtotime($request->reference_date));
                 $depo->reference_file = $referenceFilePath;
                 $depo->remarks        = $request->remarks;
@@ -200,6 +201,7 @@ class DepositController extends BaseController
                 d.remarks,
                 d.status,
                 d.created_at,
+                d.updated_at,
                 ag.name as agent_name,
                 ag.agent_code,
                 ag.logo_path,
@@ -232,6 +234,7 @@ class DepositController extends BaseController
             'remarks' => $row->remarks,
             'status' => $row->status,
             'created_at' => $row->created_at,
+            'updated_at' => $row->updated_at,
             'agent_name' => $row->agent_name,
             'agent_code' => $row->agent_code,
             'logo_path' => $this->normalizeUploadPath($row->logo_path),

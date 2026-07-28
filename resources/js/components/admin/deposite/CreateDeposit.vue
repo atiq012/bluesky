@@ -98,10 +98,10 @@ function validate(type) {
         errors.requested_amount = 'Please enter the request amount.';
     if (!form.reference_date) 
         errors.reference_date = 'Please select a reference date.'; 
-    if (!form.reference_number) 
+    if (type !== 'Credit_Request' && !form.reference_number) 
         errors.reference_number = 'Please enter a reference number.';
 
-    const tabsWithIssuedBank = ['MFS', 'Cheque', 'Bank_Transfer', 'Credit_Request'];
+    const tabsWithIssuedBank = ['MFS', 'Cheque', 'Bank_Transfer'];
     if (tabsWithIssuedBank.includes(type) && !form.issued_bank) {
         errors.issued_bank = 'Please select an issued bank.';
     }
@@ -112,41 +112,7 @@ function validate(type) {
 
 
 async function loadPaymentAccounts() {
-    // try {
-    //     const response = await axiosInstance.get('getAllPaymentAccount');
-    //     const options = response.data.map(v => ({
-    //         id: v.id,
-    //         text: `${v.name} ${v.branch} ${v.acc_no}`,
-    //         bank_name: v.name,
-    //         acc_no: v.acc_no,
-    //         branch: v.branch,
-    //         service_charge: v.service_charge,
-    //     }));
-
-    //     function paymentAccTemplate(option) {
-    //         if (!option.id) return option.text;
-    //         return $(`<div class="pa-option">
-    //             <div><strong>${option.bank_name}</strong> <span class="pa-sep">|</span> <span class="pa-branch">${option.branch ?? '—'}</span></div>
-    //             <small>${option.acc_no} <span class="pa-sep">|</span> Charge: <strong>${option.service_charge ?? 0}%</strong></small>
-    //         </div>`);
-    //     }
-
-    //     function paymentAccSelection(option) {
-    //         if (!option.id) return option.text;
-    //         return $(`<span><strong>${option.bank_name}</strong> — ${option.acc_no} | Charge: ${option.service_charge ?? 0}%</span>`);
-    //     }
-
-    //     $('.payment_acc').select2({
-    //         placeholder: '=Select=',
-    //         theme: 'bootstrap-5',
-    //         width: '100%',
-    //         allowClear: true,
-    //         data: options,
-    //         templateResult: paymentAccTemplate,
-    //         templateSelection: paymentAccSelection,
-    //     });
-    // } catch {}
-
+    
     try {
         const response = await axiosInstance.get('getAllPaymentAccount');
         //console.log('Payment Accounts:', response.data);
@@ -216,6 +182,18 @@ function onIssuedBankChange(selectedId) {
     form.issued_bank = selectedId;
 }
 
+function generateUniqueCreditRefNo() {
+    const now = new Date();
+    const datePart = now.getFullYear().toString().slice(-2) +
+                     String(now.getMonth() + 1).padStart(2, '0') +
+                     String(now.getDate()).padStart(2, '0'); // YYMMDD (e.g. 260728)
+
+    const timeMs = Date.now().toString().slice(-6);          // Millisecond precision (last 6 digits)
+    const randomPart = Math.floor(1000 + Math.random() * 9000); // 4 random digits
+
+    return `CR${datePart}${timeMs}${randomPart}`;             // e.g. CR2607284982123912
+}
+
 
 function resetForm() {
     // Reset form fields
@@ -229,6 +207,10 @@ function resetForm() {
     form.issued_bank      = '';
     chargeRate.value      = 0;
     refFiles.value        = []; 
+
+    if (activeTab.value === 'Credit_Request') {
+        form.reference_number = generateUniqueCreditRefNo();
+    }
 
     // Reset all errors
     Object.keys(errors).forEach(k => errors[k] = null);
@@ -870,7 +852,7 @@ async function submitForm(type) {
                                         </div>
                                         <div class="card-body">
                                             <div class="row">
-                                                <div class="col-md-6">
+                                                <!-- <div class="col-md-6">
                                                     <label class="form-label">Issued Bank
                                                         <span class="text-danger">*</span>
                                                     </label>
@@ -884,19 +866,19 @@ async function submitForm(type) {
                                                         {{ errors.issued_bank }}
                                                     </div>
                                             
-                                                </div>
+                                                </div> -->
                                                 <div class="col-md-6">
                                                     <label class="form-label">Reference Number
                                                         <span class="text-danger">*</span>
                                                     </label>
-                                                    <input type="text" class="form-control form-control-sm" v-model="form.reference_number" placeholder="Enter Reference Number" 
-                                                    :class="{ 'is-invalid': errors.reference_number }"/>
+                                                    <input type="text" class="form-control form-control-sm" v-model="form.reference_number" 
+                                                    :class="{ 'is-invalid': errors.reference_number }" readonly style="padding: 0.5rem;"/>
                                                     <div v-if="errors.reference_number" class="invalid-feedback d-block">
                                                         {{ errors.reference_number }}
                                                     </div>
                                                 </div>
                                                 
-                                                <div class="col-md-6 mt-2">
+                                                <div class="col-md-6">
                                                     <label class="form-label">Reference Date</label>
                                                     <AppDatePicker v-model="form.reference_date" :max-date="today" :inline="false" 
                                                     :full-width="true" :clear-button="true" :enable-time="false" 
@@ -911,13 +893,13 @@ async function submitForm(type) {
                                                     <label class="form-label">Remarks</label>
                                                     <textarea v-model="form.remarks" class="form-control form-control-sm" rows="3"></textarea>
                                                 </div>
-                                                 <div class="col-md-6 mt-2">
+                                                 <!-- <div class="col-md-6 mt-2">
                                                     <label class="form-label">Reference File</label>
                                                     <div class="d-flex align-items-center gap-3">
                                                         <ImageUploader v-model="refFiles" :max-files="1"
                                                             preview-size="large" />
                                                     </div>
-                                                </div>
+                                                </div> -->
                                             </div>
                                         </div>
                                     </div>

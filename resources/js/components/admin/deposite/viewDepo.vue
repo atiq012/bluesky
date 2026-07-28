@@ -341,24 +341,24 @@ onMounted(loadDeposit);
                     <div class="approval-divider"></div>
 
                     <!-- Requested By -->
-                    <div class="approval-row">
+                    <!-- <div class="approval-row">
                         <div class="approval-row-label">
                             <i class="fa-solid fa-user me-2 text-muted"></i>Requested By
                         </div>
                         <div class="approval-row-value">{{ deposit.requested_by || deposit.created_by || deposit.agent_name || '—' }}</div>
-                    </div>
+                    </div> -->
 
-                    <div class="approval-divider"></div>
+                    <!-- <div class="approval-divider"></div> -->
 
                     <!-- Requested At -->
-                    <div class="approval-row">
+                    <div class="approval-row"> 
                         <div class="approval-row-label">
-                            <i class="fa-regular fa-calendar me-2 text-muted"></i>Requested At
+                            <i class="fa-regular fa-calendar me-2 text-muted"></i>Processed At
                         </div>
                         <div class="approval-row-value">
-                            {{ deposit.created_at ? moment(deposit.created_at).format('DD MMM YYYY') : '—' }}
-                            <span v-if="deposit.created_at" class="approval-time">
-                                {{ moment(deposit.created_at).format('hh:mm A') }}
+                            {{ (deposit.updated_at && deposit.approved_by)? moment(deposit.updated_at).format('DD MMM YYYY') : '—' }}
+                            <span v-if="deposit.updated_at && deposit.approved_by" class="approval-time">
+                                {{ moment(deposit.updated_at).format('hh:mm A') }}
                             </span>
                         </div>
                     </div>
@@ -378,14 +378,14 @@ onMounted(loadDeposit);
                     <div class="approval-divider"></div>
 
                     <!-- Charge -->
-                    <div class="approval-row">
+                    <!-- <div class="approval-row">
                         <div class="approval-row-label">
                             <i class="fa-solid fa-percent me-2 text-muted"></i>Service Charge
                         </div>
                         <div class="approval-row-value text-warning">
                             {{ deposit.payment_service_charge ?? '0' }}% &nbsp;·&nbsp; ৳ {{ formatDisplayAmount(deposit.charge) }}
                         </div>
-                    </div>
+                    </div> -->
                 </div>
 
                 <div class="approval-card-footer">
