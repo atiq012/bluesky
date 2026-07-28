@@ -45,7 +45,7 @@ const CreateAgency = () => import('./components/admin/agent/create.vue')
 
 // deposit management
 const depositList = () => import('./components/admin/deposite/index.vue')
-const depoDetails = () => import('./components/admin/deposite/depoDetails.vue')
+const depoDetails = () => import('./components/admin/deposite/viewDepo.vue')
 const CreateDeposit = () => import('./components/admin/deposite/CreateDeposit.vue')
 const accountStatement = () => import('./components/admin/deposite/accountStatement.vue')
 
