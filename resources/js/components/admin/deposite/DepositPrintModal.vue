@@ -269,7 +269,7 @@ function handlePrint() {
                                 <dt>Branch</dt>
                                 <dd>{{ deposit.branch || '—' }}</dd>
                                 <dt>Issued Bank</dt>
-                                <dd>{{ deposit.issued_bank || '—' }}</dd>
+                                <dd>{{ deposit.issued_bank_name || '—' }}</dd>
                                 <dt>Reference Date</dt>
                                 <dd>{{ fmtDate(deposit.reference_date) }}</dd>
                             </dl>
@@ -284,7 +284,7 @@ function handlePrint() {
                                         <td>৳ {{ formatDisplayAmount(deposit.amount) }}</td>
                                     </tr>
                                     <tr class="deposit-report__amount-row">
-                                        <th>Charge ({{ deposit.charge_percent ?? '0' }}%)</th>
+                                        <th>Charge ({{ deposit.payment_service_charge ?? '0' }}%)</th>
                                         <td>৳ {{ formatDisplayAmount(deposit.charge) }}</td>
                                     </tr>
                                     <tr class="deposit-report__amount-row">
