@@ -85,6 +85,8 @@ function statusConfig(status) {
             return { cls: 'status-pill status-active', icon: 'fa-solid fa-circle', label: 'Approved' };
         case 'Request Cancelled':
             return { cls: 'status-pill status-expired', icon: 'fa-solid fa-circle', label: 'Request Cancelled' };
+        case 'Assigned':
+            return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'Assigned' };
         default:
             return { cls: 'status-pill status-active', icon: 'fa-solid fa-circle', label: 'Active' };
     }
@@ -314,7 +316,7 @@ getListValues();
                         <div class="airline-cell">
                             <div class="cell-main">
                                 <i class="fa-solid fa-plane-departure me-1 table-icon"></i>
-                                {{ row.airline || 'Qatar Airline' }}
+                                {{ row.preferred_flight }}
                             </div>
                             <div class="cell-link">PNR : {{ row.pnr || '-' }}</div>
 
@@ -771,6 +773,11 @@ getListValues();
     background: #fff2f2;
     border: 1px solid #f4c5c5;
 }
+.status-assigned {
+    color: #45c86a;
+    background: #f2fff6;
+    border: 1px solid #c5f4c7;
+}
 .status-price-offer {
     color: #b0c845;
     background: #f2fffb;
@@ -847,6 +854,12 @@ getListValues();
 
 [data-bs-theme="dark"] .status-expired {
     color: #f87171;
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+[data-bs-theme="dark"] .status-assigned {
+    color: #71f87c;
     background: rgba(239, 68, 68, 0.15);
     border-color: rgba(239, 68, 68, 0.3);
 }
