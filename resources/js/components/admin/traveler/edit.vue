@@ -129,7 +129,7 @@ async function fetchTravelerData() {
             }
         }
     } catch (err) {
-        console.error('Error fetching traveler data:', err);
+        //console.error('Error fetching traveler data:', err);
         if (window.Notification?.showToast) {
             window.Notification.showToast('e', 'Failed to load traveler information.');
         }

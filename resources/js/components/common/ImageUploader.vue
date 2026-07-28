@@ -197,7 +197,11 @@ onUnmounted(() => {
                 <template v-else>
                     <i class="bx bx-cloud-upload"></i>
                     <span>Drop or <u>click to upload</u></span>
-                    <small>Max {{ maxFiles }} image{{ maxFiles > 1 ? 's' : '' }} · 1 MB each <span class="text-purple">(auto-compressed if larger)</span></small>
+                    <small>Max {{ maxFiles }} image{{ maxFiles > 1 ? 's' : '' }} · 1 MB each</small>
+                    <small class="d-flex align-items-center justify-content-center gap-1">
+                        <i class="bx bx-info-circle text-purple" style="font-size: 1em;"></i>
+                        <span class="text-purple">auto-compressed if larger</span>
+                    </small>
                 </template>
             </div>
         </div>
