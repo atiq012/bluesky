@@ -71,11 +71,19 @@ function statusConfig(status) {
         case 'New Request':
             return { cls: 'status-pill status-inactive', icon: 'fa-solid fa-circle', label: 'New Request' };
         case 'Accepted':
-            return { cls: 'status-pill status-inactive', icon: 'fa-solid fa-circle', label: 'Accepted' };
+            return { cls: 'status-pill status-on-process', icon: 'fa-solid fa-circle', label: 'Accepted' };
         case 'Price offer':
             return { cls: 'status-pill status-price-offer', icon: 'fa-solid fa-circle', label: 'Price Offer' };
         case 'Offer confirmed':
             return { cls: 'status-pill status-price-offer', icon: 'fa-solid fa-circle', label: 'Offer Confirmed' };
+        case 'Assigned':
+            return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'Assigned' };
+        case 'PNR Shared':
+            return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'PNR Shared' };
+        case 'Partial Paid':
+            return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'Partial Paid' };
+        case 'Paid':
+            return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'Paid' };
         case 'Decline':
             return { cls: 'status-pill status-expired', icon: 'fa-solid fa-circle', label: 'Decline' };
         case 'Confirmed':
@@ -84,8 +92,6 @@ function statusConfig(status) {
             return { cls: 'status-pill status-active', icon: 'fa-solid fa-circle', label: 'Approved' };
         case 'Request Cancelled':
             return { cls: 'status-pill status-expired', icon: 'fa-solid fa-circle', label: 'Request Cancelled' };
-        case 'Assigned':
-            return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'Assigned' };
         default:
             return { cls: 'status-pill status-active', icon: 'fa-solid fa-circle', label: 'Active' };
     }
