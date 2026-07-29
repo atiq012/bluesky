@@ -23,6 +23,7 @@ class GroupController extends BaseController
             ->leftJoin('users as u2', 'u2.id', '=', 'group_requests.updated_by')
             ->leftJoin('agents as a', 'a.agent_code', '=', 'group_requests.agent_code')
             ->leftJoin('group_request_segments', 'group_requests.id', '=', 'group_request_segments.group_request_id')
+            ->leftJoin('price_offers as op', 'group_requests.id', '=', 'op.group_req_id')
             ->select(
                 'group_requests.id',
                 'group_requests.request_type',
@@ -51,6 +52,7 @@ class GroupController extends BaseController
                 'u2.name as updatedby',
                 'a.name as agent_name',
                 'a.agent_code as agent_code',
+                'op.status as opstatus',
                 DB::raw('f_username(NULLIF(group_requests.assigned_to, "")) as assigned_to_kam'),
                 DB::raw('GROUP_CONCAT(
             CONCAT_WS("- ",
@@ -93,6 +95,7 @@ class GroupController extends BaseController
             ->groupBy('u.name')
             ->groupBy('u2.name')
             ->groupBy('a.name')
+            ->groupBy('op.status')
             ->groupBy('a.agent_code');
 
         return DataTables::of($data)

@@ -51,11 +51,11 @@ class OfferPriceController extends BaseController
             $offer->save();
 
             // Also update the group request status
-            $groupRequest = GroupRequest::find($offer->group_req_id);
-            if ($groupRequest) {
-                $groupRequest->status = 'Offer confirmed';
-                $groupRequest->save();
-            }
+            // $groupRequest = GroupRequest::find($offer->group_req_id);
+            // if ($groupRequest) {
+            //     $groupRequest->status = 'Offer confirmed';
+            //     $groupRequest->save();
+            // }
 
             return $this->SuccessResponse($offer, 'Offer accepted successfully.');
         } catch (\Throwable $e) {
