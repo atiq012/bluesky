@@ -156,8 +156,8 @@ async function handleAccept() {
         await axiosInstance.post('group-request/offer-price/accept', {
             id: offerData.value.id
         });
-        Notification.showToast('success', 'Offer accepted successfully');
-        offerData.value.status = 'Offer Accepted';
+        Notification.showToast('success', 'Offer confirmed successfully');
+        offerData.value.status = 'Offer confirmed';
     } catch (error) {
         console.error('Failed to accept offer:', error);
         Notification.showToast('error', error.response?.data?.message || 'Failed to accept offer');

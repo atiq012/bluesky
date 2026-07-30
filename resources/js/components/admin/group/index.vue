@@ -67,16 +67,23 @@ function wayTypeConfig(wayType) {
 }
 
 function statusConfig(status) {
-
     switch ((status || '')) {
         case 'New Request':
             return { cls: 'status-pill status-inactive', icon: 'fa-solid fa-circle', label: 'New Request' };
-        case 'On Process':
-            return { cls: 'status-pill status-inactive', icon: 'fa-solid fa-circle', label: 'On Process' };
+        case 'Accepted':
+            return { cls: 'status-pill status-on-process', icon: 'fa-solid fa-circle', label: 'Accepted' };
         case 'Price offer':
             return { cls: 'status-pill status-price-offer', icon: 'fa-solid fa-circle', label: 'Price Offer' };
         case 'Offer confirmed':
             return { cls: 'status-pill status-price-offer', icon: 'fa-solid fa-circle', label: 'Offer Confirmed' };
+        case 'Assigned':
+            return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'Assigned' };
+        case 'PNR Shared':
+            return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'PNR Shared' };
+        case 'Partial Paid':
+            return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'Partial Paid' };
+        case 'Paid':
+            return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'Paid' };
         case 'Decline':
             return { cls: 'status-pill status-expired', icon: 'fa-solid fa-circle', label: 'Decline' };
         case 'Confirmed':
@@ -85,23 +92,28 @@ function statusConfig(status) {
             return { cls: 'status-pill status-active', icon: 'fa-solid fa-circle', label: 'Approved' };
         case 'Request Cancelled':
             return { cls: 'status-pill status-expired', icon: 'fa-solid fa-circle', label: 'Request Cancelled' };
-        case 'Assigned':
-            return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'Assigned' };
         default:
             return { cls: 'status-pill status-active', icon: 'fa-solid fa-circle', label: 'Active' };
     }
 }
 
 function canDelete(row) {
-    if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'On Process' ||  row.status == 'Offer confirmed') {
+    if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'Accepted' || row.status == 'Offer confirmed') {
         return false
     }
 }
 
 function groupAssignDetails(row) {
-    if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'On Process' ||  row.status == 'New Request') {
-        return false;
-    } else {
+    if (row.opstatus == null) {
+        if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'Accepted' || row.status == 'New Request') {
+            return false;
+        }
+    }else{
+        console.log(row.opstatus);
+
+        if(row.opstatus == 'Offer confirmed'){
+            return false
+        }
         return true;
     }
 }
@@ -411,9 +423,13 @@ getListValues();
                     <!-- Status -->
                     <template #status="{ value: row }">
                         <div class="status-cell">
-                            <span :class="['rounded-pill', statusConfig(row.status).cls]">
+                            <span v-if="row.opstatus == null" :class="['rounded-pill', statusConfig(row.status).cls]">
                                 <i :class="[statusConfig(row.status).icon, 'me-1 tiny']"></i>
                                 {{ statusConfig(row.status).label }}
+                            </span>
+                            <span v-else :class="['rounded-pill', statusConfig(row.opstatus).cls]">
+                                <i :class="[statusConfig(row.opstatus).icon, 'me-1 tiny']"></i>
+                                {{ statusConfig(row.opstatus).label }}
                             </span>
                         </div>
                     </template>
@@ -431,15 +447,10 @@ getListValues();
 
                     <!-- Action -->
                     <template #action="{ value: row }">
-                        <ActionButtons :item="row"
-                        :show-edit="false"                            :showGroupAssign="groupAssignDetails(row)"
-                        :show-view="true" :show-copy="true"
-                        :show-delete="canDelete(row)"
-                        :show-authorize="false" copy-label="PNR"
-                        @view="handleView"
-                        @copy="handlePnr"
-                        @view-group="handleGroup"
-                        @delete="handleDelete" />
+                        <ActionButtons :item="row" :show-edit="false" :showGroupAssign="groupAssignDetails(row)"
+                            :show-view="true" :show-copy="true" :show-delete="canDelete(row)" :show-authorize="false"
+                            copy-label="PNR" @view="handleView" @copy="handlePnr" @view-group="handleGroup"
+                            @delete="handleDelete" />
                     </template>
                 </AppDataTable>
             </div>
@@ -491,6 +502,7 @@ getListValues();
     color: #fff;
     box-shadow: 0 1px 3px rgba(59, 130, 246, 0.25);
 }
+
 /* Stats card styles */
 .info-agency {
     box-shadow: 0 0 1px rgba(0, 0, 0, .125), 0 1px 3px rgba(0, 0, 0, .2);
@@ -773,16 +785,19 @@ getListValues();
     background: #fff2f2;
     border: 1px solid #f4c5c5;
 }
+
 .status-assigned {
     color: #45c86a;
     background: #f2fff6;
     border: 1px solid #c5f4c7;
 }
+
 .status-price-offer {
     color: #b0c845;
     background: #f2fffb;
     border: 1px solid #e8f4c5;
 }
+
 .status-other {
     color: #586c8f;
     background: #f1f5fb;
