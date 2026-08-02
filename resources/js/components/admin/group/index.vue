@@ -98,20 +98,25 @@ function statusConfig(status) {
 }
 
 function canDelete(row) {
-    if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'Accepted' || row.status == 'Offer confirmed') {
-        return false
+    if (row.opstatus == null) {
+        if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'Accepted' ) {
+            return false
+        }
+    } else {
+        if (row.opstatus == 'Offer confirmed') {
+            return false
+        }
+        return true;
     }
 }
 
-function groupAssignDetails(row) {
+function groupAssignDetails(row) { // can accept offer
     if (row.opstatus == null) {
         if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'Accepted' || row.status == 'New Request') {
             return false;
         }
-    }else{
-        console.log(row.opstatus);
-
-        if(row.opstatus == 'Offer confirmed'){
+    } else {
+        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus =='Paid' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned') {
             return false
         }
         return true;
@@ -778,6 +783,12 @@ getListValues();
     color: #9c6b00;
     background: #fff8e8;
     border: 1px solid #f2dea6;
+}
+
+.status-on-process {
+    color: #00719c;
+    background: #e8eaff;
+    border: 1px solid #a6ddf2;
 }
 
 .status-expired {
