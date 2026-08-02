@@ -84,6 +84,10 @@ function statusConfig(status) {
             return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'Partial Paid' };
         case 'Paid':
             return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'Paid' };
+        case 'PAX Uploaded':
+            return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'PAX Uploaded' };
+        case 'PAX Partially Uploaded':
+            return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'PAX Partially Uploaded' };
         case 'Decline':
             return { cls: 'status-pill status-expired', icon: 'fa-solid fa-circle', label: 'Decline' };
         case 'Confirmed':
@@ -123,6 +127,19 @@ function groupAssignDetails(row) { // can accept offer
     }
 }
 
+function groupPAXUpload(row) { // can accept offer
+    if (row.opstatus == null) {
+        if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'Accepted' || row.status == 'New Request') {
+            return false;
+        }
+    } else {
+        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned') {
+            return false
+        }
+    }
+    return true;
+}
+
 function availableSeats(row) {
     return (row.total_seat || 50) - (row.assigned_pax || 0);
 }
@@ -154,8 +171,8 @@ function handleGroup(item) {
     router.push({ name: 'viewOfferPrice', params: { id: item.id } });
 }
 
-function handleCopy(item) {
-    // router.push({ name: 'copyGroupPnr', params: { id: item.id } });
+function handlePAXUpload(item) {
+    router.push({ name: 'groupPAXUpload', params: { id: item.id } });
 }
 
 function handlePnr(item) {
@@ -453,8 +470,10 @@ getListValues();
                     <!-- Action -->
                     <template #action="{ value: row }">
                         <ActionButtons :item="row" :show-edit="false" :showGroupAssign="groupAssignDetails(row)"
+                        :showPAXUpload="groupPAXUpload(row)"
                             :show-view="true" :show-copy="true" :show-delete="canDelete(row)" :show-authorize="false"
                             copy-label="PNR" @view="handleView" @copy="handlePnr" @view-group="handleGroup"
+                            @pax-upload="handlePAXUpload"
                             @delete="handleDelete" />
                     </template>
                 </AppDataTable>
