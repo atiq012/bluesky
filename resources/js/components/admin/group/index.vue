@@ -120,8 +120,8 @@ function groupAssignDetails(row) { // can accept offer
             return false;
         }
     } else {
-        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus =='Paid' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned') {
-            return false
+        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus =='Paid' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'PAX Uploaded' || row.opstatus == 'PAX Partially Uploaded') {
+            return false;
         }
         return true;
     }
@@ -133,7 +133,7 @@ function groupPAXUpload(row) { // can accept offer
             return false;
         }
     } else {
-        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned') {
+        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'PAX Uploaded') {
             return false
         }
     }
