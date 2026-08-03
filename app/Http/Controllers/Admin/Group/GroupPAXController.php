@@ -75,7 +75,7 @@ class GroupPAXController extends Controller
                     'passport_number'      => $value['passport_no'],
                     'passport_expiry_date' => $value['expiry_date'] ? date('Y-m-d', strtotime($value['expiry_date'])) : null,
                     'email'                => $value['email'] ?? null,
-                    'phone'                => $value['phone'] ?? null,
+                    'phone'                => $value['contact'] ?? null,
                     'nationality'          => $value['nationality'] ?? null, // Add nationality field
                     'pax_type'             => $value['pax_type'] ?? null,
                     'gender'               => $value['gender'] ?? null,
