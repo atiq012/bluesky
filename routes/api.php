@@ -198,7 +198,7 @@ Route::middleware(['auth:api'])->group(function () {
 
     //group pax upload
     Route::post('group-pax-upload/store', [GroupPAXController::class, 'store'])->name('groupPAX.store');
-
+    Route::get('group-pax-upload/{id}', [GroupPAXController::class, 'show'])->name('groupPAX.show');
 
     //show offer price
     Route::post('get-group-request-offer-price/data', [GroupController::class, 'showOffer'])->name('group.showOffer');
