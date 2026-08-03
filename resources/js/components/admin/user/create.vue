@@ -168,7 +168,7 @@ function triggerFileInput() {
                     </div>
 
                     <!-- Form Fields -->
-                    <div class="col-lg-8">
+                    <div class="col-lg-9">
                         <div class="row g-4">
                             <div class="col-md-6">
                                 <label for="name" class="form-label">Name

@@ -53,7 +53,7 @@ async function loadDeposit() {
             res = await axiosInstance.get(`deposit/show/${depositId}`);
         }
         deposit.value = res.data?.data ?? res.data;
-        console.log('Deposit data loaded:', deposit.value);
+        //console.log('Deposit data loaded:', deposit.value);
     } catch {
         if (typeof iziToast !== 'undefined') {
             iziToast.error({ title: 'Error', message: 'Deposit not found.' });

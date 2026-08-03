@@ -5,6 +5,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Traveller\Traveller;
 use DB;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
 use Yajra\DataTables\DataTables;
 
@@ -25,12 +26,15 @@ class TravelerController extends Controller
 
     public function search(Request $request)
     {
-        $traveler = DB::table('travellers')->where('first_name', 'like', '%' . $request->parm . '%')
-            ->orWhere('last_name', 'like', '%' . $request->parm . '%')
-            ->orWhere('full_name', 'like', '%' . $request->parm . '%')
-            ->orWhere('passport_number', 'like', '%' . $request->parm . '%')
-            ->orWhere('email', 'like', '%' . $request->parm . '%')
-            ->orWhere('phone', 'like', '%' . $request->parm . '%')
+        $traveler = Traveller::where('agent_id', Auth::user()->agent_id)
+            ->where(function ($query) use ($request) {
+                $query->where('first_name', 'like', '%' . $request->parm . '%')
+                    ->orWhere('last_name', 'like', '%' . $request->parm . '%')
+                    ->orWhere('full_name', 'like', '%' . $request->parm . '%')
+                    ->orWhere('passport_number', 'like', '%' . $request->parm . '%')
+                    ->orWhere('email', 'like', '%' . $request->parm . '%')
+                    ->orWhere('phone', 'like', '%' . $request->parm . '%');
+            })
             ->get();
 
         return response()->json($traveler);

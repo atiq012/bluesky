@@ -67,6 +67,7 @@ function normalizeRows(data) {
 }
 
 function resolveImageUrl(path) {
+    //console.log('resolveImageUrl called with path:', path);
     if (!path) return '';
     const cleanPath = String(path).trim();
     if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) return cleanPath;
@@ -93,6 +94,7 @@ async function loadExternal(isRefresh = false) {
     try {
         const response = await axiosInstance.get('getAgentExternalUsers');
         externalRows.value = normalizeRows(response.data?.data);
+        // console.log('External Users:', externalRows.value);
     } catch (error) {
         console.log(error);
     } finally {

@@ -343,7 +343,7 @@ onUnmounted(() => {
 .img-uploader__preview img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 
 .img-uploader__preview--large img {
-    object-fit: contain;
+    object-fit: cover;
     background: #f8f9fa;
 }
 .img-uploader__remove {

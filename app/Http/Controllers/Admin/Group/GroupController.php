@@ -52,6 +52,7 @@ class GroupController extends BaseController
                 'u2.name as updatedby',
                 'a.name as agent_name',
                 'a.agent_code as agent_code',
+                'op.pnr as pnr',
                 'op.status as opstatus',
                 DB::raw('f_username(NULLIF(group_requests.assigned_to, "")) as assigned_to_kam'),
                 DB::raw('GROUP_CONCAT(
@@ -96,8 +97,9 @@ class GroupController extends BaseController
             ->groupBy('u2.name')
             ->groupBy('a.name')
             ->groupBy('op.status')
-            ->groupBy('a.agent_code');
-
+            ->groupBy('op.pnr')
+            ->groupBy('a.agent_code')
+            ->orderBy('group_requests.id', 'desc');
         return DataTables::of($data)
             ->addIndexColumn()
             ->addColumn('route_display', function ($row) {

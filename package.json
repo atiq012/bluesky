@@ -21,9 +21,9 @@
         "@tenrok/vue-device-detect": "^1.0.0",
         "@vuepic/vue-datepicker": "^10.0.0",
         "@vueuse/core": "^11.0.3",
+        "ably": "^2.23.0",
         "bootstrap-daterangepicker": "^3.1.0",
         "chart.js": "^4.4.7",
-        "ably": "^2.23.0",
         "cors": "^2.8.5",
         "crypto-js": "^4.2.0",
         "datatables.net-bs5": "^2.1.8",
@@ -65,6 +65,7 @@
         "vue-waves-effect": "^1.0.0",
         "vue2-daterange-picker": "^0.6.8",
         "vue3-otp-input": "^0.5.21",
-        "vue3-perfect-scrollbar-z": "^1.0.0"
+        "vue3-perfect-scrollbar-z": "^1.0.0",
+        "xlsx": "^0.18.5"
     }
 }
