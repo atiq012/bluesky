@@ -88,6 +88,8 @@ function statusConfig(status) {
             return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'PAX Uploaded' };
         case 'PAX Partially Uploaded':
             return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'PAX Partially Uploaded' };
+            case 'Ticketed':
+            return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'Ticketed' };
         case 'Decline':
             return { cls: 'status-pill status-expired', icon: 'fa-solid fa-circle', label: 'Decline' };
         case 'Confirmed':
@@ -107,7 +109,7 @@ function canDelete(row) {
             return false
         }
     } else {
-        if (row.opstatus == 'Offer confirmed') {
+        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus =='Paid' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'PAX Uploaded' || row.opstatus == 'PAX Partially Uploaded' || row.opstatus == 'Ticketed') {
             return false
         }
         return true;
@@ -120,7 +122,7 @@ function groupAssignDetails(row) { // can accept offer
             return false;
         }
     } else {
-        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus =='Paid' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'PAX Uploaded' || row.opstatus == 'PAX Partially Uploaded') {
+        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus =='Paid' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'PAX Uploaded' || row.opstatus == 'PAX Partially Uploaded' || row.opstatus == 'Ticketed') {
             return false;
         }
         return true;
@@ -133,7 +135,7 @@ function groupPAXUpload(row) { // can accept offer
             return false;
         }
     } else {
-        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'PAX Uploaded' || row.opstatus == 'Price offer') {
+        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'PAX Uploaded' || row.opstatus == 'Price offer' || row.opstatus == 'Ticketed') {
             return false
         }
     }
@@ -145,7 +147,7 @@ function groupUploadedPAX(row) { // can view uploaded PAX details
             return false;
         }
     } else {
-        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'Price offer') {
+        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'Price offer' || row.opstatus == 'Ticketed') {
             return false
         }
     }
