@@ -32,6 +32,7 @@ class GroupPAXController extends Controller
      */
     public function store(Request $request)
     {
+
         $agent = Agent::where('id', Auth::user()->agent_id)->first();
         $price_offer = PriceOffer::where('group_req_id', $request['id'])->first();
         $preUpload = GroupPAXInfo::where('group_id', $request['id'])->count();
@@ -54,7 +55,7 @@ class GroupPAXController extends Controller
                 ? date('Y-m-d', strtotime($value['expiry_date']))
                 : null;
             $groupPAXInfo->email       = $value['email'] ?? null;
-            $groupPAXInfo->phone       = $value['phone'] ?? null;
+            $groupPAXInfo->phone       = $value['contact'] ?? null;
             $groupPAXInfo->nationality = $value['nationality'] ?? null;
             $groupPAXInfo->pax_type    = $value['pax_type'] ?? null;
             $groupPAXInfo->gender      = $value['gender'] ?? null;
@@ -74,7 +75,7 @@ class GroupPAXController extends Controller
                     'passport_number'      => $value['passport_no'],
                     'passport_expiry_date' => $value['expiry_date'] ? date('Y-m-d', strtotime($value['expiry_date'])) : null,
                     'email'                => $value['email'] ?? null,
-                    'phone'                => $value['phone'] ?? null,
+                    'phone'                => $value['contact'] ?? null,
                     'nationality'          => $value['nationality'] ?? null, // Add nationality field
                     'pax_type'             => $value['pax_type'] ?? null,
                     'gender'               => $value['gender'] ?? null,
@@ -107,9 +108,11 @@ class GroupPAXController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(Request $request, string $id)
     {
-        //
+        $groupPAXInfo = GroupPAXInfo::where('group_id', $id)->get();
+
+        return response()->json(['data' => $groupPAXInfo], 200);
     }
 
     /**

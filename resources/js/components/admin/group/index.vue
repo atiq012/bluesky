@@ -88,6 +88,8 @@ function statusConfig(status) {
             return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'PAX Uploaded' };
         case 'PAX Partially Uploaded':
             return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'PAX Partially Uploaded' };
+            case 'Ticketed':
+            return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'Ticketed' };
         case 'Decline':
             return { cls: 'status-pill status-expired', icon: 'fa-solid fa-circle', label: 'Decline' };
         case 'Confirmed':
@@ -107,7 +109,7 @@ function canDelete(row) {
             return false
         }
     } else {
-        if (row.opstatus == 'Offer confirmed') {
+        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus =='Paid' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'PAX Uploaded' || row.opstatus == 'PAX Partially Uploaded' || row.opstatus == 'Ticketed') {
             return false
         }
         return true;
@@ -120,7 +122,7 @@ function groupAssignDetails(row) { // can accept offer
             return false;
         }
     } else {
-        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus =='Paid' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'PAX Uploaded' || row.opstatus == 'PAX Partially Uploaded') {
+        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus =='Paid' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'PAX Uploaded' || row.opstatus == 'PAX Partially Uploaded' || row.opstatus == 'Ticketed') {
             return false;
         }
         return true;
@@ -133,7 +135,19 @@ function groupPAXUpload(row) { // can accept offer
             return false;
         }
     } else {
-        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'PAX Uploaded') {
+        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'PAX Uploaded' || row.opstatus == 'Price offer' || row.opstatus == 'Ticketed') {
+            return false
+        }
+    }
+    return true;
+}
+function groupUploadedPAX(row) { // can view uploaded PAX details
+    if (row.opstatus == null) {
+        if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'Accepted' || row.status == 'New Request') {
+            return false;
+        }
+    } else {
+        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'Price offer' || row.opstatus == 'Ticketed') {
             return false
         }
     }
@@ -175,8 +189,8 @@ function handlePAXUpload(item) {
     router.push({ name: 'groupPAXUpload', params: { id: item.id } });
 }
 
-function handlePnr(item) {
-    // router.push({ name: 'pnrGroupPnr', params: { id: item.id } });
+function handleUploadedPAX(item) {
+    router.push({ name: 'allGroupUploadedPAX', params: { id: item.id } });
 }
 
 async function declineGroupReq() {
@@ -444,7 +458,7 @@ getListValues();
                     </template>
                     <!-- Status -->
                     <template #status="{ value: row }">
-                        <div class="status-cell">
+                        <div class="status-cell d-flex flex-column">
                             <span v-if="row.opstatus == null" :class="['rounded-pill', statusConfig(row.status).cls]">
                                 <i :class="[statusConfig(row.status).icon, 'me-1 tiny']"></i>
                                 {{ statusConfig(row.status).label }}
@@ -452,6 +466,10 @@ getListValues();
                             <span v-else :class="['rounded-pill', statusConfig(row.opstatus).cls]">
                                 <i :class="[statusConfig(row.opstatus).icon, 'me-1 tiny']"></i>
                                 {{ statusConfig(row.opstatus).label }}
+                            </span>
+
+                            <span v-if="row.opstatus=='PAX Partially Uploaded'" class="cell-link small mt-2">
+                                <i class="fa fa-info-circle "></i> {{ row.total_traveler - row.pax_count }} PAX Remaining
                             </span>
                         </div>
                     </template>
@@ -471,10 +489,12 @@ getListValues();
                     <template #action="{ value: row }">
                         <ActionButtons :item="row" :show-edit="false" :showGroupAssign="groupAssignDetails(row)"
                         :showPAXUpload="groupPAXUpload(row)"
+                        :showUploadedPAX="groupUploadedPAX(row)"
                             :show-view="true" :show-copy="true" :show-delete="canDelete(row)" :show-authorize="false"
-                            copy-label="PNR" @view="handleView" @copy="handlePnr" @view-group="handleGroup"
+                            copy-label="PNR" @view="handleView" @view-group="handleGroup"
                             @pax-upload="handlePAXUpload"
-                            @delete="handleDelete" />
+                            @uploaded-pax="handleUploadedPAX"
+                            @delete="handleDelete"/>
                     </template>
                 </AppDataTable>
             </div>

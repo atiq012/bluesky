@@ -122,6 +122,7 @@ const createGroupRequest = () => import('./components/admin/group/create.vue');
 const requestGroupView = () => import('./components/admin/group/view.vue');
 const viewOfferPriceDetailReadOnly = () => import('./components/admin/group/viewOfferPriceDetailReadOnly.vue');
 const groupPAXUpload = () => import('./components/admin/group/paxUpload.vue');
+const allGroupUploadedPAX = () => import('./components/admin/group/allUploadedPAX.vue');
 
 const routes = [
     { path: '/', component: Login, name: 'Login', meta: { guest: true } },
@@ -241,6 +242,7 @@ const routes = [
     { path: '/view-request-group-request/:id', component: requestGroupView, name: 'requestGroupView', meta: { auth: true } },
     { path: '/view-offer-price-of-group-request/:id', component: viewOfferPriceDetailReadOnly, name: 'viewOfferPrice', meta: { auth: true } },
     { path: '/group-pax-upload/:id', component: groupPAXUpload, name: 'groupPAXUpload', meta: { auth: true } },
+    { path: '/all-group-uploaded-pax/:id', component: allGroupUploadedPAX, name: 'allGroupUploadedPAX', meta: { auth: true } },
 
 ]
 

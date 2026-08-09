@@ -24,6 +24,7 @@ class GroupController extends BaseController
             ->leftJoin('agents as a', 'a.agent_code', '=', 'group_requests.agent_code')
             ->leftJoin('group_request_segments', 'group_requests.id', '=', 'group_request_segments.group_request_id')
             ->leftJoin('price_offers as op', 'group_requests.id', '=', 'op.group_req_id')
+            ->leftJoin('group_p_a_x_infos as pax', 'group_requests.id', '=', 'pax.group_id')
             ->select(
                 'group_requests.id',
                 'group_requests.request_type',
@@ -54,6 +55,7 @@ class GroupController extends BaseController
                 'a.agent_code as agent_code',
                 'op.pnr as pnr',
                 'op.status as opstatus',
+                DB::raw('COUNT(pax.id) as pax_count'),
                 DB::raw('f_username(NULLIF(group_requests.assigned_to, "")) as assigned_to_kam'),
                 DB::raw('GROUP_CONCAT(
             CONCAT_WS("- ",

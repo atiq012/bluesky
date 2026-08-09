@@ -9,6 +9,7 @@ const props = defineProps({
     showView: { type: Boolean, default: false },
     showGroupAssign: { type: Boolean, default: false },
     showPAXUpload: { type: Boolean, default: false },
+    showUploadedPAX: { type: Boolean, default: false },
     showEdit: { type: Boolean, default: true },
     showPrint: { type: Boolean, default: false },
     showLogs: { type: Boolean, default: false },
@@ -98,7 +99,7 @@ const filteredStatusChangeOptions = computed(() => {
 const hasStatusChangeOptions = computed(() => filteredStatusChangeOptions.value.length > 0);
 
 const visibleCount = computed(() => [
-    props.showMore, props.showView,props.showGroupAssign,props.showPAXUpload, props.showEdit, props.showDelete,
+    props.showMore, props.showView,props.showGroupAssign,props.showPAXUpload,props.showUploadedPAX ,props.showEdit, props.showDelete,
     props.showPrint, props.showLogs, props.showStatusModal,
     props.showStatusChange && hasStatusChangeOptions.value,
     props.showReverse, props.showComing, props.showFundRequest,
@@ -122,6 +123,7 @@ const simpleActions = computed(() => {
         { key: 'view', show: props.showView, label: props.viewLabel || 'View', icon: 'fa-solid fa-fire-flame-curved', btnClass: 'action-btn-view' },
         { key: 'view-group', show: props.showGroupAssign, label: props.viewLabel || 'Show Offer Price', icon: 'fa-solid fa-check', btnClass: 'action-btn-group-assign', disabled: props.viewDisabled },
         { key: 'pax-upload', show: props.showPAXUpload, label:'Upload PAX Details', icon: 'fa-solid fa-user-plus', btnClass: 'action-btn-pax-upload', disabled: props.paxUploadDisabled },
+        { key: 'uploaded-pax', show: props.showUploadedPAX, label:'Uploaded PAX Details', icon: 'fa-solid fa-users', btnClass: 'action-btn-uploaded-pax', disabled: props.uploadedPAXDisabled },
         { key: 'edit', show: props.showEdit, label: props.editLabel || 'Edit', icon: 'fa-solid fa-pencil', btnClass: 'action-btn-edit' },
         { key: 'delete', show: props.showDelete, label: props.deleteLabel || 'Delete', icon: 'fa-solid fa-trash', btnClass: 'action-btn-delete' },
         { key: 'logs', show: props.showLogs, label: props.logsLabel || 'Logs', icon: 'fa-solid fa-file-lines', btnClass: 'action-btn-logs' },
