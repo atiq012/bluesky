@@ -1,6 +1,6 @@
 <script setup>
 import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
-import { ref, computed } from "vue";
+import { ref, computed,nextTick } from "vue";
 import { useRouter } from 'vue-router';
 import axiosInstance from "../../../axiosInstance";
 import { useAuthStore } from '../../../stores/authStore';
@@ -9,6 +9,8 @@ import ActionButtons from '../../common/ActionButtons.vue';
 import CreatedInfo from '../../common/CreatedInfo.vue';
 import AppTooltip from '../../common/AppTooltip.vue';
 import moment from "moment";
+import PaxSelectionModal from './PaxSelectionModal.vue';
+import GroupETicketDoc from './GroupETicketDoc.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -31,13 +33,13 @@ const statistics = computed(() => {
 const columns = [
     { field: 'sl', title: 'Sl.' },
     { field: 'group_info', title: 'Group Details' },
-    { field: 'group_n_way_type', title: 'Group and Way Type' },
+    { field: 'group_n_way_type', title: 'Group Type' },
     { field: 'airline', title: 'Airline' },
-    { field: 'sector', title: 'Sector & Class' },
-    { field: 'dates', title: 'Departure & Return Date' },
+    { field: 'sector', title: 'Sector' },
+    { field: 'dates', title: 'Date' },
     { field: 'seats', title: 'No. Of PAX' },
-    { field: 'fare', title: 'Total Fare and Payment Sequence' },
-    { field: 'paid', title: 'Total Paid & Due' },
+    { field: 'fare', title: 'Total Fare' },
+    { field: 'paid', title: 'Total Paid' },
     { field: 'kam', title: 'KAM' },
     { field: 'status', title: 'Status' },
     { field: 'created_col', title: 'Created By', sort: false },
@@ -147,7 +149,7 @@ function groupUploadedPAX(row) { // can view uploaded PAX details
             return false;
         }
     } else {
-        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'Price offer' || row.opstatus == 'Ticketed') {
+        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'Price offer') {
             return false
         }
     }
@@ -229,6 +231,42 @@ function closeDeclineModal() {
 }
 
 getListValues();
+
+// Generate E-Ticket modal
+const showEticketModal = ref(false);
+const eticketGroupItem = ref(null);
+const eticketDocRef = ref(null);
+const eticketGroupData = ref(null);
+const eticketPaxList = ref([]);
+
+function handleGenerateETicket(item) {
+    eticketGroupItem.value = item;
+    showEticketModal.value = true;
+}
+
+function closeEticketModal() {
+    showEticketModal.value = false;
+    eticketGroupItem.value = null;
+}
+
+async function handleEticketGenerated(data) {
+    showEticketModal.value = false;
+    eticketGroupItem.value = null;
+    eticketGroupData.value = data?.group ?? null;
+    eticketPaxList.value = data?.pax ?? [];
+
+    await nextTick();
+    try {
+        await eticketDocRef.value?.print();
+        if (typeof Notification !== 'undefined' && Notification?.showToast) {
+            Notification.showToast('s', 'E-Ticket generated successfully!');
+        }
+    } catch (error) {
+        if (typeof Notification !== 'undefined' && Notification?.showToast) {
+            Notification.showToast('e', error.message || 'Failed to generate e-ticket document.');
+        }
+    }
+}
 </script>
 
 <template>
@@ -491,9 +529,11 @@ getListValues();
                         :showPAXUpload="groupPAXUpload(row)"
                         :showUploadedPAX="groupUploadedPAX(row)"
                             :show-view="true" :show-copy="true" :show-delete="canDelete(row)" :show-authorize="false"
+                            :generateEticket="true"
                             copy-label="PNR" @view="handleView" @view-group="handleGroup"
                             @pax-upload="handlePAXUpload"
                             @uploaded-pax="handleUploadedPAX"
+                            @generate-eticket="handleGenerateETicket"
                             @delete="handleDelete"/>
                     </template>
                 </AppDataTable>
@@ -527,6 +567,20 @@ getListValues();
                 </div>
             </div>
         </div>
+    </div>
+
+
+    <!-- Generate E-Ticket -->
+    <PaxSelectionModal
+        :visible="showEticketModal"
+        :group-id="eticketGroupItem?.id"
+        @close="closeEticketModal"
+        @generated="handleEticketGenerated"
+    />
+
+    <!-- Off-screen print doc -->
+    <div class="eticket-print-offstage" aria-hidden="true">
+        <GroupETicketDoc ref="eticketDocRef" :group="eticketGroupData" :pax-list="eticketPaxList" />
     </div>
 </template>
 
