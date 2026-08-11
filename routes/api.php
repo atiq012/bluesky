@@ -34,6 +34,7 @@ use App\Http\Controllers\Admin\Role\RolePermissionController;
 use App\Http\Controllers\Admin\Traveler\TravelerController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\Dashboard\DashboardController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
@@ -260,6 +261,9 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('/v2/booking/price-logs/{id}/response-download', [BookingAttemptAdminController::class, 'downloadPriceLogResponse'])->name('booking.v2.price-logs.response-download');
     Route::get('/v2/booking/sessions/{id}/request-download', [BookingAttemptAdminController::class, 'downloadSessionRequest'])->name('booking.v2.sessions.request-download');
     Route::get('/v2/booking/sessions/{id}/response-download', [BookingAttemptAdminController::class, 'downloadSessionResponse'])->name('booking.v2.sessions.response-download');
+
+    //dashboard stats
+    Route::get('/dashboard', [DashboardController::class, 'getDashboardStats']);
 });
 Route::get('airports', [AreaController::class, 'airports']);
 Route::get('districts', [AreaController::class, 'districts']);
