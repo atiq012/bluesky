@@ -52,6 +52,7 @@ function downloadExcel() {
         'Passport No.': p.passport_no,
         'Expiry Date': formatDate(p.expiry_date),
         Contact: p.phone,
+        Ticketed: p.ticket_no
     }));
     const ws = XLSX.utils.json_to_sheet(rows, { header: TEMPLATE_HEADERS });
     ws['!cols'] = TEMPLATE_HEADERS.map(() => ({ wch: 16 }));
@@ -100,6 +101,8 @@ function downloadExcel() {
                             <th>Passport No.</th>
                             <th>Expiry Date</th>
                             <th>Contact</th>
+                            <th>Ticketed</th>
+
                         </tr>
                     </thead>
                     <tbody>
@@ -118,6 +121,10 @@ function downloadExcel() {
                             <td>{{ pax.passport_no }}</td>
                             <td>{{ formatDate(pax.expiry_date) }}</td>
                             <td>{{ pax.phone }}</td>
+                            <td>
+                                <span v-if="pax.ticket_no">{{ pax.ticket_no }}</span>
+                                <span v-else class="">-</span>
+                            </td>
                         </tr>
                     </tbody>
                 </table>

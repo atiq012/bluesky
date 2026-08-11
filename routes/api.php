@@ -202,6 +202,8 @@ Route::middleware(['auth:api'])->group(function () {
     //group pax upload
     Route::post('group-pax-upload/store', [GroupPAXController::class, 'store'])->name('groupPAX.store');
     Route::get('group-pax-upload/{id}', [GroupPAXController::class, 'show'])->name('groupPAX.show');
+    Route::get('group-pnr/{id}', [GroupPAXController::class, 'groupPNR'])->name('groupPAX.groupPNR');
+    Route::post('group-eticket/{id}', [GroupPAXController::class, 'generateETicket'])->name('groupPAX.generateETicket');
 
     //show offer price
     Route::post('get-group-request-offer-price/data', [GroupController::class, 'showOffer'])->name('group.showOffer');

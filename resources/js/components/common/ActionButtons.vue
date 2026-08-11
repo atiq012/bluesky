@@ -10,6 +10,7 @@ const props = defineProps({
     showGroupAssign: { type: Boolean, default: false },
     showPAXUpload: { type: Boolean, default: false },
     showUploadedPAX: { type: Boolean, default: false },
+    generateEticket: { type: Boolean, default: false },
     showEdit: { type: Boolean, default: true },
     showPrint: { type: Boolean, default: false },
     showLogs: { type: Boolean, default: false },
@@ -71,7 +72,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits([
-    'more', 'view','view-group','pax-upload', 'edit', 'delete', 'print', 'logs', 'showStatusModal', 'statusChange', 'reverse', 'coming',
+    'more', 'view','view-group','pax-upload', 'generate-eticket','edit', 'delete', 'print', 'logs', 'showStatusModal', 'statusChange', 'reverse', 'coming',
     'fund-request', 'place-order', 'receive', 'fund-processing', 'funds-ready', 'give-advance', 'authorize',
     'payment-history', 'return', 'download-request', 'download-response', 'issue-ticket', 'cancel-booking', 'history', 'void-ticket',
 ]);
@@ -99,7 +100,7 @@ const filteredStatusChangeOptions = computed(() => {
 const hasStatusChangeOptions = computed(() => filteredStatusChangeOptions.value.length > 0);
 
 const visibleCount = computed(() => [
-    props.showMore, props.showView,props.showGroupAssign,props.showPAXUpload,props.showUploadedPAX ,props.showEdit, props.showDelete,
+    props.showMore, props.showView,props.showGroupAssign,props.showPAXUpload,props.showUploadedPAX,props.generateEticket ,props.showEdit, props.showDelete,
     props.showPrint, props.showLogs, props.showStatusModal,
     props.showStatusChange && hasStatusChangeOptions.value,
     props.showReverse, props.showComing, props.showFundRequest,
@@ -124,6 +125,7 @@ const simpleActions = computed(() => {
         { key: 'view-group', show: props.showGroupAssign, label: props.viewLabel || 'Show Offer Price', icon: 'fa-solid fa-check', btnClass: 'action-btn-group-assign', disabled: props.viewDisabled },
         { key: 'pax-upload', show: props.showPAXUpload, label:'Upload PAX Details', icon: 'fa-solid fa-user-plus', btnClass: 'action-btn-pax-upload', disabled: props.paxUploadDisabled },
         { key: 'uploaded-pax', show: props.showUploadedPAX, label:'Uploaded PAX Details', icon: 'fa-solid fa-users', btnClass: 'action-btn-uploaded-pax', disabled: props.uploadedPAXDisabled },
+        { key: 'generate-eticket', show: props.generateEticket, label:'Generate E-Ticket', icon: 'fa-solid fa-ticket-alt', btnClass: 'action-btn-generate-eticket', disabled: props.generateEticketDisabled },
         { key: 'edit', show: props.showEdit, label: props.editLabel || 'Edit', icon: 'fa-solid fa-pencil', btnClass: 'action-btn-edit' },
         { key: 'delete', show: props.showDelete, label: props.deleteLabel || 'Delete', icon: 'fa-solid fa-trash', btnClass: 'action-btn-delete' },
         { key: 'logs', show: props.showLogs, label: props.logsLabel || 'Logs', icon: 'fa-solid fa-file-lines', btnClass: 'action-btn-logs' },
@@ -222,6 +224,7 @@ function emitAction(action) {
 :deep(.action-btn-edit) { --action-btn-color: #e85d8a; --action-btn-bg: #fdeef4; }
 :deep(.action-btn-delete) { --action-btn-color: #dc2626; --action-btn-bg: #fdecec; }
 :deep(.action-btn-logs) { --action-btn-color: #1ba3f0; --action-btn-bg: #e8f4fe; }
+:deep(.action-btn-generate-eticket) { --action-btn-color: #0822b2 ; --action-btn-bg: #e6e8fa ; }
 :deep(.action-btn-status-modal) { --action-btn-color: #eab308; --action-btn-bg: #fef9c3; }
 :deep(.action-btn-status-change) { --action-btn-color: #059669; --action-btn-bg: #e6f7f0; }
 :deep(.action-btn-reverse) { --action-btn-color: #e11d48; --action-btn-bg: #fde8ef; }
