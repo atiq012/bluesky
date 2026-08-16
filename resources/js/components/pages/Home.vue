@@ -1,7 +1,9 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount, reactive, computed } from 'vue';
+import { ref, onMounted, onBeforeUnmount, reactive, computed, watch } from 'vue';
 import Chart from 'chart.js/auto';
 import axiosInstance from '../../axiosInstance';
+// import PeriodSelector from '@/components/common/PeriodSelector.vue';
+import PeriodSelector from '../common/PeriodSelector.vue';
 
 
 /* ─────────────────────────────────────────
@@ -17,6 +19,7 @@ let ratioAreaChart = null;
 let airlinesGauge = null;
 let transactionBar = null;
 let searchBookingChart = null;
+let supportDonut = null;
 
 /* ─────────────────────────────────────────
    Static chart data
@@ -77,131 +80,6 @@ const flightDetailsByDate = ref({});
   { date: '2026-08-25', displayDate: '25 Aug 2026', flightCount: 2, passengerCount: 9, bookingCount: 4 },
 ]);*/
 
-// Mock per-date flight detail payloads, keyed by `date` above.
-// Swap for a real endpoint later, e.g.:
-//   const res = await axiosInstance.get(`/dashboard/upcoming-flights/${date}`);
-// const flightDetailsByDate = {
-//   '2026-08-12': {
-//     totalPassengers: 14,
-//     flights: [
-//       {
-//         flightNumber: 'BG 147',
-//         airlineName: 'Biman Bangladesh Airlines',
-//         route: 'DAC → DXB',
-//         passengerCount: 8,
-//         bookingCount: 3,
-//         bookings: [
-//           { primaryPassenger: 'Md. Rahim Ahmed', contact: '+8801700000045' },
-//           { primaryPassenger: 'Abdul Karim', contact: '+8801800000021' },
-//           { primaryPassenger: 'Sara Rahman', contact: '+8801900000067' },
-//         ],
-//       },
-//       {
-//         flightNumber: 'EK 585',
-//         airlineName: 'Emirates',
-//         route: 'DAC → DXB',
-//         passengerCount: 6,
-//         bookingCount: 3,
-//         bookings: [
-//           { primaryPassenger: 'Tanvir Ahmed', contact: '+8801600000032' },
-//           { primaryPassenger: 'Nusrat Jahan', contact: '+8801500000087' },
-//           { primaryPassenger: 'Mohammed Ashraful Islam', contact: '+8801700000099' },
-//         ],
-//       },
-//     ],
-//   },
-//   '2026-08-14': {
-//     totalPassengers: 8,
-//     flights: [
-//       {
-//         flightNumber: 'US 215',
-//         airlineName: 'US-Bangla Airlines',
-//         route: 'DAC → JED',
-//         passengerCount: 8,
-//         bookingCount: 3,
-//         bookings: [
-//           { primaryPassenger: 'Farhana Islam', contact: '+8801300000011' },
-//           { primaryPassenger: 'Kamal Hossain', contact: '+8801400000022' },
-//           { primaryPassenger: 'Rina Akter', contact: '+8801500000033' },
-//         ],
-//       },
-//     ],
-//   },
-//   '2026-08-17': {
-//     totalPassengers: 11,
-//     flights: [
-//       {
-//         flightNumber: 'SV 804',
-//         airlineName: 'Saudia',
-//         route: 'DAC → JED',
-//         passengerCount: 6,
-//         bookingCount: 3,
-//         bookings: [
-//           { primaryPassenger: 'Jahangir Alam', contact: '+8801600000044' },
-//           { primaryPassenger: 'Shirin Sultana', contact: '+8801700000055' },
-//           { primaryPassenger: 'Mizanur Rahman', contact: '+8801800000066' },
-//         ],
-//       },
-//       {
-//         flightNumber: 'FZ 556',
-//         airlineName: 'Fly Dubai',
-//         route: 'DAC → DXB',
-//         passengerCount: 5,
-//         bookingCount: 2,
-//         bookings: [
-//           { primaryPassenger: 'Anika Tabassum', contact: '+8801900000077' },
-//           { primaryPassenger: 'Rezaul Karim', contact: '+8801300000088' },
-//         ],
-//       },
-//     ],
-//   },
-//   '2026-08-21': {
-//     totalPassengers: 5,
-//     flights: [
-//       {
-//         flightNumber: 'BS 122',
-//         airlineName: 'Biman Bangladesh Airlines',
-//         route: 'DAC → KWI',
-//         passengerCount: 5,
-//         bookingCount: 5,
-//         bookings: [
-//           { primaryPassenger: 'Sultana Begum', contact: '+8801400000099' },
-//           { primaryPassenger: 'Habibur Rahman', contact: '+8801500000010' },
-//           { primaryPassenger: 'Nasrin Akter', contact: '+8801600000021' },
-//           { primaryPassenger: 'Imran Hossain', contact: '+8801700000032' },
-//           { primaryPassenger: 'Taslima Khatun', contact: '+8801800000043' },
-//         ],
-//       },
-//     ],
-//   },
-//   '2026-08-25': {
-//     totalPassengers: 9,
-//     flights: [
-//       {
-//         flightNumber: 'J9 621',
-//         airlineName: 'Jazeera Airways',
-//         route: 'DAC → BKK',
-//         passengerCount: 4,
-//         bookingCount: 2,
-//         bookings: [
-//           { primaryPassenger: 'Sadia Islam', contact: '+8801900000054' },
-//           { primaryPassenger: 'Faisal Ahmed', contact: '+8801300000065' },
-//         ],
-//       },
-//       {
-//         flightNumber: 'OD 156',
-//         airlineName: 'Batik Air',
-//         route: 'DAC → BKK',
-//         passengerCount: 5,
-//         bookingCount: 2,
-//         bookings: [
-//           { primaryPassenger: 'Mahmuda Akter', contact: '+8801400000076' },
-//           { primaryPassenger: 'Kabir Hossain', contact: '+8801500000087' },
-//         ],
-//       },
-//     ],
-//   },
-// };
 
 const flightModalOpen = ref(false);
 const flightModalLoading = ref(false);
@@ -211,31 +89,6 @@ const selectedDateFlights = reactive({
   flights: [],
 });
 
-// const openFlightModal = async (item) => {
-//   selectedDateLabel.value = item.displayDate;
-//   flightModalOpen.value = true;
-//   flightModalLoading.value = true;
-//   selectedDateFlights.totalPassengers = 0;
-//   selectedDateFlights.flights = [];
-//   document.body.style.overflow = 'hidden';
-
-//   try {
-//     // TODO: swap for a real endpoint once available:
-
-//     const details = await new Promise((resolve) =>
-//       setTimeout(
-//         () => resolve(flightDetailsByDate[item.date] || { totalPassengers: 0, flights: [] }),
-//         500
-//       )
-//     );
-//     selectedDateFlights.totalPassengers = details.totalPassengers ?? 0;
-//     selectedDateFlights.flights = details.flights ?? [];
-//   } catch (error) {
-//     console.error('Error fetching flight details:', error);
-//   } finally {
-//     flightModalLoading.value = false;
-//   }
-// };
 
 const openFlightModal = async (item) => {
   selectedDateLabel.value = item.displayDate;
@@ -378,6 +231,21 @@ const salesStats = reactive({
   todaySales: 0,
 })
 
+const cabinClassData = ref({
+  economy: 0,
+  premium_economy: 0,
+  business: 0,
+  first_class: 0
+});
+
+
+const bookingCache = reactive({});
+
+const bookingMonthSelection = ref(null);
+const ticketingMonthSelection = ref(null);
+const routesMonthSelection = ref(new Date().getMonth() + 1);
+const topSellingAirlinesMonthSelection = ref(new Date().getMonth() + 1);
+
 const fetchDashboardStats = async () => {
   try {
     const response = await axiosInstance.get('/dashboard'); // Adjust endpoint if needed
@@ -414,6 +282,10 @@ const fetchDashboardStats = async () => {
     if (data.bookingClassData && Array.isArray(data.bookingClassData)) {
       bookingClassData.value = data.bookingClassData;
     }
+    if (data.cabinClassData) {
+      cabinClassData.value = data.cabinClassData;
+    }
+
 
     if (data.monthlyBookings && Array.isArray(data.monthlyBookings)) {
       bookingVals.value = data.monthlyBookings;
@@ -624,30 +496,6 @@ const initCharts = () => {
   //     },
   //   });
   // }
-
-  /* ── Trending Booking Class pie ── */
-  const bcEl = document.getElementById('bookingClassPie');
-  if (bcEl) {
-    bookingClassPie = new Chart(bcEl.getContext('2d'), {
-      type: 'pie',
-      data: {
-        labels: ['Economy', 'Premium Economy', 'Business Class', 'First Class'],
-        datasets: [{
-          data: bookingClassData.value,
-          backgroundColor: ['#06b6d4', '#eab308', '#8b5cf6', '#f97316'],
-          borderWidth: 0,
-        }],
-      },
-      options: {
-        responsive: true, maintainAspectRatio: true,
-        plugins: {
-          legend: { display: false },
-          tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.parsed}%` } },
-        },
-        animation: { duration: 900 },
-      },
-    });
-  }
 
   /* ── Booking vs Ticketing area ── */
   const raEl = document.getElementById('ratioAreaChart');
@@ -884,86 +732,6 @@ const initCharts = () => {
     value: 0
   });
 
-  // const ttEl = document.getElementById('travelerDonut');
-  // if (ttEl) {
-  //   // Max scale target for the bands (e.g. 100% or total travelers count)
-  //   const maxVal = Math.max(...travelerData.value, 1);
-
-  //   travelerDonut = new Chart(ttEl.getContext('2d'), {
-  //     type: 'doughnut',
-  //     data: {
-  //       labels: ['Adult', 'Children', 'Infant'],
-  //       datasets: [
-  //         {
-  //           label: 'Adult',
-  //           data: [travelerData.value[0], maxVal - travelerData.value[0]],
-  //           backgroundColor: ['#3b82f6', '#f1f5f9'], // Filled color vs Track background
-  //           borderWidth: 0,
-  //           borderRadius: 20,
-  //           cutout: '70%',
-  //           circumference: 270,
-  //           rotation: -135,
-  //           radius: '100%'
-  //         },
-  //         {
-  //           label: 'Children',
-  //           data: [travelerData.value[1], maxVal - travelerData.value[1]],
-  //           backgroundColor: ['#8b5cf6', '#f1f5f9'],
-  //           borderWidth: 0,
-  //           borderRadius: 20,
-  //           cutout: '70%',
-  //           circumference: 270,
-  //           rotation: -135,
-  //           radius: "90%"
-  //         },
-  //         {
-  //           label: 'Infant',
-  //           data: [travelerData.value[2], maxVal - travelerData.value[2]],
-  //           backgroundColor: ['#06b6d4', '#f1f5f9'],
-  //           borderWidth: 0,
-  //           borderRadius: 20,
-  //           cutout: '70%',
-  //           circumference: 270,
-  //           rotation: -135,
-  //           radius: '80%'
-  //         },
-  //       ],
-  //     },
-  //     options: {
-  //       responsive: true,
-  //       maintainAspectRatio: true,
-  //       plugins: {
-  //         legend: { display: false },
-  //         // tooltip: {
-  //         //   callbacks: {
-  //         //     label: (ctx) => {
-  //         //       if (ctx.dataIndex === 0) { 
-  //         //         return ` ${ctx.dataset.label}: ${ctx.parsed}`;
-  //         //       }
-  //         //       return null;
-  //         //     },
-  //         //   },
-  //         // },
-
-  //         tooltip: { enabled: false },
-  //         onHover: (event, activeElements, chart) => {
-  //           if (activeElements.length > 0) {
-  //             const element = activeElements[0];
-  //             const dataset = chart.data.datasets[element.datasetIndex];
-
-  //             addCenterTextToTravelerDonut(dataset.label, dataset.data[0]);
-  //           } else {
-
-  //             const total = travelerData.value.reduce((a, b) => a + b, 0);
-  //             addCenterTextToTravelerDonut('Total', total);
-  //           }
-  //         }
-  //       },
-  //       animation: { duration: 900 },
-  //     },
-  //   });
-  // }
-
   const ttEl = document.getElementById('travelerDonut');
 
   if (ttEl) {
@@ -1075,7 +843,102 @@ const initCharts = () => {
     });
   }
 
+  const supportCanvas = document.getElementById('supportDonut');
+  if (supportCanvas) {
+    const ctx = supportCanvas.getContext('2d');
+    supportDonut = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Open', 'Closed', 'Hold'],
+        datasets: [{
+          data: [5, 7, 2],
+          backgroundColor: ['#10B981', '#64748B', '#F59E0B'],
+          borderWidth: 0,
+          cutout: '75%',
+          borderRadius: 5,
+          spacing: 5
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        aspectRatio: 2,
+        rotation: 270,
+        circumference: 180,
+        plugins: {
+          legend: { display: false },
+          tooltip: { enabled: false }
+        },
+        onHover: (event, activeElements, chart) => {
+          if (activeElements.length > 0) {
+            const element = activeElements[0];
+            const index = element.index;
+            supportDonutCenterLabel = chart.data.labels[index];
+            supportDonutCenterValue = chart.data.datasets[0].data[index];
+          } else {
+            supportDonutCenterLabel = 'Total';
+            supportDonutCenterValue = chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+          }
+          chart.draw();
+        },
+        animation: { animateRotate: true, duration: 900 }
+      },
+      plugins: [supportDonutCenterText]
+    });
+
+  }
+
+  /* ── Trending Booking Class polarArea (monochrome) ── */
+  const bcEl = document.getElementById('bookingClassPie');
+  if (bcEl) {
+    bookingClassPie = new Chart(bcEl.getContext('2d'), {
+      type: 'polarArea',
+      data: {
+        labels: ['Economy', 'Prem. Economy', 'Business Class', 'First Class'],
+        datasets: [{
+          data: bookingClassData.value,
+          backgroundColor: [
+            'rgba(79, 126, 248, 0.85)',   // Economy       — indigo (matches KPI cards)
+            'rgba(16, 185, 129, 0.85)',   // Prem. Economy — emerald
+            'rgba(249, 115, 22, 0.85)',   // Business      — orange
+            'rgba(139, 92, 246, 0.85)',   // First         — purple
+          ],
+          borderColor: [
+            '#4f7ef8',
+            '#10b981',
+            '#f97316',
+            '#8b5cf6',
+          ],
+          borderWidth: 1,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (c) => `${c.parsed.r}%`
+            }
+          },
+        },
+        scales: {
+          r: {
+            ticks: { display: false },
+            grid: { display: false },         // no rings
+            angleLines: { display: false },   // no spokes
+            pointLabels: { display: false },
+          }
+        },
+        animation: { duration: 900 },
+      },
+    });
+  }
+
+
 };
+
 
 
 const addCenterTextToBookingGauge = (percent) => {
@@ -1107,6 +970,39 @@ const addCenterTextToBookingGauge = (percent) => {
   }
 };
 
+const addCenterTextToSupportDonut = () => {
+  if (supportDonut) {
+    // Set initial total count dynamically
+    supportDonutCenterValue = supportDonut.data.datasets[0].data.reduce((a, b) => a + b, 0);
+
+    const originalDraw = supportDonut.draw;
+    supportDonut.draw = function () {
+      originalDraw.apply(this, arguments);
+      const ctx = this.ctx;
+
+      const chartArea = this.chartArea;
+      const centerX = (chartArea.left + chartArea.right) / 2;
+      const centerY = chartArea.bottom; // center of half-gauge arc
+
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      // Draw value (e.g. 5, 7, 2 or Total sum)
+      ctx.font = 'bold 16px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = '#0f1535';
+      ctx.fillText(`${supportDonutCenterValue}`, centerX, centerY - 22);
+
+      // Draw label (e.g. 'Open', 'Closed', 'Hold' or 'Total')
+      ctx.font = '10px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = '#64748b';
+      ctx.fillText(supportDonutCenterLabel, centerX, centerY - 8);
+
+      ctx.restore();
+    };
+    supportDonut.draw();
+  }
+};
 
 const travelerDonutCenterText = {
   id: 'travelerDonutCenterText',
@@ -1146,11 +1042,66 @@ const travelerDonutCenterText = {
   }
 };
 
+let supportDonutCenterLabel = 'Total';
+let supportDonutCenterValue = 14;
+
+const supportDonutCenterText = {
+  id: 'supportDonutCenterText',
+  afterDraw(chart) {
+    const { ctx, chartArea } = chart;
+    const centerX = (chartArea.left + chartArea.right) / 2;
+    const centerY = chartArea.bottom; // center of half-gauge arc
+
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Count / Value
+    ctx.font = 'bold 16px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = '#0f1535';
+    ctx.fillText(`${supportDonutCenterValue}`, centerX, centerY - 22);
+
+    // Label ('Total', 'Open', etc.)
+    ctx.font = '10px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText(supportDonutCenterLabel, centerX, centerY - 8);
+
+    ctx.restore();
+  }
+};
+
+
+
 /* ─────────────────────────────────────────
    Utilities
 ───────────────────────────────────────── */
 const pct = (count, max) => ((count / max) * 100).toFixed(1);
 //const totalTravelers = computed(() => travelerData.value.reduce((a, b) => a + b, 0))
+
+const currentYear = new Date().getFullYear();
+
+const selectedMonth = ref(null); // null = All
+
+const monthsSelection = Array.from({ length: 12 }, (_, index) => ({
+  value: index + 1,
+  label: new Date(currentYear, index, 1).toLocaleString('en-US', {
+    month: 'short'
+  })
+}));
+
+const selectedMonthLabel = computed(() => {
+  if (selectedMonth.value === null) {
+    return 'All';
+  }
+
+  return `${monthsSelection[selectedMonth.value - 1].label} ${currentYear}`;
+});
+
+const selectMonth = (month) => {
+  selectedMonth.value = month ? month.value : null;
+
+  console.log('Selected month:', selectedMonth.value);
+};
 
 function formatTotal(value) {
   if (value >= 1000000) {
@@ -1183,6 +1134,7 @@ onMounted(async () => {
       addCenterTextToBookingGauge(percent);
 
       const totalTravelers = travelerData.value.reduce((a, b) => a + b, 0);
+      //addCenterTextToSupportDonut();
 
     }, 100);
   }, 100);
@@ -1216,7 +1168,25 @@ onBeforeUnmount(() => {
               <div class="kpi-card">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                   <span class="kpi-label">Bookings</span>
-                  <button class="btn-pill">All<i class="bi bi-chevron-down"></i></button>
+                  <PeriodSelector v-model="bookingMonthSelection" />
+                  <!-- <button class="btn-pill dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    {{ selectedMonthLabel }}
+                  </button> -->
+                  <!-- <ul class="dropdown-menu dropdown-menu-end">
+                   
+                    <li>
+                      <button class="dropdown-item" type="button" @click="selectMonth(null)">
+                        All
+                      </button>
+                    </li>
+
+                    
+                    <li v-for="month in monthsSelection" :key="month.value">
+                      <button class="dropdown-item" type="button" @click="selectMonth(month)">
+                        {{ month.label }} {{ currentYear }}
+                      </button>
+                    </li>
+                  </ul> -->
                 </div>
                 <div class="kpi-value-row d-flex align-items-center gap-3">
                   <div class="kpi-value">{{ formatTotal(bookingStats.totalBookings) }}</div>
@@ -1264,7 +1234,8 @@ onBeforeUnmount(() => {
               <div class="kpi-card">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                   <span class="kpi-label">Tickets</span>
-                  <button class="btn-pill">All<i class="bi bi-chevron-down"></i></button>
+                  <PeriodSelector v-model="ticketingMonthSelection" />
+                  <!-- <button class="btn-pill">All<i class="bi bi-chevron-down"></i></button> -->
                 </div>
 
                 <div class="kpi-value-row d-flex align-items-center gap-3">
@@ -1317,7 +1288,7 @@ onBeforeUnmount(() => {
                 <span class="d-flex align-items-center gap-2 text-muted small">
                   <span class="legend-pill-rect" style="background:#4f7ef8"></span>Total Sales
                 </span>
-                <button class="btn-pill">Monthly <i class="bi bi-chevron-down"></i></button>
+                <button class="btn-pill">{{ currentYear }}</button>
               </div>
             </div>
             <div class="chart-canvas-wrap flex-grow-1">
@@ -1335,31 +1306,191 @@ onBeforeUnmount(() => {
       ══════════════════════════════════════════════════════ -->
       <div class="row g-4 mb-4">
 
-        <!-- Trending Routes -->
+        <!-- Last Ticketing Time -->
         <div class="col-12 col-lg-6">
-          <div class="dash-card h-100 d-flex flex-column">
-            <div class="dash-card-header">
-              <h3>Most Frequent Routes</h3>
-              <button class="btn-pill">August, 2026 <i class="bi bi-chevron-down"></i></button>
-            </div>
+          <div class="card border-0 shadow-sm rounded-4 h-100">
+            <div class="card-body p-3">
 
-            <div class="routes-list flex-grow-1">
-              <div v-for="route in routes" :key="route.code" class="route-row">
-                <div class="route-badge-wrap">
-                  <span class="route-badge" :style="{ background: route.color, color: route.textColor }">
-                    {{ route.code }}
-                  </span>
-                  <span class="route-num" :style="{ color: route.color }">{{ route.count }}</span>
-                </div>
-                <div class="route-track">
-                  <div class="route-fill"
-                    :style="{ width: pct(route.count, route.max) + '%', background: route.color }">
+              <!-- Header -->
+              <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                <h6 class="mb-0 fw-bold text-dark">Last Ticketing Time</h6>
+                <div class="d-flex align-items-center gap-2">
+                  <!-- <span v-if="filteredTicketingBookings.length"
+                    class="badge rounded-pill fw-semibold tkt-count-badge">
+                    {{ filteredTicketingBookings.length }} due
+                  </span> -->
+
+                  <div class="d-flex gap-2">
+                    <button v-for="opt in ticketingWindowOptions" :key="opt.value" type="button"
+                      class="fdm-travel-badge border-0" :style="ticketingWindow === opt.value
+                        ? 'background: #4f7ef8; color: #fff; cursor: pointer;'
+                        : 'background: #eef2ff; color: #4f7ef8; cursor: pointer;'"
+                      @click="ticketingWindow = opt.value">
+                      {{ opt.label }}
+                    </button>
                   </div>
                 </div>
               </div>
+
+              <!-- Empty State -->
+              <div v-if="!filteredTicketingBookings.length" class="text-center text-muted py-4 small">
+                No bookings nearing ticketing deadline.
+              </div>
+
+              <!-- Table -->
+              <div v-else class="table-responsive">
+                <table class="table table-hover table-sm align-middle mb-0">
+                  <!-- <thead >
+                    <tr class="text-uppercase text-muted" style="font-size: 11px; letter-spacing: 0.04em;">
+                      <th class="fw-semibold border-0 ps-2">LT Date</th>
+                      <th class="fw-semibold border-0">Airline</th>
+                      <th class="fw-semibold border-0">Passenger</th>
+                      <th class="fw-semibold border-0">Contact</th>
+                      <th class="fw-semibold border-0 text-end pe-2">Time Left</th>
+                    </tr>
+                  </thead> -->
+                  <colgroup>
+                    <col style="width: 30%;">
+                    <col style="width: 10%;">
+                    <col style="width: 35%;">
+                    <col style="width: 25%;">
+                  </colgroup>
+                  <tbody>
+                    <tr v-for="booking in filteredTicketingBookings" :key="booking.flightPnr" role="button" tabindex="0"
+                      @click="openTicketingModal(booking)" @keydown.enter="openTicketingModal(booking)"
+                      style="cursor: pointer;">
+                      <!-- LT Date & Time -->
+
+                      <td class="p-2">
+                        <div class="d-flex align-items-center gap-2">
+                          <div class="fw-semibold text-dark" style="font-size: 13px;">
+                            {{ formatLTDate(booking.lastTicketingTime) }}
+                          </div>
+
+                          <span class="text-muted">|</span>
+
+                          <div class="fw-semibold text-dark" style="font-size: 13px;">
+                            {{ formatLTTime(booking.lastTicketingTime) }}
+                          </div>
+                        </div>
+                      </td>
+
+                      <!-- Airline -->
+                      <td style="font-size: 13px;">
+                        <span class="text-truncate d-block">{{ booking.airlineCode }}</span>
+                      </td>
+
+                      <!-- Passenger -->
+                      <td style="font-size: 13px;">
+                        <span class="text-truncate d-block" :title="booking.primaryPassenger">
+                          {{ booking.primaryPassenger }}
+                        </span>
+                      </td>
+
+                      <!-- Contact -->
+
+                      <!-- Time Left Badge -->
+                      <td class="text-end pe-2">
+                        <span class="badge rounded-pill fw-bold" :class="{
+                          'tkt-badge-overdue': ticketingUrgency(booking.lastTicketingTime) === 'overdue',
+                          'tkt-badge-critical': ticketingUrgency(booking.lastTicketingTime) === 'critical',
+                          'tkt-badge-warning': ticketingUrgency(booking.lastTicketingTime) === 'warning',
+                        }" style="font-size: 12px; padding: 5px 11px;">
+                          {{ ticketingCountdownLabel(booking.lastTicketingTime) }}
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
             </div>
           </div>
         </div>
+
+        <!-- Ticketing Deadline booking detail modal -->
+        <teleport to="body">
+          <div v-if="ticketingModalOpen && selectedBooking" class="modal d-block" tabindex="-1"
+            style="background: rgba(11,21,53,0.45);" @click.self="closeTicketingModal">
+            <div class="modal-dialog modal-dialog-centered" style="max-width: 460px;">
+              <div class="modal-content border-0 rounded-3 shadow-lg overflow-hidden">
+
+                <!-- Modal Header -->
+                <div class="modal-header border-0 text-white px-4 py-3" style="background: #0f1535;">
+                  <div>
+                    <h5 class="modal-title fw-bold mb-1" id="tktmTitle" style="color: #ffffff;">
+                      Booking — {{ selectedBooking.flightPnr }}
+                    </h5>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                      <span class="badge rounded-pill fw-bold" :class="{
+                        'tkt-badge-overdue': ticketingUrgency(selectedBooking.lastTicketingTime) === 'overdue',
+                        'tkt-badge-critical': ticketingUrgency(selectedBooking.lastTicketingTime) === 'critical',
+                        'tkt-badge-warning': ticketingUrgency(selectedBooking.lastTicketingTime) === 'warning',
+                      }">
+                        {{ ticketingCountdownLabel(selectedBooking.lastTicketingTime) }}
+                      </span>
+                      <small class="text-white">
+                        {{
+                          new Date(selectedBooking.lastTicketingTime).toLocaleString('en-US', {
+                            day: '2-digit', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true
+                          })
+                        }}
+                      </small>
+                    </div>
+                  </div>
+                  <button type="button" class="btn-close btn-close-white ms-auto" aria-label="Close"
+                    @click="closeTicketingModal"></button>
+                </div>
+
+                <!-- Modal Body -->
+                <div class="modal-body px-4 py-3">
+                  <dl class="row mb-0">
+                    <dt class="col-5 fw-normal text-muted small">Airline Code</dt>
+                    <dd class="col-7 text-end fw-semibold small mb-2">{{ selectedBooking.airlineCode }}</dd>
+
+                    <dt class="col-5 fw-normal text-muted small">Airline</dt>
+                    <dd class="col-7 text-end fw-semibold small mb-2">{{ selectedBooking.airline }}</dd>
+
+                    <dt class="col-5 fw-normal text-muted small">Route</dt>
+                    <dd class="col-7 text-end fw-semibold small mb-2">
+                      {{ routeParts(selectedBooking.route).origin }}
+                      <span class="text-secondary mx-1">→</span>
+                      {{ routeParts(selectedBooking.route).destination }}
+                    </dd>
+
+                    <dt class="col-5 fw-normal text-muted small">Total Pax</dt>
+                    <dd class="col-7 text-end fw-semibold small mb-2">{{ selectedBooking.totalPax }}</dd>
+
+                    <dt class="col-5 fw-normal text-muted small">Cabin Class</dt>
+                    <dd class="col-7 text-end fw-semibold small mb-2">{{ selectedBooking.cabinClass }}</dd>
+
+                    <dt class="col-5 fw-normal text-muted small">GDS PNR</dt>
+                    <dd class="col-7 text-end fw-semibold small mb-2">{{ selectedBooking.gdsPnr }}</dd>
+
+                    <dt class="col-5 fw-normal text-muted small">Flight PNR</dt>
+                    <dd class="col-7 text-end fw-semibold small mb-2">{{ selectedBooking.flightPnr }}</dd>
+                  </dl>
+
+                  <hr class="my-2">
+
+                  <dl class="row mb-0">
+                    <dt class="col-5 fw-normal text-muted small">Primary Passenger</dt>
+                    <dd class="col-7 text-end fw-semibold small mb-2">{{ selectedBooking.primaryPassenger }}</dd>
+
+                    <dt class="col-5 fw-normal text-muted small">Contact</dt>
+                    <dd class="col-7 text-end mb-0">
+                      <a class="text-primary text-decoration-none small"
+                        :href="`tel:${selectedBooking.contact.replace(/[\s-]/g, '')}`">
+                        {{ selectedBooking.contact }}
+                      </a>
+                    </dd>
+                  </dl>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </teleport>
 
         <!-- Upcoming departure -->
         <div class="col-12 col-lg-6">
@@ -1512,24 +1643,6 @@ onBeforeUnmount(() => {
       ══════════════════════════════════════════════════════ -->
       <div class="row g-4 mb-4">
 
-        <!-- Top 10 Most Selling Airlines -->
-        <!-- <div class="col-12 col-lg-5">
-          <div class="dash-card h-100">
-            <div class="dash-card-header">
-              <h3>Top 10 Most Selling Airlines</h3>
-              <button class="btn-pill">April, 2025 <i class="bi bi-chevron-down"></i></button>
-            </div>
-            <div class="gauge-wrap">
-              <canvas id="airlinesGauge"></canvas>
-            </div>
-            <div class="airlines-legend">
-              <div v-for="(lbl, i) in airlineLabels" :key="lbl" class="airline-legend-item">
-                <span class="ldot" :style="{ background: airlineColors[i] }"></span>{{ lbl }}
-              </div>
-            </div>
-          </div>
-        </div> -->
-
         <!-- Search vs Booking -->
         <div class="col-12 col-lg-6">
           <div class="card h-100 border-0 rounded-4">
@@ -1543,7 +1656,7 @@ onBeforeUnmount(() => {
                   <span class="legend-item">
                     <span class="legend-line" style="background:#10b981"></span>Booking
                   </span>
-                  <button class="btn-pill">2026 <i class="bi bi-chevron-down"></i></button>
+                  <button class="btn-pill">2026</button>
                 </div>
               </div>
               <div class="chart-container">
@@ -1565,7 +1678,7 @@ onBeforeUnmount(() => {
                 <span class="legend-item">
                   <span class="legend-line" style="background:#818cf8"></span>Ticketing
                 </span>
-                <button class="btn-pill">2026 <i class="bi bi-chevron-down"></i></button>
+                <button class="btn-pill">2026</button>
               </div>
             </div>
             <div class="chart-canvas-wrap flex-grow-1">
@@ -1593,7 +1706,7 @@ onBeforeUnmount(() => {
                 <span class="legend-item">
                   <span class="legend-pill-rect" style="background:#f97316"></span>Credit
                 </span>
-                <button class="btn-pill">Monthly <i class="bi bi-chevron-down"></i></button>
+                <button class="btn-pill">2026</button>
               </div>
             </div>
             <div class="chart-canvas-wrap flex-grow-1">
@@ -1607,7 +1720,8 @@ onBeforeUnmount(() => {
           <div class="dash-card h-100">
             <div class="dash-card-header">
               <h3>Top 10 Selling Airlines</h3>
-              <button class="btn-pill">August, 2026 <i class="bi bi-chevron-down"></i></button>
+              <PeriodSelector v-model="routesMonthSelection" :include-all="false" />
+              <!-- <button class="btn-pill">August, 2026 <i class="bi bi-chevron-down"></i></button> -->
             </div>
             <div class="table-responsive">
               <table class="table align-middle data-table mb-0">
@@ -1646,8 +1760,8 @@ onBeforeUnmount(() => {
       ══════════════════════════════════════════════════════ -->
 
       <div class="row g-4 mb-4">
-        <!-- Total Traveler -->
-        <div class="col-12 col-lg-4">
+        <div class="col-12 col-lg-3 d-flex flex-column gap-4">
+          <!-- Total Traveler -->
           <div class="dash-card">
             <div class="dash-card-header">
               <h3>Travelers</h3>
@@ -1665,195 +1779,119 @@ onBeforeUnmount(() => {
               </div>
             </div>
           </div>
+          <!-- <div class="col-12 col-lg-3">
+
+          </div> -->
+
+          <!-- Support Tickets -->
+          <div class="dash-card">
+            <div class="dash-card-header">
+              <h3>Suopprt Tickets</h3>
+              <!-- <button class="btn-pill">August, 2026 <i class="bi bi-chevron-down"></i></button> -->
+            </div>
+            <div class="d-flex flex-column align-items-center gap-3 mt-3">
+              <div class="support-donut-wrap">
+                <canvas id="supportDonut"></canvas>
+
+              </div>
+              <div class="d-flex gap-3 justify-content-center flex-wrap">
+                <span class="legend-item"><span class="ldot" style="background:#10B981"></span>Open</span>
+                <span class="legend-item"><span class="ldot" style="background:#64748B"></span>Closed</span>
+                <span class="legend-item"><span class="ldot" style="background:#F59E0B"></span>Hold</span>
+              </div>
+            </div>
+          </div>
+          <!-- <div class="col-12 col-lg-3">
+
+          </div> -->
+
         </div>
 
-        <!-- Last Ticketing Time -->
-        <div class="col-12 col-lg-8">
-          <div class="card border-0 shadow-sm rounded-4">
-            <div class="card-body p-3">
+        <!-- Booking Class -->
+        <div class="col-12 col-lg-3">
+          <div class="dash-card h-100">
+            <div class="dash-card-header">
+              <h3>Booking Classes</h3>
+            </div>
 
-              <!-- Header -->
-              <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-                <h6 class="mb-0 fw-bold text-dark">Last Ticketing Time</h6>
-                <div class="d-flex align-items-center gap-2">
-                  <!-- <span v-if="filteredTicketingBookings.length"
-                    class="badge rounded-pill fw-semibold tkt-count-badge">
-                    {{ filteredTicketingBookings.length }} due
-                  </span> -->
+            <div class="d-flex flex-column gap-3">
+              <!-- Chart -->
+              <div class="booking-class-chart align-item-center">
+                <canvas id="bookingClassPie"></canvas>
+              </div>
 
-                  <div class="d-flex gap-2">
-                    <button v-for="opt in ticketingWindowOptions" :key="opt.value" type="button"
-                      class="fdm-travel-badge border-0" :style="ticketingWindow === opt.value
-                        ? 'background: #4f7ef8; color: #fff; cursor: pointer;'
-                        : 'background: #eef2ff; color: #4f7ef8; cursor: pointer;'"
-                      @click="ticketingWindow = opt.value">
-                      {{ opt.label }}
-                    </button>
+              <!-- Legend -->
+              <div class="d-flex flex-column gap-3 booking-class-legend">
+
+                <!-- Economy -->
+                <div class="legend-item d-flex align-items-center justify-content-between w-100">
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="ldot" style="background:#4f7ef8"></span>
+                    <span>Economy</span>
+                  </div>
+                  <span class="fw-bold text-dark">{{ cabinClassData.economy || 0 }}</span>
+                </div>
+
+                <!-- Prem. Economy -->
+                <div class="legend-item d-flex align-items-center justify-content-between w-100">
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="ldot" style="background:#10b981"></span>
+                    <span>Prem. Economy</span>
+                  </div>
+                  <span class="fw-bold text-dark">{{ cabinClassData.premium_economy || 0 }}</span>
+                </div>
+
+                <!-- Business -->
+                <div class="legend-item d-flex align-items-center justify-content-between w-100">
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="ldot" style="background:#f97316"></span>
+                    <span>Business</span>
+                  </div>
+                  <span class="fw-bold text-dark">{{ cabinClassData.business || 0 }}</span>
+                </div>
+
+                <!-- First Class -->
+                <div class="legend-item d-flex align-items-center justify-content-between w-100">
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="ldot" style="background:#8b5cf6"></span>
+                    <span>First</span>
+                  </div>
+                  <span class="fw-bold text-dark">{{ cabinClassData.first_class || 0 }}</span>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Trending Routes -->
+        <div class="col-12 col-lg-6">
+          <div class="dash-card h-100 d-flex flex-column">
+            <div class="dash-card-header">
+              <h3>Most Frequent Routes</h3>
+              <PeriodSelector v-model="routesMonthSelection" :include-all="false" />
+              <!-- <button class="btn-pill">August, 2026 <i class="bi bi-chevron-down"></i></button> -->
+            </div>
+
+            <div class="routes-list flex-grow-1">
+              <div v-for="route in routes" :key="route.code" class="route-row">
+                <div class="route-badge-wrap">
+                  <span class="route-badge" :style="{ background: route.color, color: route.textColor }">
+                    {{ route.code }}
+                  </span>
+                  <span class="route-num" :style="{ color: route.color }">{{ route.count }}</span>
+                </div>
+                <div class="route-track">
+                  <div class="route-fill"
+                    :style="{ width: pct(route.count, route.max) + '%', background: route.color }">
                   </div>
                 </div>
               </div>
-
-              <!-- Empty State -->
-              <div v-if="!filteredTicketingBookings.length" class="text-center text-muted py-4 small">
-                No bookings nearing ticketing deadline.
-              </div>
-
-              <!-- Table -->
-              <div v-else class="table-responsive">
-                <table class="table table-hover table-sm align-middle mb-0">
-                  <!-- <thead >
-                    <tr class="text-uppercase text-muted" style="font-size: 11px; letter-spacing: 0.04em;">
-                      <th class="fw-semibold border-0 ps-2">LT Date</th>
-                      <th class="fw-semibold border-0">Airline</th>
-                      <th class="fw-semibold border-0">Passenger</th>
-                      <th class="fw-semibold border-0">Contact</th>
-                      <th class="fw-semibold border-0 text-end pe-2">Time Left</th>
-                    </tr>
-                  </thead> -->
-                  <colgroup>
-                    <col style="width: 30%;">
-                    <col style="width: 10%;">
-                    <col style="width: 35%;">
-                    <col style="width: 25%;">
-                  </colgroup>
-                  <tbody>
-                    <tr v-for="booking in filteredTicketingBookings" :key="booking.flightPnr" role="button" tabindex="0"
-                      @click="openTicketingModal(booking)" @keydown.enter="openTicketingModal(booking)"
-                      style="cursor: pointer;">
-                      <!-- LT Date & Time -->
-
-                      <td class="p-2">
-                        <div class="d-flex align-items-center gap-2">
-                          <div class="fw-semibold text-dark" style="font-size: 13px;">
-                            {{ formatLTDate(booking.lastTicketingTime) }}
-                          </div>
-
-                          <span class="text-muted">|</span>
-
-                          <div class="fw-semibold text-dark" style="font-size: 13px;">
-                            {{ formatLTTime(booking.lastTicketingTime) }}
-                          </div>
-                        </div>
-                      </td>
-
-                      <!-- Airline -->
-                      <td style="font-size: 13px;">
-                        <span class="text-truncate d-block">{{ booking.airlineCode }}</span>
-                      </td>
-
-                      <!-- Passenger -->
-                      <td style="font-size: 13px;">
-                        <span class="text-truncate d-block" :title="booking.primaryPassenger">
-                          {{ booking.primaryPassenger }}
-                        </span>
-                      </td>
-
-                      <!-- Contact -->
-
-                      <!-- Time Left Badge -->
-                      <td class="text-end pe-2">
-                        <span class="badge rounded-pill fw-bold" :class="{
-                          'tkt-badge-overdue': ticketingUrgency(booking.lastTicketingTime) === 'overdue',
-                          'tkt-badge-critical': ticketingUrgency(booking.lastTicketingTime) === 'critical',
-                          'tkt-badge-warning': ticketingUrgency(booking.lastTicketingTime) === 'warning',
-                        }" style="font-size: 12px; padding: 5px 11px;">
-                          {{ ticketingCountdownLabel(booking.lastTicketingTime) }}
-                        </span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
             </div>
           </div>
         </div>
       </div>
-
-
-      <!-- Ticketing Deadline booking detail modal -->
-      <teleport to="body">
-        <div v-if="ticketingModalOpen && selectedBooking" class="modal d-block" tabindex="-1"
-          style="background: rgba(11,21,53,0.45);" @click.self="closeTicketingModal">
-          <div class="modal-dialog modal-dialog-centered" style="max-width: 460px;">
-            <div class="modal-content border-0 rounded-3 shadow-lg overflow-hidden">
-
-              <!-- Modal Header -->
-              <div class="modal-header border-0 text-white px-4 py-3" style="background: #0f1535;">
-                <div>
-                  <h5 class="modal-title fw-bold mb-1" id="tktmTitle" style="color: #ffffff;">
-                    Booking — {{ selectedBooking.flightPnr }}
-                  </h5>
-                  <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <span class="badge rounded-pill fw-bold" :class="{
-                      'tkt-badge-overdue': ticketingUrgency(selectedBooking.lastTicketingTime) === 'overdue',
-                      'tkt-badge-critical': ticketingUrgency(selectedBooking.lastTicketingTime) === 'critical',
-                      'tkt-badge-warning': ticketingUrgency(selectedBooking.lastTicketingTime) === 'warning',
-                    }">
-                      {{ ticketingCountdownLabel(selectedBooking.lastTicketingTime) }}
-                    </span>
-                    <small class="text-white">
-                      {{
-                        new Date(selectedBooking.lastTicketingTime).toLocaleString('en-US', {
-                          day: '2-digit', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true
-                        })
-                      }}
-                    </small>
-                  </div>
-                </div>
-                <button type="button" class="btn-close btn-close-white ms-auto" aria-label="Close"
-                  @click="closeTicketingModal"></button>
-              </div>
-
-              <!-- Modal Body -->
-              <div class="modal-body px-4 py-3">
-                <dl class="row mb-0">
-                  <dt class="col-5 fw-normal text-muted small">Airline Code</dt>
-                  <dd class="col-7 text-end fw-semibold small mb-2">{{ selectedBooking.airlineCode }}</dd>
-
-                  <dt class="col-5 fw-normal text-muted small">Airline</dt>
-                  <dd class="col-7 text-end fw-semibold small mb-2">{{ selectedBooking.airline }}</dd>
-
-                  <dt class="col-5 fw-normal text-muted small">Route</dt>
-                  <dd class="col-7 text-end fw-semibold small mb-2">
-                    {{ routeParts(selectedBooking.route).origin }}
-                    <span class="text-secondary mx-1">→</span>
-                    {{ routeParts(selectedBooking.route).destination }}
-                  </dd>
-
-                  <dt class="col-5 fw-normal text-muted small">Total Pax</dt>
-                  <dd class="col-7 text-end fw-semibold small mb-2">{{ selectedBooking.totalPax }}</dd>
-
-                  <dt class="col-5 fw-normal text-muted small">Cabin Class</dt>
-                  <dd class="col-7 text-end fw-semibold small mb-2">{{ selectedBooking.cabinClass }}</dd>
-
-                  <dt class="col-5 fw-normal text-muted small">GDS PNR</dt>
-                  <dd class="col-7 text-end fw-semibold small mb-2">{{ selectedBooking.gdsPnr }}</dd>
-
-                  <dt class="col-5 fw-normal text-muted small">Flight PNR</dt>
-                  <dd class="col-7 text-end fw-semibold small mb-2">{{ selectedBooking.flightPnr }}</dd>
-                </dl>
-
-                <hr class="my-2">
-
-                <dl class="row mb-0">
-                  <dt class="col-5 fw-normal text-muted small">Primary Passenger</dt>
-                  <dd class="col-7 text-end fw-semibold small mb-2">{{ selectedBooking.primaryPassenger }}</dd>
-
-                  <dt class="col-5 fw-normal text-muted small">Contact</dt>
-                  <dd class="col-7 text-end mb-0">
-                    <a class="text-primary text-decoration-none small"
-                      :href="`tel:${selectedBooking.contact.replace(/[\s-]/g, '')}`">
-                      {{ selectedBooking.contact }}
-                    </a>
-                  </dd>
-                </dl>
-              </div>
-
-            </div>
-          </div>
-        </div>
-      </teleport>
 
     </div><!-- /container-fluid -->
 
@@ -1873,6 +1911,8 @@ onBeforeUnmount(() => {
    KPI Card
 ════════════════════════════════ */
 .kpi-card {
+  position: relative;
+  z-index: 1;
   background: #fff;
   border-radius: 18px;
   padding: 20px 22px;
@@ -1881,9 +1921,17 @@ onBeforeUnmount(() => {
   transition: transform .2s, box-shadow .2s;
 }
 
+.kpi-card:has(.dropdown-menu.show) {
+  z-index: 10;
+  /* outranks the sibling kpi-card:hover stacking context */
+}
+
+
 .kpi-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(59, 130, 246, .1);
+  /* transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(59, 130, 246, .1); */
+
+  box-shadow: 0 10px 32px rgba(59, 130, 246, .15);
 }
 
 .kpi-label {
@@ -2147,10 +2195,23 @@ onBeforeUnmount(() => {
   color: #8b5cf6;
 }
 
+
+.support-donut-wrap {
+  position: relative;
+  width: 120px;
+  height: 60px;
+  flex-shrink: 0;
+}
+
+.support-donut-wrap canvas {
+  width: 120px !important;
+  height: 60px !important;
+}
+
 /* ════════════════════════════════
-   Booking Class legend
+   Booking Class 
 ════════════════════════════════ */
-.booking-legend {
+/* .booking-legend {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -2162,6 +2223,22 @@ onBeforeUnmount(() => {
   gap: 7px;
   font-size: 12px;
   color: #7b8ab8;
+} */
+
+.booking-class-chart {
+  width: 160px;
+  height: 160px;
+  margin: 20px auto 0;
+}
+
+.booking-class-chart canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.booking-class-legend {
+  width: 100%;
+  align-items: flex-start;
 }
 
 /* ════════════════════════════════

@@ -585,6 +585,7 @@ class DashboardController extends Controller
             'trendingRoutes'    => $trendingRoutes,
             'travelerData'      => $travelerData,
             'bookingClassData'  => $bookingClassData,
+            'cabinClassData'    => $cabinClassStats,
             'monthlyBookings'   => $monthlyBookings,
             'monthlyTicketing'  => $monthlyTicketing,
             'depositData'       => $depositData,
