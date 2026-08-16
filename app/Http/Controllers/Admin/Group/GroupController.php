@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\Admin\Group;
 
 use App\Http\Controllers\BaseController;
+use App\Models\AirlineLogo\AirlineLogo;
 use App\Models\GroupRequest\GroupRequest;
 use App\Models\GroupRequest\GroupRequestSegment;
 use App\Models\GroupRequest\PriceOffer;
@@ -23,8 +24,10 @@ class GroupController extends BaseController
             ->leftJoin('users as u2', 'u2.id', '=', 'group_requests.updated_by')
             ->leftJoin('agents as a', 'a.agent_code', '=', 'group_requests.agent_code')
             ->leftJoin('group_request_segments', 'group_requests.id', '=', 'group_request_segments.group_request_id')
-            ->leftJoin('price_offers as op', 'group_requests.id', '=', 'op.group_req_id')
             ->leftJoin('group_p_a_x_infos as pax', 'group_requests.id', '=', 'pax.group_id')
+            ->leftJoin('price_offers as op', 'group_requests.id', '=', 'op.group_req_id')
+            ->leftJoin('offer_price_payment_terms', 'op.id', '=', 'offer_price_payment_terms.offer_price_id')
+            ->leftJoin('group_payments', 'group_requests.id', '=', 'group_payments.group_req_id')
             ->select(
                 'group_requests.id',
                 'group_requests.request_type',
@@ -48,13 +51,21 @@ class GroupController extends BaseController
                 'group_requests.infant_traveler',
                 'group_requests.total_traveler',
                 'group_requests.status',
+                'group_requests.airline_code',
                 // Add all other columns you need explicitly
                 'u.name as createdby',
                 'u2.name as updatedby',
                 'a.name as agent_name',
                 'a.agent_code as agent_code',
                 'op.pnr as pnr',
+                'op.currency as opCurrency',
+                'op.estimate_net_payable as opEstimateNetPayable',
+                'op.exchange_rate as opExchangeRate',
                 'op.status as opstatus',
+                DB::raw('(SELECT SUM(paid_amount)
+          FROM group_payments
+          WHERE group_req_id = group_requests.id
+         ) as total_paid'),
                 DB::raw('COUNT(pax.id) as pax_count'),
                 DB::raw('f_username(NULLIF(group_requests.assigned_to, "")) as assigned_to_kam'),
                 DB::raw('GROUP_CONCAT(
@@ -71,7 +82,14 @@ class GroupController extends BaseController
             )
             ORDER BY group_request_segments.segment_order
             SEPARATOR " | "
-        ) as segments_date')
+        ) as segments_date'),
+         DB::raw('GROUP_CONCAT(DISTINCT
+            CONCAT_WS("- ",
+                offer_price_payment_terms.sequence,
+                offer_price_payment_terms.amount
+            ) ORDER BY offer_price_payment_terms.sequence
+            SEPARATOR " | "
+        ) as segments_payment_info')
             )
             ->groupBy('group_requests.id')
             ->groupBy('group_requests.request_type')
@@ -95,13 +113,18 @@ class GroupController extends BaseController
             ->groupBy('group_requests.infant_traveler')
             ->groupBy('group_requests.total_traveler')
             ->groupBy('group_requests.status')
+            ->groupBy('group_requests.airline_code')
             ->groupBy('u.name')
             ->groupBy('u2.name')
             ->groupBy('a.name')
             ->groupBy('op.status')
             ->groupBy('op.pnr')
+            ->groupBy('op.currency')
+            ->groupBy('op.estimate_net_payable')
+            ->groupBy('op.exchange_rate')
             ->groupBy('a.agent_code')
             ->orderBy('group_requests.id', 'desc');
+
         return DataTables::of($data)
             ->addIndexColumn()
             ->addColumn('route_display', function ($row) {
@@ -123,6 +146,8 @@ class GroupController extends BaseController
                 $route = "<i class='fa-regular fa-calendar me-1' style='font-size: 0.65rem;'></i> " . $row->departure_date;
 
                 return $route;
+            })->addColumn('payment_info', function ($row) {
+                return $row->segments_payment_info;
             })
             ->make(true);
     }
@@ -143,6 +168,7 @@ class GroupController extends BaseController
     {
 
         $groupCode = $this->generateGroupCode();
+        $airline = AirlineLogo::where('name', $request->preferredAirlines)->first();
 
         $groupRequest = GroupRequest::create([
             'agent_code'              => $request->agent_code ?? auth()->user()->agent->agent_code ?? null,
@@ -161,6 +187,7 @@ class GroupController extends BaseController
             'return_destination'      => $request->returnTo ?? null,
             'return_date'             => $request->returnDate ?? null,
             'preferred_flight'        => $request->preferredAirlines ?? null,
+            'airline_code'            => $airline->code ?? null,
             'flight_no'               => $request->flightNo ?? null,
 
             // Multi-city airline stored here

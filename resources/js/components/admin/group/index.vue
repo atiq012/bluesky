@@ -156,6 +156,19 @@ function groupUploadedPAX(row) { // can view uploaded PAX details
     return true;
 }
 
+function generateEticket(row) { // can generate e-ticket
+    if (row.opstatus == null) {
+        if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'Accepted' || row.status == 'New Request') {
+            return false;
+        }
+    } else {
+        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'Price offer' || row.opstatus == 'Paid' || row.opstatus == 'PAX Partially Uploaded' || row.opstatus == 'PAX Uploaded') {
+            return false
+        }
+    }
+    return true;
+}
+
 function availableSeats(row) {
     return (row.total_seat || 50) - (row.assigned_pax || 0);
 }
@@ -178,7 +191,6 @@ async function getListValues() {
 }
 
 function handleView(item) {
-
     router.push({ name: 'requestGroupView', params: { id: item.id } });
 }
 
@@ -402,7 +414,7 @@ async function handleEticketGenerated(data) {
                         <div class="airline-cell">
                             <div class="cell-main">
                                 <i class="fa-solid fa-plane-departure me-1 table-icon"></i>
-                                {{ row.preferred_flight }}
+                                {{ row.airline_code }}
                             </div>
                             <div class="cell-link">PNR : {{ row.pnr || '-' }}</div>
 
@@ -469,7 +481,9 @@ async function handleEticketGenerated(data) {
                     <template #fare="{ value: row }">
                         <div class="fare-cell" v-if="row.status != 'New Request'">
                             <div class="cell-main amount-text">
-                                {{ row.currency }} {{ formatAmount(row.per_person_fare) }}
+                                {{ row.opCurrency }} {{ formatAmount(row.opEstimateNetPayable) }}
+                            </div>
+                            <div class="cell-main cell-link" v-if="row.payment_info" v-html="`<i class='fa-solid fa-scale-balanced me-1' style='font-size: 0.65rem;'></i>${row.payment_info.replaceAll(' | ', `<br> <i class='fa-solid fa-scale-balanced me-1' style='font-size: 0.65rem;'></i>`).replaceAll('|', `<br> <i class='fa-solid fa-scale-balanced me-1' style='font-size: 0.65rem;'></i>`)}`">
                             </div>
                         </div>
                         <div v-else>
@@ -479,13 +493,13 @@ async function handleEticketGenerated(data) {
 
                     <!-- Paid Amount -->
                     <template #paid="{ value: row }">
-                        <div class="paid-cell" v-if="row.status != 'New Request'">
+                        <div class="paid-cell">
                             <div class="cell-main amount-text">
-                                {{ row.currency }} {{ formatAmount(row.total_paid_from_sequences) }}
+                                {{ row.opCurrency }} {{ formatAmount(row.total_paid) }}
                             </div>
-                        </div>
-                        <div v-else>
-                            -
+                            <div class="cell-main cell-link" v-if="(row.opEstimateNetPayable - row.total_paid) > 0">
+                                Due: {{ formatAmount(row.opEstimateNetPayable - row.total_paid) }}
+                            </div>
                         </div>
                     </template>
                     <!-- KAM -->
@@ -529,7 +543,7 @@ async function handleEticketGenerated(data) {
                         :showPAXUpload="groupPAXUpload(row)"
                         :showUploadedPAX="groupUploadedPAX(row)"
                             :show-view="true" :show-copy="true" :show-delete="canDelete(row)" :show-authorize="false"
-                            :generateEticket="true"
+                            :generateEticket="generateEticket(row)"
                             copy-label="PNR" @view="handleView" @view-group="handleGroup"
                             @pax-upload="handlePAXUpload"
                             @uploaded-pax="handleUploadedPAX"
