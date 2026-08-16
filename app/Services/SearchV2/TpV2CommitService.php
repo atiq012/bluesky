@@ -75,17 +75,33 @@ class TpV2CommitService
                 throw new Exception('PNR locator missing in Travelport commit response.');
             }
 
-            $airlineCodeRaw = data_get($attempt->priceLog?->price_payload, 'mapped.validating_airline');
-            $airlineCode    = $airlineCodeRaw ? strtoupper((string) $airlineCodeRaw) : null;
-            $airlineName    = $airlineCode
-                ? DB::table('airline_logos')->where('code', $airlineCode)->value('name')
-                : null;
+            // $airlineCodeRaw = data_get($attempt->priceLog?->price_payload, 'mapped.validating_airline');
+            // Fallback search across multiple JSON paths
+            $airlineCodeRaw = data_get($attempt->priceLog?->price_payload, 'mapped.validating_airline')
+                ?? data_get($attempt->priceLog?->price_payload, 'validating_airline')
+                ?? data_get($attempt->selection_json, 'validating_airline')
+                ?? data_get($attempt->selection_json, 'carrier_code')
+                ?? data_get($attempt->snapshot_json, 'price.products.0.flight.first_carrier_code')
+                ?? data_get($body, 'ReservationResponse.Reservation.Offer.0.Product.0.FlightSegment.0.Flight.carrier')
+                ?? data_get($body, 'ReservationResponse.Reservation.Offer.0.Product.0.FlightSegment.0.Flight.@carrier');
+
+            $airlineCode = $airlineCodeRaw ? strtoupper(trim((string) $airlineCodeRaw)) : null;
+            // $airlineCode    = $airlineCodeRaw ? strtoupper((string) $airlineCodeRaw) : null;
+            // $airlineName    = $airlineCode
+            //     ? DB::table('airline_logos')->where('code', $airlineCode)->value('name')
+            //     : null;
+
+            // Query airline name from DB with fallbacks
+            $airlineName = null;
+            if ($airlineCode) {
+                $airlineName = DB::table('airline_logos')->where('code', $airlineCode)->value('name');
+            }
 
             $attempt->update([
                 'gds_pnr'                   => $parsed['gds_pnr'],
                 'airline_pnr'               => $parsed['airline_pnr'],
                 'airline_code'              => $airlineCode,
-                'airline_name'              => $airlineName ?? $airlineCode,
+                'airline_name'              => $airlineName ?? $airlineCode ?? 'N/A',
                 'cabin_class'               => $attempt->searchLog?->cabin_class,
                 'reservation_identifier'    => $parsed['reservation_identifier'],
                 'commit_error'              => null,

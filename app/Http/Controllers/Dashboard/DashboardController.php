@@ -15,6 +15,7 @@ use App\Models\Helpdesk\Request as HelpdeskRequest;
 use App\Models\Agent\Agent;
 use App\Models\User;
 use App\Models\BookingPax;
+use App\Models\AirlineLogo\AirlineLogo;
 
 class DashboardController extends Controller
 {
@@ -51,21 +52,63 @@ class DashboardController extends Controller
 
         //booking stats
         $totalBookings = (clone $query)
-            ->whereIn('status', ['confirmed', 'committed', 'ticketing', 'ticketed', 'cancelled', 'voided'])
+            ->where(function ($q) {
+                $q->where('status', 'confirmed')
+                    ->where('last_api_status', 'success')
+                    ->orWhereIn('status', [
+                        'committed',
+                        'ticketing',
+                        'ticketed',
+                        'cancelled',
+                        'voided',
+                    ]);
+            })
             ->count();
+
         $confirmedBookings = (clone $query)
-            ->whereIn('status', ['confirmed', 'committed', 'ticketing', 'ticketed', 'voided'])
+            ->where(function ($q) {
+                $q->where('status', 'confirmed')
+                    ->where('last_api_status', 'success')
+                    ->orWhereIn('status', [
+                        'committed',
+                        'ticketing',
+                        'ticketed',
+                        'voided',
+                    ]);
+            })
             ->count();
+
         $cancelledBookings = (clone $query)
             ->where('status', 'cancelled')
             ->count();
+
         $todayBookings = (clone $query)
-            ->whereIn('status', ['confirmed', 'committed', 'ticketing', 'ticketed', 'cancelled', 'voided'])
+            ->where(function ($q) {
+                $q->where('status', 'confirmed')
+                    ->where('last_api_status', 'success')
+                    ->orWhereIn('status', [
+                        'committed',
+                        'ticketing',
+                        'ticketed',
+                        'voided',
+                        'cancelled'
+                    ]);
+            })
             ->whereDate('created_at', Carbon::today())
             ->count();
 
         $yesterdayBookings = (clone $query)
-            ->whereIn('status', ['confirmed', 'committed', 'ticketing', 'ticketed', 'cancelled', 'voided'])
+            ->where(function ($q) {
+                $q->where('status', 'confirmed')
+                    ->where('last_api_status', 'success')
+                    ->orWhereIn('status', [
+                        'committed',
+                        'ticketing',
+                        'ticketed',
+                        'voided',
+                        'cancelled'
+                    ]);
+            })
             ->whereDate('created_at', Carbon::yesterday())
             ->count();
 
@@ -157,7 +200,16 @@ class DashboardController extends Controller
 
         // Calculate traveler counts filtered by agency user IDs
         $travelerStats = BookingPax::join('booking_attempts', 'booking_paxes.booking_attempt_id', '=', 'booking_attempts.id')
-            ->whereIn('booking_attempts.status', ['confirmed', 'committed', 'ticketing', 'ticketed', 'voided'])
+            ->where(function ($q) {
+                $q->where('booking_attempts.status', 'confirmed')
+                    ->where('booking_attempts.last_api_status', 'success')
+                    ->orWhereIn('booking_attempts.status', [
+                        'committed',
+                        'ticketing',
+                        'ticketed',
+                        'voided',
+                    ]);
+            })
             ->when(!empty($agencyUserIds), function ($q) use ($agencyUserIds) {
                 $q->whereIn('booking_attempts.user_id', $agencyUserIds);
             })
@@ -166,6 +218,7 @@ class DashboardController extends Controller
                 SUM(CASE WHEN booking_paxes.pax_type IN ('CNN', 'CHD') THEN 1 ELSE 0 END) as children,
                 SUM(CASE WHEN booking_paxes.pax_type = 'INF' THEN 1 ELSE 0 END) as infant")
             ->first();
+
 
         $travelerData = [
             (int) ($travelerStats->adult ?? 0),
@@ -198,7 +251,19 @@ class DashboardController extends Controller
 
         // Monthly Bookings Count
         $monthlyBookingsRaw = BookingAttempt::whereYear('created_at', Carbon::now()->year)
-            ->whereIn('status', ['confirmed', 'committed', 'ticketing', 'ticketed', 'cancelled', 'voided'])
+            ->where(function ($q) {
+                $q->where('status', 'confirmed')
+                    ->where('last_api_status', 'success')
+                    ->orWhereIn('booking_attempts.status', [
+                        'committed',
+                        'ticketing',
+                        'ticketed',
+                        'cancelled',
+                        'voided'
+                    ]);
+            })
+            // ->whereIn('status', ['confirmed', 'committed', 'ticketing', 'ticketed', 'cancelled', 'voided'])
+            // ->where('last_api_status', 'success')
             ->when(!empty($agencyUserIds), function ($q) use ($agencyUserIds) {
                 $q->whereIn('user_id', $agencyUserIds);
             })
@@ -243,6 +308,7 @@ class DashboardController extends Controller
         for ($m = 1; $m <= 12; $m++) {
             $depositData[] = $monthlyDepositRaw[$m] ?? 0;
         }
+
         // Calculate Monthly Credit Requests
         $monthlyCreditRaw = Deposit::whereYear('updated_at', Carbon::now()->year)
             ->where('status', 'Approved')
@@ -260,30 +326,6 @@ class DashboardController extends Controller
             $creditData[] = $monthlyCreditRaw[$m] ?? 0;
         }
 
-        // Query Top 10 Most Selling Airlines
-        // $topAirlinesRaw = BookingAttempt::join('booking_price_logs', 'booking_attempts.id', '=', 'booking_price_logs.booking_attempt_id')
-        //     ->whereIn('booking_attempts.status', ['ticketed', 'voided'])
-        //     ->whereNotNull('booking_attempts.airline_name')
-        //     ->where('booking_attempts.airline_name', '!=', '')
-        //     ->when(!empty($agencyUserIds), function ($q) use ($agencyUserIds) {
-        //         $q->whereIn('booking_attempts.user_id', $agencyUserIds);
-        //     })
-        //     ->selectRaw("
-        //         booking_attempts.airline_name as name,
-        //         COUNT(DISTINCT booking_attempts.id) as ticketing,
-        //         SUM(booking_price_logs.total_price) as sales")
-        //     ->groupBy('booking_attempts.airline_name')
-        //     ->orderByDesc('ticketing')
-        //     ->limit(10)
-        //     ->get();
-        // $topAirlines = $topAirlinesRaw->map(function ($item) {
-        //     return [
-        //         'name'      => $item->name,
-        //         'ticketing' => (int) $item->ticketing,
-        //         'sales'     => number_format($item->sales, 2),
-        //         'trend'     => 'up', // Options: 'up', 'down', 'same'
-        //     ];
-        // })->toArray();
 
 
         $currentYear  = Carbon::now()->year;
@@ -303,7 +345,7 @@ class DashboardController extends Controller
             ->orderByDesc('ticketing')
             ->limit(10)
             ->get();
-            
+
         // Today's Airline Rankings
         $todayRankingQuery = BookingAttempt::whereIn('booking_attempts.status', ['ticketed', 'voided'])
             ->whereDate('booking_attempts.created_at', Carbon::today());
@@ -354,6 +396,180 @@ class DashboardController extends Controller
             ];
         })->values()->toArray();
 
+        // Monthly Search
+        $monthlySearchQuery = BookingSearchLog::whereYear('created_at', Carbon::now()->year);
+
+        if (!empty($agencyUserIds)) {
+            $monthlySearchQuery->whereIn('user_id', $agencyUserIds);
+        }
+
+        $monthlySearchRaw = $monthlySearchQuery
+            ->selectRaw('MONTH(created_at) as month, COUNT(*) as total')
+            ->groupBy('month')
+            ->pluck('total', 'month')
+            ->toArray();
+
+        // Fill all 12 months, missing months = 0
+        $monthlySearch = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $monthlySearch[] = (int) ($monthlySearchRaw[$m] ?? 0);
+        }
+
+
+        // Fetch pending/active bookings requiring ticketing
+        $ticketingBookingsRaw = BookingAttempt::with(['paxes', 'searchLog', 'commitSession'])
+            ->where(function ($q) {
+                $q->where('status', 'confirmed')
+                    ->where('last_api_status', 'success')
+                    ->orWhereIn('booking_attempts.status', [
+                        'committed',
+                        'ticketing',
+                    ]);
+            })
+            // ->whereIn('status', ['confirmed', 'committed', 'ticketing'])
+            ->when(!empty($agencyUserIds), function ($q) use ($agencyUserIds) {
+                $q->whereIn('user_id', $agencyUserIds);
+            })
+            ->where('last_api_status', 'success')
+            ->orderByDesc('id')
+            ->get();
+
+        $ticketingBookings = $ticketingBookingsRaw->map(function ($booking) {
+            // Primary Passenger details
+            $pax = $booking->paxes->first();
+            $primaryPassenger = $pax ? trim("{$pax->first_name} {$pax->last_name}") : 'N/A';
+            $contact = $pax?->phone ?? '';
+
+            // Extract Last Ticketing Time from commitSession payload or snapshot
+            $payload = $booking->commitSession?->response_payload;
+            $terms = data_get($payload, 'ReservationResponse.Reservation.Offer.0.TermsAndConditionsFull', []);
+
+            $lastTicketingTime = null;
+            if (is_array($terms)) {
+                foreach ($terms as $term) {
+                    if (!empty($term['PaymentTimeLimit'])) {
+                        $lastTicketingTime = (string) $term['PaymentTimeLimit'];
+                        break;
+                    }
+                    if (!empty($term['ExpiryDate'])) {
+                        $lastTicketingTime = (string) $term['ExpiryDate'];
+                        break;
+                    }
+                }
+            }
+
+            // Fallback if payload limit is absent
+            if (!$lastTicketingTime) {
+                $lastTicketingTime = $booking->post_commit_snapshot_json['ticket_time_limit']
+                    ?? $booking->snapshot_json['ticket_time_limit']
+                    ?? optional($booking->created_at)->addHours(24)->toIso8601String();
+            }
+
+            // Route formatting
+            $from = $booking->searchLog->from_airport ?? '';
+            $to   = $booking->searchLog->to_airport ?? '';
+            $route = ($from && $to) ? "{$from} → {$to}" : 'N/A';
+
+            return [
+                'flightPnr'         => $booking->airline_pnr ?? $booking->pnr ?? 'N/A',
+                'gdsPnr'            => $booking->gds_pnr ?? 'N/A',
+                'airline'           => $booking->airline_name ?? 'N/A',
+                'airlineCode'       => $booking->airline_code ?? '',
+                'route'             => $route,
+                'cabinClass'        => $booking->cabin_class ?? 'Economy',
+                'totalPax'          => $booking->paxes->count(),
+                'primaryPassenger'  => $primaryPassenger,
+                'contact'           => $contact,
+                'lastTicketingTime' => $lastTicketingTime,
+            ];
+        })->toArray();
+
+        /*upcoming departure*/
+
+        // Define 15-day departure date range
+        $today    = Carbon::today();
+        $in15Days = Carbon::today()->addDays(15);
+
+        $airlineLogos = AirlineLogo::whereNotNull('logo_path')
+            ->pluck('logo_path', 'code')
+            ->toArray();
+
+        // Eager load commitSession alongside paxes & searchLog
+        $upcomingBookings = BookingAttempt::with(['paxes', 'searchLog', 'commitSession'])
+            ->whereIn('status', ['ticketed'])
+            ->when(!empty($agencyUserIds), function ($q) use ($agencyUserIds) {
+                $q->whereIn('user_id', $agencyUserIds);
+            })
+            ->whereHas('searchLog', function ($q) use ($today, $in15Days) {
+                $q->whereBetween('dep_date', [$today, $in15Days]);
+            })
+            ->get();
+
+        // Group bookings by departure date (Y-m-d)
+        $groupedByDate = $upcomingBookings->groupBy(function ($booking) {
+            return optional($booking->searchLog->dep_date)->format('Y-m-d');
+        })->filter(fn($group, $key) => !empty($key));
+
+        $upcomingTravelDates = [];
+        $flightDetailsByDate = [];
+        foreach ($groupedByDate as $dateStr => $bookingsForDate) {
+            $formattedDisplayDate = Carbon::parse($dateStr)->format('d M Y'); // e.g. "14 Aug 2026"
+
+            // Group bookings on this date by actual Flight Number
+            $flightsGrouped = $bookingsForDate->groupBy(function ($booking) {
+                return $this->extractFlightNumber($booking);
+            });
+
+            $totalPassengersOnDate = 0;
+            $flightsDetailList = [];
+            foreach ($flightsGrouped as $flightNo => $flightBookings) {
+                $firstBooking = $flightBookings->first();
+                $paxCount = $flightBookings->sum(fn($b) => $b->paxes->count());
+                $totalPassengersOnDate += $paxCount;
+                $from = $firstBooking->searchLog->from_airport ?? '';
+                $to   = $firstBooking->searchLog->to_airport ?? '';
+
+                $airlineCode = $firstBooking->airline_code;
+                $logoPath = $airlineLogos[$airlineCode] ?? null;
+                $logoUrl = $logoPath ? asset($logoPath) : null;
+
+
+                // Passenger list for this flight number
+                $bookingPassengerList = $flightBookings->map(function ($b) {
+                    $pax = $b->paxes->first();
+                    return [
+                        'primaryPassenger' => $pax ? trim("{$pax->first_name} {$pax->last_name}") : 'N/A',
+                        'contact'          => $pax?->phone ?? '',
+                    ];
+                })->values()->toArray();
+                $flightsDetailList[] = [
+                    'flightNumber'   => $flightNo, // Actual flight number (e.g. "BG 147")
+                    'airlineName'    => $firstBooking->airline_name ?? 'Airline',
+                    'airlineLogo'    => $logoUrl,
+                    'route'          => ($from && $to) ? "{$from} → {$to}" : 'N/A',
+                    'passengerCount' => $paxCount,
+                    'bookingCount'   => $flightBookings->count(),
+                    'bookings'       => $bookingPassengerList,
+                ];
+            }
+            // Date Card Summary
+            $upcomingTravelDates[] = [
+                'date'           => $dateStr,
+                'displayDate'    => $formattedDisplayDate,
+                'flightCount'    => count($flightsDetailList),
+                'passengerCount' => $totalPassengersOnDate,
+                'bookingCount'   => $bookingsForDate->count(),
+            ];
+            // Flight Details Modal Data
+            $flightDetailsByDate[$dateStr] = [
+                'totalPassengers' => $totalPassengersOnDate,
+                'totalBookings'   => $bookingsForDate->count(),
+                'flights'         => $flightsDetailList,
+            ];
+        }
+        // Sort chronologically by date
+        usort($upcomingTravelDates, fn($a, $b) => strcmp($a['date'], $b['date']));
+
         return response()->json([
             'totalBookings'     => $totalBookings,
             'confirmedBookings' => $confirmedBookings,
@@ -374,6 +590,10 @@ class DashboardController extends Controller
             'depositData'       => $depositData,
             'creditData'        => $creditData,
             'topAirlines'       => $topAirlines,
+            'monthlySearch'     => $monthlySearch,
+            'lastTicketingInfo' => $ticketingBookings,
+            'upcomingTravelDates' => $upcomingTravelDates,
+            'flightDetailsByDate' => $flightDetailsByDate,
         ]);
     }
 
@@ -389,5 +609,30 @@ class DashboardController extends Controller
         }
 
         return round((($today - $yesterday) / $yesterday) * 100, 2);
+    }
+
+
+    private function extractFlightNumber($booking): string
+    {
+        // Try snapshot JSON
+        // $segment = data_get($booking->snapshot_json, 'segments.0');
+        // if ($segment && !empty($segment['flight'])) {
+        //     return $segment['flight'];
+        // }
+        // if ($segment && !empty($segment['carrier_code']) && !empty($segment['flightNumber'])) {
+        //     return "{$segment['carrier_code']} {$segment['flightNumber']}";
+        // }
+
+        // Try commit response payload
+        $flight = data_get($booking->commitSession?->response_payload, 'ReservationResponse.Reservation.Offer.0.Product.0.FlightSegment.0.Flight');
+        if ($flight) {
+            $carrier = $flight['carrier'] ?? $flight['@carrier'] ?? '';
+            $number  = $flight['number'] ?? $flight['@number'] ?? '';
+            if ($carrier || $number) {
+                return trim("{$carrier} {$number}");
+            }
+        }
+
+        return $booking->airline_code ?? $booking->airline_name ?? 'N/A';
     }
 }

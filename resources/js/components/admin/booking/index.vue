@@ -185,6 +185,7 @@ async function load(isRefresh = false) {
     try {
         const response = await axiosInstance.get('v2/booking-attempts', { params: { scope: 'booking' } })
         rows.value = response.data?.data ?? []
+        //console.log(rows.value)
     } catch (error) {
         console.log(error)
         rows.value = []
