@@ -1207,9 +1207,6 @@ onBeforeUnmount(() => {
               </div>
             </div>
           </div>
-          <!-- <div class="col-12">
-            
-          </div> -->
 
           <!-- Total Ticket -->
           <div class="kpi-card h-auto flex-fill">
@@ -1255,12 +1252,7 @@ onBeforeUnmount(() => {
               </div>
             </div>
           </div>
-          <!-- <div class="col-12">
-            
-          </div> -->
-          <!-- <div class="row g-3 h-100">
-
-          </div> -->
+         
         </div><!-- /left col -->
 
         <!-- Right: Total Sales & Commission bar -->
