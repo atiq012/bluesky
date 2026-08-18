@@ -244,6 +244,11 @@ const routes = [
     { path: '/group-pax-upload/:id', component: groupPAXUpload, name: 'groupPAXUpload', meta: { auth: true } },
     { path: '/all-group-uploaded-pax/:id', component: allGroupUploadedPAX, name: 'allGroupUploadedPAX', meta: { auth: true } },
 
+    // help desks
+    { path: '/help-desk-index', component: helpDesk, name: 'helpDesk', meta: { auth: true } },
+    { path: '/new-request-create', component: requestCreate, name: 'requestCreate', meta: { auth: true } },
+    { path: '/edit-request/:ids', component: requestEdit, name: 'requestEdit', meta: { auth: true }, props: true },
+
 ]
 
 const router = createRouter({

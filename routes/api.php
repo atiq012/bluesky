@@ -39,6 +39,9 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\HelpDesk\RequestController;
+use App\Http\Controllers\Admin\HelpDesk\CategoryController;
+use App\Http\Controllers\Admin\HelpDesk\RequestDetailsController;
 
 Route::post('login', [AuthController::class, 'login'])->name('login');
 Route::post('register', [AuthController::class, 'register'])->name('register');
@@ -263,6 +266,22 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('/v2/booking/price-logs/{id}/response-download', [BookingAttemptAdminController::class, 'downloadPriceLogResponse'])->name('booking.v2.price-logs.response-download');
     Route::get('/v2/booking/sessions/{id}/request-download', [BookingAttemptAdminController::class, 'downloadSessionRequest'])->name('booking.v2.sessions.request-download');
     Route::get('/v2/booking/sessions/{id}/response-download', [BookingAttemptAdminController::class, 'downloadSessionResponse'])->name('booking.v2.sessions.response-download');
+
+    //Helpdesk
+    Route::get('getAllRequests', [RequestController::class, 'index'])->name('request.getAllRequests');
+    Route::post('/request/save', [RequestController::class, 'store'])->name('request.store');
+    Route::post('/request/update', [RequestController::class, 'update'])->name('request.update');
+    Route::post('/editRequest', [RequestController::class, 'edit'])->name('request.editRequest');
+    Route::post('/assignRequest', [RequestController::class, 'assignRequest'])->name('request.assignRequest');
+    Route::post('/statusChange', [RequestController::class, 'statusChange'])->name('request.statusChange');
+
+    Route::get('categories', [CategoryController::class, 'categoriesList']);
+    Route::get('subcategories', [CategoryController::class, 'subcategoriesList']);
+    Route::get('getCategories', [CategoryController::class, 'index']);
+
+    Route::post('/addRequestNote', [RequestDetailsController::class, 'store'])->name('requestDetails.store');
+    Route::get('/getRequestDetails/{id}', [RequestDetailsController::class, 'getRequestDetails'])->name('requestDetails.getRequestDetails');
+
 
     //dashboard stats
     Route::get('/dashboard', [DashboardController::class, 'getDashboardStats']);
