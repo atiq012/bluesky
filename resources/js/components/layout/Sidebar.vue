@@ -149,6 +149,17 @@ onMounted(() => {
                     </router-link>
                 </li>
 
+               <li>
+                    <router-link v-wave :to="{ name: 'helpDesk' }">
+                        <div class="parent-icon">
+                            <img src="../../../../public/theme/Sidebar_icons/Helpdesk.svg" alt="">
+
+                            <!-- <i style="font-size: 15px;" class="fa fa-users"></i> -->
+                        </div>
+                        <div class="menu-title">Helpdesk</div>
+                    </router-link>
+                </li>
+
 
                 <li>
                     <a v-wave class="has-arrow" href="javascript:;">
@@ -196,6 +207,7 @@ onMounted(() => {
     font-size: 6rem;
     color: #e4e5e6;
     background: linear-gradient(to right, #02b9af, #4e86f4, #9c54f0);
+    background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }

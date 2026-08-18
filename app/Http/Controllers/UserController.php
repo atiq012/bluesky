@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
 use Yajra\DataTables\DataTables;
 
+
 class UserController extends BaseController
 {
     /**
@@ -114,17 +115,17 @@ class UserController extends BaseController
         // dd($request->all());
 
         $auth      = User::where('email', $request->useEmail)->first();
-        $validator = validator($request->all(),
-            ['name' => 'required'],
-            ['phone' => 'required'],
-            ['email' => 'required'],
-            ['staff_id' => 'required'],
-            ['dept_name' => 'required'],
-            // ['desg' => 'required'],
-            // ['off_loct' => 'required'],
-            // ['report_to' => 'required'],
-            // ['role_id' => 'required'],
-        );
+        $validator = validator($request->all(), [
+            'name' => 'required',
+            'phone' => 'required',
+            'email' => 'required',
+            'staff_id' => 'required',
+            'dept_name' => 'required',
+            // 'desg' => 'required',
+            // 'off_loct' => 'required',
+            // 'report_to' => 'required',
+            // 'role_id' => 'required',
+        ]);
         if ($validator->fails()) {
             return response()->json(['message' => $validator->errors()->all(), 'types' => 'e']);
         }
@@ -133,7 +134,7 @@ class UserController extends BaseController
         $user->email          = $request->email;
         $user->emp_id         = $request->staff_id;
         $user->phone          = $request->phone;
-        $user->dept_id        = $request->deptment_id;
+        $user->dept_id        = $request->dept_name;
         $user->designation_id = $request->desg_id;
         // $user->office_loc_id = $request->off_loct;
         // $user->report_to = $request->report_to;
@@ -181,8 +182,35 @@ class UserController extends BaseController
      */
     public function edit(Request $request)
     {
-        $data = User::find($request->id);
+        //dd($request->all());
+        //$data = User::find($request->id);
+        $data = User::where('id', $request->id)->first();
+        //dd($data);
+        
+        if(!$data){
+            return response()->json(['message' => 'User not found.', 'types' => 'e'], 404);
+        }
+
+        if ($data->img_path && File::exists(public_path($data->img_path))) {
+            $data->profile_file_size = File::size(public_path($data->img_path));
+        } else {
+            $data->profile_file_size = 0;
+        }
+
         return response()->json($data);
+        //dd($request->all());
+
+        // $user = User::find($request->id);
+        // if (! $user) {
+        //     return response()->json(['message' => 'User not found.', 'types' => 'e'], 404);
+        // }
+
+        // if ($user->img_path && File::exists(public_path($user->img_path))) {
+        //     $user->profile_file_size = File::size(public_path($user->img_path));
+        // } else {
+        //     $user->profile_file_size = 0;
+        // }
+        // return response()->json([$user]);
     }
 
     /**

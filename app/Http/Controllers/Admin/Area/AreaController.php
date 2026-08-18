@@ -161,6 +161,12 @@ class AreaController extends BaseController
         return response()->json($div);
     }
 
+    public function districts()
+    {
+        $dist = DB::table('districts')->get();
+        return response()->json($dist);
+    }
+
     public function airports(Request $request)
     {
         $airp = DB::table('airports')->get();

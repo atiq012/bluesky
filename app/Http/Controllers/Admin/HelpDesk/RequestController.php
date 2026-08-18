@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Admin\HelpDesk;
 
 use App\Http\Controllers\BaseController;
@@ -8,22 +9,48 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Yajra\DataTables\DataTables;
+use App\Models\Agent\Agent;
+use App\Models\User;
 
 class RequestController extends BaseController
 {
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $data = DB::table('requests as req')
-            ->selectRaw('req.id as idd,req.request_number as request_number,req.category_id,req.requester_id,req.priority,req.subject,req.description,req.file_path,req.status,req.updated_at,f_username(req.updated_by) as updated_by,f_username(req.created_by) as created_by,req.created_at,req.updated_at,(SELECT name FROM categories WHERE id = req.category_id) as category_name,(SELECT name FROM users WHERE id = req.requester_id) as requester_name,(SELECT name FROM users WHERE id = req.assignee_id) as assigned_to_name', )->get();
+        $user = $request->user() ?? Auth::user();
+        $query = DB::table('requests as req')
+            ->selectRaw('req.id as idd,req.request_number as request_number,req.category_id,req.requester_id,req.priority,req.subject,
+                req.description,req.file_path,req.status,req.updated_at,f_username(req.updated_by) as updated_by,f_username(req.created_by) as created_by,
+                req.created_at,req.updated_at,(SELECT name FROM categories WHERE id = req.category_id) as category_name,(SELECT name FROM users WHERE id = req.requester_id) as requester_name,
+                (SELECT name FROM users WHERE id = req.assignee_id) as assigned_to_name');
+
+        $agencyId = $user->agent_id ?? Agent::where('user_id', $user->id)->value('id');
+
+        if ($agencyId) {
+            // Get all user IDs under this agency (staff users + agency owner)
+            $agencyUserIds = User::where('agent_id', $agencyId)->pluck('id')->toArray();
+            $ownerId = Agent::where('id', $agencyId)->value('user_id');
+            if ($ownerId) {
+                $agencyUserIds[] = (int) $ownerId;
+            }
+            $agencyUserIds = array_unique(array_filter($agencyUserIds));
+            // Filter requests created by any user within this agency
+            $query->whereIn('req.requester_id', $agencyUserIds);
+        }
+
+        $data = $query->get();
         return DataTables::of($data)->addIndexColumn()->make(true);
+
+        // $data = DB::table('requests as req')
+        //     ->selectRaw('req.id as idd,req.request_number as request_number,req.category_id,req.requester_id,req.priority,req.subject,req.description,req.file_path,req.status,req.updated_at,f_username(req.updated_by) as updated_by,f_username(req.created_by) as created_by,req.created_at,req.updated_at,(SELECT name FROM categories WHERE id = req.category_id) as category_name,(SELECT name FROM users WHERE id = req.requester_id) as requester_name,(SELECT name FROM users WHERE id = req.assignee_id) as assigned_to_name',)->get();
+        // return DataTables::of($data)->addIndexColumn()->make(true);
     }
 
     private function generateRequestNumber()
     {
-                                            // Get current date format: YYMMDD
+        // Get current date format: YYMMDD
         $datePrefix = now()->format('ymd'); // 260331
 
         // Find the latest request number for today
@@ -46,7 +73,6 @@ class RequestController extends BaseController
                 // Start from 01 if no request exists for today
                 $newSequence = $lastSequence + 1;
             }
-
         }
 
         // Format sequence number with leading zero (01, 02, etc.)
@@ -58,6 +84,22 @@ class RequestController extends BaseController
     public function store(Request $request)
     {
         // dd($request->all());
+
+        $request->validate([
+            'requester'    => 'required',
+            'priority'     => 'required',
+            'request_type' => 'required',
+            'mode'         => 'required',
+            'level'        => 'required',
+            'cate_id'      => 'required',
+            'subcate_id'   => 'required',
+            'subject'      => 'required|string|max:255',
+            'description'  => 'required|string',
+            // Optional fields
+            'assets'       => 'nullable|string',
+            'file_path'    => 'nullable|file|max:4096',
+        ]);
+
 
         $req_num = $this->generateRequestNumber();
 
@@ -90,7 +132,6 @@ class RequestController extends BaseController
             $request_image->move($image_path, $image_name);
 
             $requestData->file_path = '/uploads/helpDesk/' . $image_name;
-
         }
         $requestData->status     = 'open';
         $requestData->created_by = Auth::user()->id;
@@ -98,7 +139,6 @@ class RequestController extends BaseController
 
         $success = 's';
         return $this->SuccessResponse($success, 'Successfully Request Saved.');
-
     }
 
     public function update(Request $request)
@@ -133,14 +173,13 @@ class RequestController extends BaseController
                     File::makeDirectory($image_path, 0777, true);
                 }
 
-                if(File::exists(public_path($requestData->file_path))){
+                if (File::exists(public_path($requestData->file_path))) {
                     File::delete(public_path($requestData->file_path));
                 }
 
                 $request_image->move($image_path, $image_name);
 
                 $requestData->file_path = '/uploads/helpDesk/' . $image_name;
-
             }
             $requestData->updated_by = Auth::user()->id;
             $requestData->save();

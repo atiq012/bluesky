@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Yajra\DataTables\DataTables;
+use Illuminate\Validation\Rule;
 
 class DepositController extends BaseController
 {
@@ -39,10 +40,26 @@ class DepositController extends BaseController
 
     public function store(Request $request, ImageService $imageService)
     {
-
         $request->validate([
-            'referenceFile' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'payment_type'     => ['required', 'string', Rule::in(['Cash', 'MFS', 'Cheque', 'Bank_Transfer', 'Credit_Request'])],
+            'requested_amount' => ['required', 'numeric', 'gt:0'],
+            'reference_date'   => ['required', 'date_format:d-M-Y'], // or 'required', 'string'
+            'payment_acc'      => [
+                Rule::requiredIf(fn () => $request->payment_type !== 'Credit_Request'),
+                'nullable'
+            ],
+            'issued_bank'      => [
+                Rule::requiredIf(fn () => in_array($request->payment_type, ['MFS', 'Cheque', 'Bank_Transfer'])),
+                'nullable'
+            ],
+            'reference_number' => ['required', 'string', 'max:100'],
+            'remarks'          => ['nullable', 'string', 'max:500'],
+            'referenceFile'    => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ]);
+
+        // $request->validate([
+        //     'referenceFile' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+        // ]);
 
         $user = auth()->user();
         $agent = Agent::where('user_id', $user->id)->first();
@@ -78,7 +95,7 @@ class DepositController extends BaseController
                 $depo->charge          = $request->service_charge;
                 $depo->issued_bank     = $request->issued_bank;
                 $depo->total           = $request->total_amount;
-                // $depo->reference_no =  $request->reference_number;
+                $depo->reference_no =  $request->reference_number;
                 $depo->reference_date = date('Y-m-d', strtotime($request->reference_date));
                 $depo->reference_file = $referenceFilePath;
                 $depo->remarks        = $request->remarks;
@@ -95,7 +112,7 @@ class DepositController extends BaseController
                 $depo->charge          = $request->service_charge;
                 $depo->total           = $request->total_amount;
                 $depo->issued_bank     = $request->issued_bank;
-                // $depo->reference_no =  $request->reference_number;
+                $depo->reference_no =  $request->reference_number;
                 $depo->reference_date = date('Y-m-d', strtotime($request->reference_date));
                 $depo->reference_file = $referenceFilePath;
                 $depo->remarks        = $request->remarks;
@@ -112,7 +129,7 @@ class DepositController extends BaseController
                 $depo->charge          = $request->service_charge;
                 $depo->total           = $request->total_amount;
                 $depo->issued_bank     = $request->issued_bank;
-                // $depo->reference_no =  $request->reference_number;
+                $depo->reference_no =  $request->reference_number;
                 $depo->reference_date = date('Y-m-d', strtotime($request->reference_date));
                 $depo->reference_file = $referenceFilePath;
                 $depo->remarks        = $request->remarks;
@@ -120,6 +137,7 @@ class DepositController extends BaseController
                 $depo->created_by     = auth()->user()->id;
                 $depo->save();
             } else if ($request->payment_type == 'Credit_Request') {
+                //$autoRefNo = 'CR' . date('YmdHis');
 
                 $depo                  = new Deposit;
                 $depo->type            = 'Credit Request';
@@ -128,7 +146,8 @@ class DepositController extends BaseController
                 $depo->amount          = $request->requested_amount;
                 $depo->charge          = $request->service_charge;
                 $depo->total           = $request->total_amount;
-                // $depo->reference_no =  $request->reference_number;
+                $depo->issued_bank     = $request->issued_bank;
+                $depo->reference_no    = $request->reference_number;
                 $depo->reference_date = date('Y-m-d', strtotime($request->reference_date));
                 $depo->reference_file = $referenceFilePath;
                 $depo->remarks        = $request->remarks;
@@ -182,6 +201,7 @@ class DepositController extends BaseController
                 d.remarks,
                 d.status,
                 d.created_at,
+                d.updated_at,
                 ag.name as agent_name,
                 ag.agent_code,
                 ag.logo_path,
@@ -191,8 +211,10 @@ class DepositController extends BaseController
                 pa.bank_name as payment_bank,
                 pa.acc_no as payment_acc_no,
                 pa.branch as payment_branch,
+                pa.service_charge as payment_service_charge,
                 ib.name as issued_bank_name,
-                f_username(d.created_by) as requested_by
+                f_username(d.created_by) as requested_by,
+                f_username(d.updated_by) as approved_by
             ')
             ->first();
 
@@ -212,6 +234,7 @@ class DepositController extends BaseController
             'remarks' => $row->remarks,
             'status' => $row->status,
             'created_at' => $row->created_at,
+            'updated_at' => $row->updated_at,
             'agent_name' => $row->agent_name,
             'agent_code' => $row->agent_code,
             'logo_path' => $this->normalizeUploadPath($row->logo_path),
@@ -221,8 +244,10 @@ class DepositController extends BaseController
             'payment_bank' => $row->payment_bank,
             'payment_acc_no' => $row->payment_acc_no,
             'payment_branch' => $row->payment_branch,
+            'payment_service_charge' => $row->payment_service_charge,
             'issued_bank_name' => $row->issued_bank_name,
             'requested_by' => $row->requested_by,
+            'approved_by'      => $row->approved_by
         ], 'Deposit loaded.');
     }
 

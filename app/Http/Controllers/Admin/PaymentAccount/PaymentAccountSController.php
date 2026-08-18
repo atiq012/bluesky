@@ -156,7 +156,7 @@ class PaymentAccountSController extends BaseController
     {
         $data = DB::table('payment_accounts as pa')
             ->where('status', 1)
-            ->select('pa.id', 'pa.bank_name as name', 'pa.acc_no', 'pa.branch', 'pa.service_charge')
+            ->select('pa.id','pa.acc_type', 'pa.bank_name as name', 'pa.acc_no', 'pa.branch', 'pa.service_charge')
             ->get();
 
         return response()->json($data);

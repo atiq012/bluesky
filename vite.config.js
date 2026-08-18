@@ -21,6 +21,8 @@ export default defineConfig({
                 "http://localhost:5000",
                 "http://127.0.0.1:5000",
                 "http://127.0.0.1:8000",
+                "http://127.0.0.1:8001", 
+                "http://localhost:8001",
             ],
         },
         hmr: {

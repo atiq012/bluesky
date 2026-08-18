@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Admin\Agent;
 
 use App\Http\Controllers\BaseController;
@@ -336,6 +337,9 @@ class AgentController extends BaseController
             }
 
             return $this->ErrorResponse('Registration failed. Please try again later.', [], 500);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+
+            return $this->ErrorResponse($e->getMessage(), $e->errors(), 422);
         } catch (\Throwable $e) {
             report($e);
 
@@ -358,6 +362,7 @@ class AgentController extends BaseController
             'birthDate'   => 'required|string',
             'email'       => 'required|email|max:50',
             'userPhone'   => 'required|string|max:20',
+            'tradeLicense' => 'required|string|max:50'
         ]);
 
         $nullIfEmpty = static function ($value) {
@@ -398,7 +403,7 @@ class AgentController extends BaseController
             $agent->ca_number          = $nullIfEmpty($request->cacNumber);
             $agent->iata_number        = $nullIfEmpty($request->iataNumber);
             $tradeLicence              = trim((string) $request->tradeLicense);
-            $agent->trade_licence      = $tradeLicence !== '' ? $tradeLicence : ('REG-' . $agentCode);
+            $agent->trade_licence      = $tradeLicence; //!== '' ? $tradeLicence : ('REG-' . $agentCode);
             $agent->hajj_agency_number = $nullIfEmpty($request->hajjNumber);
             $agent->status             = 'Pending';
             $agent->account_ledger_id  = 1;

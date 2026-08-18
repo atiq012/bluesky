@@ -4,7 +4,7 @@ import DataTable from "datatables.net-vue3";
 import DataBS5 from "datatables.net-bs5";
 import Buttons from 'datatables.net-buttons';
 import axiosInstance from "../../../axiosInstance";
-import { ref, onMounted, reactive, onBeforeUnmount, computed, watch } from "vue";
+import { ref, onMounted, reactive, onBeforeUnmount, computed, watch, nextTick } from "vue";
 import moment from "moment";
 
 // editor
@@ -23,6 +23,7 @@ DataTable.use(Buttons);
 
 const rData = ref([]);
 const tableRef = ref(null);
+const tableWrapperRef = ref(null);
 const searchText = ref("");
 const filterDate = ref("");
 const filterCategory = ref("");
@@ -30,7 +31,10 @@ const filterPriority = ref("");
 const filterRequester = ref("");
 const filterAssigned = ref("");
 const filterStatus = ref("");
+const internalUsers = ref([]);
+
 getListValues();
+getInternalUsers();
 
 watch(searchText, (val) => {
     const dt = tableRef.value?.dt;
@@ -85,22 +89,16 @@ async function save() {
 
         const response = await axiosInstance.post('/addRequestNote', payload);
 
-        // Optional: Show success message
-        // Optional: Reset form or close offcanvas
+        // Close the offcanvas after successful save (Bootstrap's native JS API, no jQuery needed)
+        closeOverlay('staticBackdrop', 'offcanvas');
 
-        // Close the offcanvas after successful save
-        // Method 1: Using Bootstrap's JavaScript API
-        const offcanvasElement = document.getElementById('staticBackdrop'); // Replace with your offcanvas ID
-        const offcanvas = bootstrap.Offcanvas.getInstance(offcanvasElement);
-        if (offcanvas) {
-            offcanvas.hide();
-        }
-
-        // Optional: Reset form after closing
+        // Reset form after closing
         resetForm();
 
-        Notification.showToast('s', response.data.message);
+        // Refresh the ticket list and, if the thread is still relevant, the message thread
+        getListValues();
 
+        Notification.showToast('s', response.data.message);
 
     } catch (error) {
         console.log(error);
@@ -109,8 +107,27 @@ async function save() {
 }
 
 function resetForm() {
-    quillInstance.root.innerHTML = '<p></p>'
+    if (quillInstance) {
+        quillInstance.root.innerHTML = '<p></p>';
+    }
+    addNoteForm.note = '';
+    addNoteForm.showToAssignee = false;
+    addNoteForm.sendAsEmail = false;
+    addNoteForm.sendAsNotification = false;
+}
 
+// Bootstrap 5 ships its own vanilla-JS component classes (bootstrap.Modal,
+// bootstrap.Offcanvas, ...) that don't require jQuery. `bootstrap` is loaded
+// as a global script in this project (see index.html), so it's referenced
+// directly here rather than imported.
+function closeOverlay(elementId, kind) {
+    const el = document.getElementById(elementId);
+    if (!el || typeof bootstrap === 'undefined') return;
+    const Component = kind === 'modal' ? bootstrap.Modal : bootstrap.Offcanvas;
+    const instance = Component.getInstance(el);
+    if (instance) {
+        instance.hide();
+    }
 }
 
 const options = {
@@ -126,10 +143,7 @@ const options = {
                     text: 'Create new record',
                     action: function () {
                         // Create new record
-                        editor.create({
-                            title: 'Create new record',
-                            buttons: 'Add'
-                        });
+                        router.push({ name: 'requestCreate' });
                     }
                 }
             ]
@@ -156,18 +170,18 @@ const options = {
             },
         },
 
-        {
-            title: "Agency Info",
-            render: function (data, type, row) {
-                var html = "";
-                html += row.agency_name || row.requester_name || "-";
-                html += "<br>";
-                html += '<span class="text-primary">';
-                html += row.email || row.requester_email || "-";
-                html += "</span>";
-                return html;
-            },
-        },
+        // {
+        //     title: "Agency Info",
+        //     render: function (data, type, row) {
+        //         var html = "";
+        //         html += row.agency_name || row.requester_name || "-";
+        //         html += "<br>";
+        //         html += '<span class="text-primary">';
+        //         html += row.email || row.requester_email || "-";
+        //         html += "</span>";
+        //         return html;
+        //     },
+        // },
         {
             title: "Subject",
             render: function (data, type, row) {
@@ -280,125 +294,119 @@ const options = {
             },
         }
     ],
-    "drawCallback": function (settings) {
-        // edit function
-        $(".edit-item").off("click").on('click', function (e) {
-
-            var itemIdd = $(this).attr('data-item-id');
-
-            router.push({ name: 'requestEdit', params: { ids: itemIdd } });
-        });
-        $(".details-item").off("click").on('click', function (e) {
-
-            var itemIdd = $(this).attr('data-item-id');
-            addNoteForm.ticketId = itemIdd;
-
-            ticketDetails(itemIdd);
-
-        });
-
-        $(".assign-item-id").off("click").on('click', function (e) {
-
-            var itemIdd = $(this).attr('data-item-id');
-
-            assignform.idd = itemIdd;
-        });
-
-        $(".status-item-id").off("click").on('click', function (e) {
-
-            var itemIdd = $(this).attr('data-item-id');
-
-            changeStatusform.idd = itemIdd;
-        });
-
-        // delete function
-        $(".delete-item").off("click").on('click', function (e) {
-            var idd = $(this).attr('data-item-id');
-
-            // delete pop up message
-
-            iziToast.question({
-                timeout: 100000,
-                pauseOnHover: false,
-                close: false,
-                overlay: true,
-                displayMode: 'once',
-                id: 'question',
-                zindex: 999,
-                message: 'Want to delete this designation?',
-                position: 'center',
-                buttons: [
-                    ['<button><b>No</b></button>', function (instance, toast) {
-
-                        instance.hide({ transitionOut: 'fadeOut' }, toast, 'no');
-
-                    }, true],
-                    ['<button><b>Yes</b></button>', function (instance, toast) {
-
-                        instance.hide({ transitionOut: 'fadeOut' }, toast, 'yes');
-
-                    }, true]
-                ],
-                onClosed: async function (instance, toast, closedBy) {
-
-                    if (closedBy == 'yes') {
-                        const response = axiosInstance.post("deleteDesignation", { 'id': idd });
-                        getListValues();
-                        Notification.showToast('s', 'Successfully Designation Deleted.');
-                    } else {
-
-                    }
-
-                }
-            });
-            // delete pop up message end
-
-
-        });
-
-        // change status
-        $(".status-change").off("click").on('click', function (e) {
-            // var idd = e.target.dataset.itemId;
-            var idd = $(this).attr('data-item-id');
-
-            iziToast.question({
-                timeout: 100000,
-                pauseOnHover: false,
-                close: false,
-                overlay: true,
-                displayMode: 'once',
-                id: 'question',
-                zindex: 999,
-                message: 'Want to change status this department?',
-                position: 'center',
-                buttons: [
-                    ['<button><b>No</b></button>', function (instance, toast) {
-
-                        instance.hide({ transitionOut: 'fadeOut' }, toast, 'no');
-
-                    }, true],
-                    ['<button><b>Yes</b></button>', function (instance, toast) {
-
-                        instance.hide({ transitionOut: 'fadeOut' }, toast, 'yes');
-
-                    }, true]
-                ],
-                onClosed: async function (instance, toast, closedBy) {
-
-                    if (closedBy == 'yes') {
-                        const response = axiosInstance.post("changeDesgStatus", { 'id': idd });
-                        getListValues();
-                        Notification.showToast('s', 'Successfully Designation status Changed.');
-                    } else {
-
-                    }
-
-                }
-            });
-
-        });
-    }
 };
+
+// Single delegated (jQuery-free) click handler for the raw HTML action
+// buttons rendered inside DataTables cells. Attached/detached natively
+// on the table wrapper element in onMounted/onBeforeUnmount below.
+function handleTableClick(e) {
+    const editBtn = e.target.closest(".edit-item");
+    if (editBtn) {
+        const itemIdd = editBtn.getAttribute("data-item-id");
+        router.push({ name: 'requestEdit', params: { ids: itemIdd } });
+        return;
+    }
+
+    const detailsBtn = e.target.closest(".details-item");
+    if (detailsBtn) {
+        const itemIdd = detailsBtn.getAttribute("data-item-id");
+        addNoteForm.ticketId = itemIdd;
+        ticketDetails(itemIdd);
+        return;
+    }
+
+    const assignBtn = e.target.closest(".assign-item-id");
+    if (assignBtn) {
+        assignform.idd = assignBtn.getAttribute("data-item-id");
+        return;
+    }
+
+    const statusBtn = e.target.closest(".status-item-id");
+    if (statusBtn) {
+        changeStatusform.idd = statusBtn.getAttribute("data-item-id");
+        return;
+    }
+
+    const deleteBtn = e.target.closest(".delete-item");
+    if (deleteBtn) {
+        const idd = deleteBtn.getAttribute("data-item-id");
+        confirmDeleteRequest(idd);
+        return;
+    }
+
+    const statusChangeBtn = e.target.closest(".status-change");
+    if (statusChangeBtn) {
+        const idd = statusChangeBtn.getAttribute("data-item-id");
+        confirmStatusChange(idd);
+        return;
+    }
+}
+
+function confirmDeleteRequest(idd) {
+    iziToast.question({
+        timeout: 100000,
+        pauseOnHover: false,
+        close: false,
+        overlay: true,
+        displayMode: 'once',
+        id: 'question',
+        zindex: 999,
+        message: 'Want to delete this designation?',
+        position: 'center',
+        buttons: [
+            ['<button><b>No</b></button>', function (instance, toast) {
+                instance.hide({ transitionOut: 'fadeOut' }, toast, 'no');
+            }, true],
+            ['<button><b>Yes</b></button>', function (instance, toast) {
+                instance.hide({ transitionOut: 'fadeOut' }, toast, 'yes');
+            }, true]
+        ],
+        onClosed: async function (instance, toast, closedBy) {
+            if (closedBy == 'yes') {
+                try {
+                    await axiosInstance.post("deleteDesignation", { id: idd });
+                    getListValues();
+                    Notification.showToast('s', 'Successfully Designation Deleted.');
+                } catch (error) {
+                    console.log(error);
+                }
+            }
+        }
+    });
+}
+
+function confirmStatusChange(idd) {
+    iziToast.question({
+        timeout: 100000,
+        pauseOnHover: false,
+        close: false,
+        overlay: true,
+        displayMode: 'once',
+        id: 'question',
+        zindex: 999,
+        message: 'Want to change status this department?',
+        position: 'center',
+        buttons: [
+            ['<button><b>No</b></button>', function (instance, toast) {
+                instance.hide({ transitionOut: 'fadeOut' }, toast, 'no');
+            }, true],
+            ['<button><b>Yes</b></button>', function (instance, toast) {
+                instance.hide({ transitionOut: 'fadeOut' }, toast, 'yes');
+            }, true]
+        ],
+        onClosed: async function (instance, toast, closedBy) {
+            if (closedBy == 'yes') {
+                try {
+                    await axiosInstance.post("changeDesgStatus", { id: idd });
+                    getListValues();
+                    Notification.showToast('s', 'Successfully Designation status Changed.');
+                } catch (error) {
+                    console.log(error);
+                }
+            }
+        }
+    });
+}
 
 // authStore.GlobalLoading = true;
 
@@ -422,113 +430,128 @@ const changeStatusform = reactive({
     status: '', idd: ''
 });
 
-getInternalUsers();
-
 async function getInternalUsers() {
     try {
         const response = await axiosInstance.get("getInternalUsers");
-
-        let users = response.data.data;
-        let select = document.getElementById('assign_to');
-
-        users.forEach(function (user) {
-
-            let option = document.createElement('option');
-            option.value = user.idd;
-            option.text = user.name;
-            select.appendChild(option);
-        });
-
+        internalUsers.value = response.data.data ?? [];
     } catch (error) {
         console.log(error);
     }
 }
 
-function assign() {
+async function assign() {
     try {
-        const select2Value = $('#assign_to').val();
-
-        assignform.assign_to = select2Value;
-
         authStore.GlobalLoading = true;
+        const response = await axiosInstance.post("/assignRequest", assignform);
         authStore.GlobalLoading = false;
-        const response = axiosInstance.post("/assignRequest", assignform).then(response => {
-            const data = response.data;
-            // modal close
-            $('#exampleScrollableModal').modal('hide');
-            getListValues();
 
-            Notification.showToast(data.data, data.message);
+        closeOverlay('exampleScrollableModal', 'modal');
+        getListValues();
 
-        }).catch(error => {
-            console.log(error);
-        });
-
-        // console.log(response);
-    } catch (error) {
-
-        authStore.GlobalLoading = false;
-    }
-
-}
-
-function changeStatus() {
-    try {
-        const select2Status = $('#status').val();
-
-        authStore.GlobalLoading = true;
-        authStore.GlobalLoading = false;
-        const response = axiosInstance.post("/statusChange", changeStatusform).then(response => {
-            const data = response.data;
-            // modal close
-            $('#statusChangeModal').modal('hide');
-            getListValues();
-
-            Notification.showToast(data.data, data.message);
-
-        }).catch(error => {
-            console.log(error);
-        });
-
-        // console.log(response);
+        Notification.showToast(response.data.data, response.data.message);
     } catch (error) {
         console.log(error);
         authStore.GlobalLoading = false;
     }
 }
+
+async function changeStatus() {
+    try {
+        authStore.GlobalLoading = true;
+        const response = await axiosInstance.post("/statusChange", changeStatusform);
+        authStore.GlobalLoading = false;
+
+        closeOverlay('statusChangeModal', 'modal');
+        getListValues();
+
+        Notification.showToast(response.data.data, response.data.message);
+    } catch (error) {
+        console.log(error);
+        authStore.GlobalLoading = false;
+    }
+}
+
+function statusBadgeMeta(status) {
+    const s = String(status ?? "").toLowerCase();
+    if (s === "closed" || s === "resolved") return { cls: "hd-badge-success", label: status };
+    if (s === "open") return { cls: "hd-badge-success", label: status };
+    if (s === "in progress") return { cls: "hd-badge-info", label: status };
+    if (s === "on hold") return { cls: "hd-badge-danger", label: status };
+    if (s === "cancelled") return { cls: "hd-badge-secondary", label: status };
+    return { cls: "hd-badge-warning", label: status };
+}
+
+function priorityBadgeMeta(priority) {
+    const p = String(priority ?? "").toLowerCase();
+    if (p === "high") return "hd-badge-danger";
+    if (p === "medium") return "hd-badge-warning";
+    return "hd-badge-neutral";
+}
+
+// Reactive state backing the offcanvas ticket-detail panel. Replaces the
+// old approach of building HTML strings and injecting them with jQuery's
+// .html()/.append() — the template below renders straight from this object.
+const ticketData = reactive({
+    requestNumber: '',
+    subject: '-',
+    description: '',
+    status: '',
+    categoryName: '',
+    priority: '',
+    requesterName: '-',
+    createdAt: '',
+    attachmentsCount: 0,
+    messages: [] // { id, align: 'in' | 'out', name, avatar, time, note }
+});
+
+const ticketCreatedAtLabel = computed(() => (ticketData.createdAt ? moment(ticketData.createdAt).format('DD-MMM-YYYY') : ''));
 
 async function ticketDetails(idd) {
     try {
-
         const response = await axiosInstance.get("getRequestDetails/" + idd);
         const data = response.data;
-        $('.subject').html(data.data.subject);
-        $(".ticket-details").html(data.data.description);
-        $(".request_number").html('#' + data.data.request_number + ' ');
 
-        $(".message_from_me").html('');
-        $(".message_from_requester").html('');
-        data.details.forEach(function (detail) {
+        console.log("ticket details: ",data);
 
-            if (detail.to_user_id == data.data.requester_id) {
-                $(".message_from_requester").append('<div class="col-md-12 pb-3"> <div class="d-flex flex-row-reverse bd-highlight"> <div class="p-2 bd-highlight"> <div class="d-flex"> <img src="' + data.me.img_path + '" width="20" height="20" class="rounded-circle" alt="" /> <div class="flex-grow-1 ms-2"> <p class="mb-0 chat-time">' + data.me.name + ', ' + moment(detail.created_at).format('DD-MMM-YY hh:mm A') + '</p> </div> </div> </div> </div> <div class="d-flex justify-content-end"> <div class="bg-light-primary p-2 rounded"> <p class="mb-0 chat-time">' + detail.note + '</p> </div> </div> </div>');
+        ticketData.requestNumber = data.data.request_number ?? '';
+        ticketData.subject = data.data.subject ?? '-';
+        ticketData.description = data.data.description ?? '';
+        ticketData.status = data.data.status ?? '';
+        ticketData.categoryName = data.data.category_name ?? '';
+        ticketData.priority = data.data.priority ?? '';
+        ticketData.requesterName = data.data.requester_name || '-';
+        ticketData.createdAt = data.data.created_at ?? '';
 
-            } else {
+        const attachments = data.data.attachments || [];
+        ticketData.attachmentsCount = attachments.length;
 
-                $(".message_from_me").append('<div class="col-md-12 mt-2 p-3"><div class="d-flex"><img src="' + data.author.img_path + '" width="20" height="20" class="rounded-circle" alt="" /><div class="flex-grow-1 ms-2"><p class="mb-0 chat-time">' + data.author.name + ', ' + moment(detail.created_at).format('DD-MMM-YY hh:mm A') + '</p></div></div><div class="d-flex"><div class="bg-light-primary p-2 rounded mt-2"><p class="mb-0 chat-time">' + detail.note + '</p></div></div></div>');
-
-
-            }
+        // Chronological message list
+        ticketData.messages = (data.details || []).map((detail, index) => {
+            
+            const isOut = detail.from_user_id == data.data.requester_id;
+            return {
+                id: detail.idd ?? detail.id ?? index,
+                align: isOut ? 'out' : 'in',
+                name: isOut ? data.me.name : data.author.name,
+                avatar: isOut ? data.me.img_path : data.author.img_path,
+                time: moment(detail.created_at).format('DD-MMM-YYYY | hh:mm A'),
+                note: detail.note
+            };
         });
+
+        console.log("ticket msg: ",ticketData.messages);
+
+        // Wait for the list to render, then scroll to the latest message
+        await nextTick();
+        const scrollEl = document.querySelector('.note-messages');
+        if (scrollEl) {
+            scrollEl.scrollTop = scrollEl.scrollHeight;
+        }
 
     } catch (error) {
         console.log(error);
     }
-
 }
-
-
-
 
 
 // Create a ref for the editor element
@@ -537,14 +560,13 @@ const editorRef = ref(null)
 let quillInstance = null
 
 onMounted(() => {
-    $("#assign_to").select2({
-        placeholder: '=Select=',
-        theme: 'bootstrap-5',
-        width: '100%',
-        allowClear: true,
-    }).on('change', function () {
-        assignform.assign_to = $(this).val(); // Sync with Vue reactive state
-    });
+    // Delegated click handling for the DataTables action buttons (edit,
+    // details, assign, status, delete...) — a single native listener on the
+    // wrapper instead of jQuery's $(...).off().on() rebinding on every draw.
+    if (tableWrapperRef.value) {
+        tableWrapperRef.value.addEventListener('click', handleTableClick);
+    }
+
     // Initialize Quill when component is mounted
     if (editorRef.value) {
         quillInstance = new Quill(editorRef.value, {
@@ -588,6 +610,9 @@ onMounted(() => {
 onBeforeUnmount(() => {
     if (quillInstance) {
         quillInstance = null
+    }
+    if (tableWrapperRef.value) {
+        tableWrapperRef.value.removeEventListener('click', handleTableClick);
     }
 })
 
@@ -740,7 +765,10 @@ defineExpose({
                                             <select v-model="assignform.assign_to" id="assign_to"
                                                 class="form-select form-select-sm assign_to"
                                                 aria-label="Default select example">
-                                                <option selected value="">Select </option>
+                                                <option value="">Select </option>
+                                                <option v-for="user in internalUsers" :key="user.idd" :value="user.idd">
+                                                    {{ user.name }}
+                                                </option>
                                             </select>
                                         </div>
                                     </div>
@@ -802,67 +830,83 @@ defineExpose({
         </div>
 
         <!-- canvas -->
-        <div class="offcanvas offcanvas-end" data-bs-scroll="true" tabindex="-1" id="staticBackdrop">
-            <div class="offcanvas-header border-bottom h-60">
-                <div class="mt-2">
-                    <p class="">
-                        <span class="request_number" style=" color: rgb(121, 68, 235); font-size: 12px;">#001</span>
-                        <span class="fw-bold subject"> - </span>
-                    </p>
+        <div class="offcanvas offcanvas-end hd-note-canvas" data-bs-scroll="true" tabindex="-1" id="staticBackdrop">
+            <div class="offcanvas-header border-bottom py-3">
+                <div class="d-flex align-items-baseline flex-wrap gap-2">
+                    <span class="hd-ticket-id">#{{ ticketData.requestNumber }}</span>
+                    <span class="fw-semibold hd-ticket-title">{{ ticketData.subject }}</span>
                 </div>
 
                 <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
             </div>
-            <div></div>
-            <div class="offcanvas-body">
-                <div class="row">
-                    <div class="col-md-12 pb-1">
-                        <label for="">Details</label>
+
+            <div class="offcanvas-body d-flex flex-column p-0">
+                <!-- Ticket meta: badges + details + attachment -->
+                <div class="p-3 p-md-4 border-bottom">
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                        <span class="hd-badge" :class="statusBadgeMeta(ticketData.status).cls">{{ statusBadgeMeta(ticketData.status).label }}</span>
+                        <span v-if="ticketData.categoryName" class="hd-badge hd-badge-neutral">{{ ticketData.categoryName }}</span>
+                        <span v-if="ticketData.priority" class="hd-badge" :class="priorityBadgeMeta(ticketData.priority)">{{ ticketData.priority }}</span>
+                        <span class="hd-badge hd-badge-by">By : {{ ticketData.requesterName }} on {{ ticketCreatedAtLabel }}</span>
                     </div>
-                    <div class="col-md-12">
-                        <div class="ticket-details"></div>
+
+                    <label class="hd-section-label mb-2">Details</label>
+                    <div class="ticket-details hd-details-box mb-2" v-html="ticketData.description"></div>
+
+                    <div v-if="ticketData.attachmentsCount">
+                        <button type="button" class="hd-attachment-chip">
+                            <i class="fa-solid fa-paperclip"></i>{{ ticketData.attachmentsCount }} Attachment{{ ticketData.attachmentsCount > 1 ? 's' : '' }}
+                        </button>
                     </div>
-                </div>
-                <div class="row mt-3 scrollable-messages">
-                    <span class="message_from_me"></span>
-                    <!-- reverse -->
-                    <span class="message_from_requester"></span>
-                    <!-- end reverse -->
                 </div>
 
-                <form id="addNoteForm">
-                    <div class="row mt-2">
-                        <div class="col-md-12">
-                            <div class="editor-container">
-                                <div ref="editorRef" id="note"></div>
-                                <!-- Quill editor container -->
+                <!-- Conversation thread -->
+                <div class="flex-grow-1 overflow-auto p-3 p-md-4 scrollable-messages note-messages">
+                    <div class="messages-list">
+                        <div v-for="msg in ticketData.messages" :key="msg.id" class="hd-msg"
+                            :class="msg.align === 'out' ? 'hd-msg-out' : 'hd-msg-in'">
+                            <div class="hd-msg-meta" :class="{ 'justify-content-end': msg.align === 'out' }">
+                                <img v-if="msg.align === 'in'" :src="msg.avatar" class="hd-avatar" alt="" />
+                                <span class="hd-msg-name">{{ msg.name }}</span>
+                                <span class="hd-msg-time">{{ msg.time }}</span>
+                                <img v-if="msg.align === 'out'" :src="msg.avatar" class="hd-avatar" alt="" />
                             </div>
-                        </div>
-                        <div class="col-md-12">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="showToAssignee"
-                                    v-model="addNoteForm.showToAssignee">
-                                <label class="form-check-label" for="showToAssignee">Show this note to assignee</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="sendAsEmail"
-                                    v-model="addNoteForm.sendAsEmail">
-                                <label class="form-check-label" for="sendAsEmail">Also send as Email</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="sendAsNotification"
-                                    v-model="addNoteForm.sendAsNotification">
-                                <label class="form-check-label" for="sendAsNotification">Send as Notification</label>
-                            </div>
+                            <div class="hd-msg-bubble" :class="msg.align === 'out' ? 'hd-bubble-out' : 'hd-bubble-in'"
+                                v-html="msg.note"></div>
                         </div>
                     </div>
-                    <div class="row">
-                        <div class="col-md-12 mt-3">
-                            <button class="btn btn-sm btn-secondary float-center px-4 ms-2 mt-2" type="button"
-                                data-bs-dismiss="offcanvas" aria-label="Close">Cancel</button>
-                            <button type="button" @click="save()"
-                                class="m-2 btn btn-sm btn-info px-4 ms-2 float-end text-white">Save</button>
+                </div>
+
+                <!-- Reply / note composer -->
+                <form id="addNoteForm" class="border-top p-3 p-md-4">
+                    <div class="editor-container mb-3">
+                        <div ref="editorRef" id="note"></div>
+                        <!-- Quill editor container -->
+                    </div>
+
+                    <div class="d-flex flex-column flex-sm-row flex-wrap column-gap-4 row-gap-2 mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="showToAssignee"
+                                v-model="addNoteForm.showToAssignee">
+                            <label class="form-check-label" for="showToAssignee">Show this note to assignee</label>
                         </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="sendAsEmail"
+                                v-model="addNoteForm.sendAsEmail">
+                            <label class="form-check-label" for="sendAsEmail">Also send as Email</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="sendAsNotification"
+                                v-model="addNoteForm.sendAsNotification">
+                            <label class="form-check-label" for="sendAsNotification">Send as Notification</label>
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-column-reverse flex-sm-row justify-content-sm-end gap-2">
+                        <button class="btn btn-sm hd-btn-cancel px-4" type="button"
+                            data-bs-dismiss="offcanvas" aria-label="Close">Cancel</button>
+                        <button type="button" @click="save()"
+                            class="btn btn-sm hd-btn-save px-4 text-white">Save</button>
                     </div>
                 </form>
             </div>
@@ -898,7 +942,7 @@ defineExpose({
                         <input v-model="searchText" type="search" class="form-control" placeholder="Search by anything">
                     </div>
                 </div>
-                <div class="table-responsive">
+                <div class="table-responsive" ref="tableWrapperRef">
                     <DataTable ref="tableRef" :options="options" :data="rData"
                         class="table table-sm align-middle table-hover table-bordered table-striped w-100">
                     </DataTable>
@@ -1355,22 +1399,26 @@ defineExpose({
 
 /* You can customize Quill styles here */
 :deep(.ql-editor) {
-    min-height: 400px;
-    font-size: 16px;
+    min-height: 120px;
+    max-height: 220px;
+    overflow-y: auto;
+    font-size: 14px;
 }
 
 :deep(.ql-toolbar) {
-    border-top-left-radius: 4px;
-    border-top-right-radius: 4px;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    border-color: #E4EAEF;
 }
 
 :deep(.ql-container) {
-    border-bottom-left-radius: 4px;
-    border-bottom-right-radius: 4px;
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+    border-color: #E4EAEF;
+    font-family: inherit;
 }
 
 .scrollable-messages {
-    max-height: 250px;
     overflow-y: auto;
     overflow-x: hidden;
 }
@@ -1415,9 +1463,253 @@ defineExpose({
 }
 
 .ticket-details {
-    /* max-height: 150px; */
-    padding: 15px 15px 15px 15px;
-    background-color: #f0f2f5;
+    padding: 15px;
+    background-color: #F5F8FA;
     border-radius: 5px;
+}
+
+/* ==========================================================
+   Help Desk – Support Request – Messaging Canvas (redesign)
+   Design tokens sourced from the provided Figma spec (css.txt)
+   ========================================================== */
+
+/* Offcanvas panel sizing / responsiveness */
+/* .hd-note-canvas {
+    width: 100vw;
+    max-width: 100vw;
+} */
+
+.offcanvas.offcanvas-end.hd-note-canvas {
+    --bs-offcanvas-width: 50vw;
+    width: 50vw !important;
+    max-width: 100vw !important;
+}
+
+
+@media (max-width: 991.98px) {
+    .hd-note-canvas {
+        width: 100vw;
+    }
+}
+
+.hd-note-canvas .note-messages {
+    min-height: 160px;
+}
+
+/* Header */
+.hd-ticket-id {
+    color: #7239EA;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.hd-ticket-title {
+    color: #182432;
+    font-size: 15px;
+}
+
+/* Section label */
+.hd-section-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #3F4754;
+}
+
+/* Details box */
+.hd-details-box {
+    font-size: 13px;
+    line-height: 20px;
+    letter-spacing: 0.2px;
+    color: #5E6878;
+    border: 1px solid #E4EAEF;
+}
+
+/* Badges (status / category / priority / by-line) */
+.hd-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: capitalize;
+    white-space: nowrap;
+}
+
+.hd-badge-success {
+    background: rgba(69, 241, 42, 0.07);
+    color: #05CC61;
+}
+
+.hd-badge-info {
+    background: #EAF3FF;
+    color: #3B79F2;
+}
+
+.hd-badge-danger {
+    background: #FFF1F1;
+    color: #F01B1B;
+}
+
+.hd-badge-warning {
+    background: #FFF7E8;
+    color: #FB8E28;
+}
+
+.hd-badge-secondary {
+    background: #F6F6F6;
+    color: #6c757d;
+}
+
+.hd-badge-neutral {
+    background: #F6F6F6;
+    color: #3F4754;
+}
+
+.hd-badge-by {
+    background: #F6F9FF;
+    color: #3B79F2;
+}
+
+/* Attachment chip */
+.hd-attachment-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: transparent;
+    border: 1px dashed #B5BAC3;
+    border-radius: 6px;
+    color: #7239EA;
+    font-size: 12px;
+}
+
+.hd-attachment-chip i {
+    font-size: 13px;
+}
+
+/* Conversation thread */
+.messages-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.hd-msg {
+    display: flex;
+    flex-direction: column;
+    max-width: 85%;
+    margin-bottom: 18px;
+}
+
+.hd-msg-in {
+    align-items: flex-start;
+    margin-right: auto;
+}
+
+.hd-msg-out {
+    align-items: flex-end;
+    margin-left: auto;
+}
+
+.hd-msg-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.hd-avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.hd-msg-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: #3F4754;
+}
+
+.hd-msg-time {
+    font-size: 10px;
+    color: #A1ABB7;
+}
+
+.hd-msg-bubble {
+    padding: 8px 14px;
+    font-size: 13px;
+    line-height: 20px;
+    letter-spacing: 0.2px;
+    word-break: break-word;
+}
+
+.hd-bubble-in {
+    background: #F6F2FF;
+    color: #7239EA;
+    border-radius: 4px 14px 14px 14px;
+}
+
+.hd-bubble-out {
+    background: #F2F7FF;
+    color: #3B79F2;
+    border-radius: 14px 4px 14px 14px;
+}
+
+/* Checkboxes */
+.hd-note-canvas .form-check-input {
+    width: 18px;
+    height: 18px;
+    margin-top: 0;
+    border-color: #E4EAEF;
+    background-color: #E4EAEF;
+}
+
+.hd-note-canvas .form-check-input:checked {
+    background-color: #7239EA;
+    border-color: #7239EA;
+}
+
+.hd-note-canvas .form-check-label {
+    font-size: 13px;
+    color: #3F4754;
+    margin-left: 4px;
+}
+
+/* Footer buttons */
+.hd-btn-save {
+    background-color: #3B79F2;
+    border-color: #3B79F2;
+}
+
+.hd-btn-save:hover {
+    background-color: #2f66d0;
+    border-color: #2f66d0;
+    color: #fff;
+}
+
+.hd-btn-cancel {
+    background-color: #E4EAEF;
+    border-color: #E4EAEF;
+    color: #182432;
+}
+
+.hd-btn-cancel:hover {
+    background-color: #d7dee6;
+    color: #182432;
+}
+
+/* Small screens: stack composer controls, keep buttons full-width */
+@media (max-width: 575.98px) {
+    .hd-note-canvas .hd-btn-save,
+    .hd-note-canvas .hd-btn-cancel {
+        width: 100%;
+    }
+
+    .hd-msg {
+        max-width: 95%;
+    }
 }
 </style>

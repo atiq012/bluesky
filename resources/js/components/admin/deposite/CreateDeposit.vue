@@ -7,6 +7,9 @@ import ImageCropUpload from '../../common/ImageCropUpload.vue';
 import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
 import { formatNumberWithCommas } from '../../../utils/numberFormat';
 import { amountToTakaWords } from '../../../utils/numberToWords';
+import Select2 from '../../common/Select2.vue';
+import ImageUploader from '../../common/ImageUploader.vue';
+import AppButton from '../../common/AppButton.vue';
 
 const router = useRouter();
 
@@ -30,9 +33,23 @@ const form = reactive({
     issued_bank: '',
 });
 
-const refFile    = ref(null);
+const errors = reactive({
+    payment_acc:      null,
+    requested_amount: null,
+    reference_number: null,
+    reference_date:   null,
+    issued_bank:      null,
+});
+
+
+const refFiles = ref([]);
 const submitting = ref(false);
 const chargeRate = ref(0); // % rate from selected payment account
+// const paymentAccounts = ref([]);
+const issuedBanks = ref([]);
+const activeTab = ref('Cash'); 
+const allPaymentAccounts = ref([]);
+
 
 function recalculate() {
     const amt  = parseFloat(form.requested_amount) || 0;
@@ -44,6 +61,13 @@ function recalculate() {
 
 watch(() => form.requested_amount, recalculate);
 
+watch(() => form.payment_acc,      v => { if (v)        errors.payment_acc = null; });
+watch(() => form.requested_amount, v => { if (v)        errors.requested_amount = null; });
+watch(() => form.reference_number, v => { if (v?.trim()) errors.reference_number = null; });
+watch(() => form.reference_date,   v => { if (v)        errors.reference_date = null; });
+watch(() => form.issued_bank,      v => { if (v)        errors.issued_bank = null; });
+
+
 const totalAmountDisplay = computed(() => formatNumberWithCommas(form.total_amount, 0) || '0');
 const requestedAmountWords = computed(() => amountToTakaWords(form.requested_amount));
 
@@ -53,54 +77,148 @@ const showZeroChargeNotice = computed(() => {
 });
 
 onMounted(() => {
-    $('.payment_acc').on('change', function () {
-        form.payment_acc = $(this).val();
-        var selected = $(this).select2('data')[0];
-        chargeRate.value = (selected && selected.service_charge != null) ? selected.service_charge : 0;
-        recalculate();
-    });
+    // $('.payment_acc').on('change', function () {
+    //     form.payment_acc = $(this).val();
+    //     var selected = $(this).select2('data')[0];
+    //     chargeRate.value = (selected && selected.service_charge != null) ? selected.service_charge : 0;
+    //     recalculate();
+    // });
     $('.issued_bank').on('change', function () { form.issued_bank  = $(this).val(); });
     loadPaymentAccounts();
+    loadIssuedBanks();
 });
 
-async function loadPaymentAccounts() {
-    try {
-        const response = await axiosInstance.get('getAllPaymentAccount');
-        const options = response.data.map(v => ({
-            id: v.id,
-            text: `${v.name} ${v.branch} ${v.acc_no}`,
-            bank_name: v.name,
-            acc_no: v.acc_no,
-            branch: v.branch,
-            service_charge: v.service_charge,
-        }));
+function validate(type) {
+    // Reset all
+    Object.keys(errors).forEach(k => errors[k] = null);
 
-        function paymentAccTemplate(option) {
-            if (!option.id) return option.text;
-            return $(`<div class="pa-option">
-                <div><strong>${option.bank_name}</strong> <span class="pa-sep">|</span> <span class="pa-branch">${option.branch ?? '—'}</span></div>
-                <small>${option.acc_no} <span class="pa-sep">|</span> Charge: <strong>${option.service_charge ?? 0}%</strong></small>
-            </div>`);
-        }
+    if (activeTab.value !== 'Credit_Request' && !form.payment_acc)
+        errors.payment_acc = 'Please select a payment account.';
+    if (!String(form.requested_amount).trim()) 
+        errors.requested_amount = 'Please enter the request amount.';
+    if (!form.reference_date) 
+        errors.reference_date = 'Please select a reference date.'; 
+    if (type !== 'Credit_Request' && !form.reference_number) 
+        errors.reference_number = 'Please enter a reference number.';
 
-        function paymentAccSelection(option) {
-            if (!option.id) return option.text;
-            return $(`<span><strong>${option.bank_name}</strong> — ${option.acc_no} | Charge: ${option.service_charge ?? 0}%</span>`);
-        }
+    const tabsWithIssuedBank = ['MFS', 'Cheque', 'Bank_Transfer'];
+    if (tabsWithIssuedBank.includes(type) && !form.issued_bank) {
+        errors.issued_bank = 'Please select an issued bank.';
+    }
+    
 
-        $('.payment_acc').select2({
-            placeholder: '=Select=',
-            theme: 'bootstrap-5',
-            width: '100%',
-            allowClear: true,
-            data: options,
-            templateResult: paymentAccTemplate,
-            templateSelection: paymentAccSelection,
-        });
-    } catch {}
+    return !Object.values(errors).some(Boolean);
 }
 
+
+async function loadPaymentAccounts() {
+    
+    try {
+        const response = await axiosInstance.get('getAllPaymentAccount');
+        //console.log('Payment Accounts:', response.data);
+        allPaymentAccounts.value = response.data.map(v => ({
+            id:             v.id,
+            text:           `${v.name} | ${v.acc_no} | ${v.branch || '-'} | Charge: ${v.service_charge || 0}%`,
+            bank_name:      v.name,
+            acc_no:         v.acc_no,
+            branch:         v.branch,
+            service_charge: v.service_charge,
+            acc_type:       v.acc_type,
+        }))
+        .sort((a, b) => a.bank_name.localeCompare(b.bank_name));
+    } catch {
+        if (window.Notification?.showToast) {
+            window.Notification.showToast('e', 'Failed to load payment accounts.');
+        }
+    }
+}
+
+async function loadIssuedBanks() {
+    try {
+        const response = await axiosInstance.get('getBankMFS');
+        //console.log('Issued Banks:', response.data.data);
+        issuedBanks.value = response.data.data
+            .filter(b => b.status == 1)           // only active banks
+            .map(b => ({
+                id:    b.idd,
+                label: b.name,
+            }))
+            .sort((a, b) => a.label.localeCompare(b.label)); 
+    } catch {
+        if (window.Notification?.showToast) {
+            window.Notification.showToast('e', 'Failed to load issued banks.');
+        }
+    }
+}
+
+const paymentAccounts = computed(() => {
+    if (!activeTab.value) return allPaymentAccounts.value;
+
+    return allPaymentAccounts.value.filter(account => {
+        const type = (account.acc_type || '').trim().toLowerCase();
+
+        switch (activeTab.value) {
+        
+            case 'MFS':
+                return type === 'mfs';
+            case 'Cheque':
+            case 'Bank_Transfer':
+                return type === 'bank' || type === 'cheque' || type === 'bank transfer';
+            default:
+                return true;
+        }
+    });
+});
+
+
+
+function onPaymentAccChange(selectedId) {
+    form.payment_acc = selectedId;
+    const selected = paymentAccounts.value.find(p => p.id === selectedId);
+    chargeRate.value = (selected && selected.service_charge != null) ? selected.service_charge : 0;
+    recalculate();
+}
+function onIssuedBankChange(selectedId) {
+    form.issued_bank = selectedId;
+}
+
+function generateUniqueCreditRefNo() {
+    const now = new Date();
+    const datePart = now.getFullYear().toString().slice(-2) +
+                     String(now.getMonth() + 1).padStart(2, '0') +
+                     String(now.getDate()).padStart(2, '0'); // YYMMDD (e.g. 260728)
+
+    const timeMs = Date.now().toString().slice(-6);          // Millisecond precision (last 6 digits)
+    const randomPart = Math.floor(1000 + Math.random() * 9000); // 4 random digits
+
+    return `CR${datePart}${timeMs}${randomPart}`;             // e.g. CR2607284982123912
+}
+
+
+function resetForm() {
+    // Reset form fields
+    form.payment_acc      = '';
+    form.requested_amount = '';
+    form.service_charge   = '';
+    form.total_amount     = '';
+    form.reference_number = '';
+    form.reference_date   = todayDisplay();
+    form.remarks          = '';
+    form.issued_bank      = '';
+    chargeRate.value      = 0;
+    refFiles.value        = []; 
+
+    if (activeTab.value === 'Credit_Request') {
+        form.reference_number = generateUniqueCreditRefNo();
+    }
+
+    // Reset all errors
+    Object.keys(errors).forEach(k => errors[k] = null);
+}
+
+
 async function submitForm(type) {
+    if (!validate(type)) return;
     try {
         submitting.value = true;
         const fd = new FormData();
@@ -113,8 +231,8 @@ async function submitForm(type) {
         fd.append('reference_date', form.reference_date);
         fd.append('remarks', form.remarks);
         fd.append('issued_bank', form.issued_bank);
-        if (refFile.value) {
-            fd.append('referenceFile', refFile.value);
+        if (refFiles.value.length > 0) {
+            fd.append('referenceFile', refFiles.value[0].file);
         }
         const res = await axiosInstance.post('/deposit/save', fd, {
             headers: { 'Content-Type': 'multipart/form-data' },
@@ -148,27 +266,32 @@ async function submitForm(type) {
                 <div class="card-body">
                     <ul class="nav nav-tabs nav-primary mb-0" role="tablist">
                         <li class="nav-item" role="presentation">
-                            <a class="nav-link active" data-bs-toggle="tab" href="#cash_tab" role="tab">
+                            <a class="nav-link active" data-bs-toggle="tab" href="#cash_tab" role="tab" 
+                            @click="activeTab = 'Cash'; resetForm()">
                                 <div class="tab-title">Cash</div>
                             </a>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <a class="nav-link" data-bs-toggle="tab" href="#mfs_tab" role="tab">
+                            <a class="nav-link" data-bs-toggle="tab" href="#mfs_tab" role="tab" 
+                            @click="activeTab = 'MFS'; resetForm()">
                                 <div class="tab-title">MFS</div>
                             </a>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <a class="nav-link" data-bs-toggle="tab" href="#cheque_tab" role="tab">
+                            <a class="nav-link" data-bs-toggle="tab" href="#cheque_tab" role="tab" 
+                            @click="activeTab = 'Cheque'; resetForm()">
                                 <div class="tab-title">Cheque/DD</div>
                             </a>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <a class="nav-link" data-bs-toggle="tab" href="#bank_transfer_tab" role="tab">
+                            <a class="nav-link" data-bs-toggle="tab" href="#bank_transfer_tab" role="tab" 
+                            @click="activeTab = 'Bank_Transfer'; resetForm()">
                                 <div class="tab-title">Bank Transfer</div>
                             </a>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <a class="nav-link" data-bs-toggle="tab" href="#credit_req_tab" role="tab">
+                            <a class="nav-link" data-bs-toggle="tab" href="#credit_req_tab" role="tab" 
+                            @click="activeTab = 'Credit_Request'; resetForm()">
                                 <div class="tab-title">Credit Request</div>
                             </a>
                         </li>
@@ -187,14 +310,31 @@ async function submitForm(type) {
                                         <div class="card-body">
                                             <div class="row">
                                                 <div class="col-md-10">
-                                                    <label class="form-label">Payment Account</label>
-                                                    <select class="payment_acc form-control form-control-sm">
+                                                    <label class="form-label">Payment Account
+                                                        <span class="text-danger">*</span>
+                                                    </label>
+                                                    <!-- <select class="payment_acc form-control form-control-sm">
                                                         <option value="">Choose...</option>
-                                                    </select>
+                                                    </select> -->
+                                                    <div :class="{ 'select2-error': errors.payment_acc }">
+                                                        <Select2 v-model="form.payment_acc" :options="paymentAccounts"
+                                                            value-key="id" label-key="text"
+                                                            placeholder="=Select Payment Account=" :clearable="true"
+                                                            @update:modelValue="onPaymentAccChange" />
+                                                    </div>
+                                                    <div v-if="errors.payment_acc" class="invalid-feedback d-block">
+                                                        {{ errors.payment_acc }}
+                                                    </div>
+                                                    
                                                 </div>
                                                 <div class="col-md-4 mt-2">
-                                                    <label class="form-label">Request Amount</label>
-                                                    <NumberInput v-model="form.requested_amount" placeholder="0.00" />
+                                                    <label class="form-label">Request Amount
+                                                        <span class="text-danger">*</span>
+                                                    </label>
+                                                    <NumberInput v-model="form.requested_amount" placeholder="0.00" :class="{ 'is-invalid': errors.requested_amount }"/>
+                                                    <div v-if="errors.requested_amount" class="invalid-feedback d-block">
+                                                        {{ errors.requested_amount }}
+                                                    </div>
                                                     <small v-if="requestedAmountWords" class="text-muted d-block mt-2">{{ requestedAmountWords }}</small>
                                                 </div>
                                                 <div class="col-md-3 mt-2">
@@ -226,28 +366,44 @@ async function submitForm(type) {
                                         <div class="card-body">
                                             <div class="row">
                                                 <div class="col-md-6">
-                                                    <label class="form-label">Reference Number</label>
-                                                    <input type="text" class="form-control form-control-sm" v-model="form.reference_number" placeholder="Enter Reference Number" />
+                                                    <label class="form-label">Reference Number
+                                                        <span class="text-danger">*</span>
+                                                    </label>
+                                                    <input type="text" class="form-control form-control-sm" v-model="form.reference_number" placeholder="Enter Reference Number"
+                                                        :class="{ 'is-invalid': errors.reference_number }" />
+                                                    <div v-if="errors.reference_number" class="invalid-feedback d-block">
+                                                        {{ errors.reference_number }}
+                                                    </div>
                                                 </div>
                                                 <div class="col-md-6">
-                                                    <label class="form-label">Reference Date</label>
-                                                    <AppDatePicker v-model="form.reference_date" :max-date="today" :inline="false" :full-width="true" :clear-button="true" :enable-time="false" />
+                                                    <label class="form-label">Reference Date
+                                                        <span class="text-danger">*</span>
+                                                    </label>
+                                                    <AppDatePicker v-model="form.reference_date" :max-date="today" :inline="false" 
+                                                        :full-width="true" :clear-button="true" :enable-time="false"
+                                                        :input-class="errors.reference_date ? 'form-control is-invalid' : 'form-control'" />
+                                                    
+                                                    <div v-if="errors.reference_date" class="invalid-feedback d-block">
+                                                        {{ errors.reference_date }}
+                                                    </div>
                                                 </div>
                                                 <div class="col-md-6 mt-2">
                                                     <label class="form-label">Reference File</label>
                                                     <div class="d-flex align-items-center gap-3">
-                                                        <ImageCropUpload
+                                                        <!-- <ImageCropUpload
                                                             v-model="refFile"
                                                             :max-file-size-mb="2"
                                                             accept="image/jpeg,image/png,image/webp"
                                                             crop-modal-title="Crop Reference Image"
                                                             shape="square"
                                                             :free-aspect="true"
-                                                        />
-                                                        <span class="text-muted small">
+                                                        /> -->
+                                                        <ImageUploader v-model="refFiles" :max-files="1"
+                                                            preview-size="large" />
+                                                        <!-- <span class="text-muted small">
                                                             <template v-if="refFile"><i class="fa fa-circle-check text-success me-1"></i>Image selected — uploads on submit.</template>
                                                             <template v-else>Click box to upload image (JPG, PNG, WebP — max 2 MB)</template>
-                                                        </span>
+                                                        </span> -->
                                                     </div>
                                                 </div>
                                                 <div class="col-md-6 mt-2">
@@ -262,12 +418,10 @@ async function submitForm(type) {
 
                             <div class="row">
                                 <div class="col-md-9">
-                                    <div class="d-flex gap-2">
-                                        <router-link :to="{ name: 'depositList' }" class="btn btn-sm btn-secondary px-4">Cancel</router-link>
-                                        <button type="button" class="btn btn-sm btn-info px-4" :disabled="submitting" @click="submitForm('Cash')">
-                                            <template v-if="submitting"><i class="fa-solid fa-spinner fa-spin me-1"></i>Submitting...</template>
-                                            <template v-else>Submit</template>
-                                        </button>
+                                    <div class="d-flex gap-2 justify-content-end">
+                                        <AppButton variant="cancel" tag="router-link" :to="{ name: 'depositList' }" />
+                                        <AppButton variant="save" label="Submit" :loading="submitting"
+                                            loading-text="Submitting..." @click="submitForm('Cash')" />
                                     </div>
                                 </div>
                             </div>
@@ -284,14 +438,27 @@ async function submitForm(type) {
                                         <div class="card-body">
                                             <div class="row">
                                                 <div class="col-md-10">
-                                                    <label class="form-label">Payment Account</label>
-                                                    <select class="payment_acc form-control form-control-sm">
-                                                        <option value="">Choose...</option>
-                                                    </select>
+                                                    <label class="form-label">Payment Account
+                                                        <span class="text-danger">*</span>
+                                                    </label>
+                                                    <div :class="{ 'select2-error': errors.payment_acc }">
+                                                        <Select2 v-model="form.payment_acc" :options="paymentAccounts"
+                                                        value-key="id" label-key="text"
+                                                        placeholder="=Select Payment Account=" :clearable="true"
+                                                        @update:modelValue="onPaymentAccChange" />
+                                                    </div>
+                                                    <div v-if="errors.payment_acc" class="invalid-feedback d-block">
+                                                        {{ errors.payment_acc }}
+                                                    </div>
                                                 </div>
                                                 <div class="col-md-4 mt-2">
-                                                    <label class="form-label">Request Amount</label>
-                                                    <NumberInput v-model="form.requested_amount" placeholder="0.00" />
+                                                    <label class="form-label">Request Amount
+                                                        <span class="text-danger">*</span>
+                                                    </label>
+                                                    <NumberInput v-model="form.requested_amount" placeholder="0.00" :class="{ 'is-invalid': errors.requested_amount }"/>
+                                                    <div v-if="errors.requested_amount" class="invalid-feedback d-block">
+                                                        {{ errors.requested_amount }}
+                                                    </div>
                                                     <small v-if="requestedAmountWords" class="text-muted d-block mt-2">{{ requestedAmountWords }}</small>
                                                 </div>
                                                 <div class="col-md-3 mt-2">
@@ -323,36 +490,53 @@ async function submitForm(type) {
                                         <div class="card-body">
                                             <div class="row">
                                                 <div class="col-md-6">
-                                                    <label class="form-label">Issued Bank / MFS</label>
-                                                    <select class="issued_bank form-control form-control-sm">
-                                                        <option value="">Select Issued Bank</option>
-                                                    </select>
+                                                    <label class="form-label">Issued Bank / MFS
+                                                        <span class="text-danger">*</span>
+                                                    </label>
+                                                    <div :class="{ 'select2-error': errors.issued_bank }">
+                                                        <Select2 v-model="form.issued_bank" :options="issuedBanks"
+                                                            value-key="id" label-key="label"
+                                                            placeholder="=Select Issued Bank="
+                                                            @update:modelValue="onIssuedBankChange" />
+                                                    </div>
+                                                    <div v-if="errors.issued_bank" class="invalid-feedback d-block">
+                                                        {{ errors.issued_bank }}
+                                                    </div>
+                                                    
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label">Reference Number
+                                                        <span class="text-danger">*</span>
+                                                    </label>
+                                                    <input type="text" class="form-control form-control-sm" v-model="form.reference_number" placeholder="Enter Reference Number"
+                                                    :class="{ 'is-invalid': errors.reference_number }" />
+                                                    <div v-if="errors.reference_number" class="invalid-feedback d-block">
+                                                        {{ errors.reference_number }}
+                                                    </div>
                                                 </div>
                                                 <div class="col-md-6">
                                                     <label class="form-label">Reference Date</label>
-                                                    <AppDatePicker v-model="form.reference_date" :max-date="today" :inline="false" :full-width="true" :clear-button="true" :enable-time="false" />
-                                                </div>
-                                                <div class="col-md-6 mt-2">
-                                                    <label class="form-label">Reference File</label>
-                                                    <div class="d-flex align-items-center gap-3">
-                                                        <ImageCropUpload
-                                                            v-model="refFile"
-                                                            :max-file-size-mb="2"
-                                                            accept="image/jpeg,image/png,image/webp"
-                                                            crop-modal-title="Crop Reference Image"
-                                                            shape="square"
-                                                            :free-aspect="true"
-                                                        />
-                                                        <span class="text-muted small">
-                                                            <template v-if="refFile"><i class="fa fa-circle-check text-success me-1"></i>Image selected — uploads on submit.</template>
-                                                            <template v-else>Click box to upload image (JPG, PNG, WebP — max 2 MB)</template>
-                                                        </span>
+                                                    <AppDatePicker v-model="form.reference_date" :max-date="today" :inline="false" 
+                                                    :full-width="true" :clear-button="true" :enable-time="false"
+                                                    :input-class="errors.reference_date ? 'form-control is-invalid' : 'form-control'" />
+                                                    <div v-if="errors.reference_date" class="invalid-feedback d-block">
+                                                        {{ errors.reference_date }}
                                                     </div>
-                                                </div>
+                                                </div>   
                                                 <div class="col-md-6 mt-2">
                                                     <label class="form-label">Remarks</label>
                                                     <textarea v-model="form.remarks" class="form-control form-control-sm" rows="3"></textarea>
                                                 </div>
+
+                                                <div class="col-md-6 mt-2">
+                                                    <label class="form-label">Reference File</label>
+                                                    <div class="d-flex align-items-center gap-3">
+                                                        <ImageUploader v-model="refFiles" :max-files="1"
+                                                            preview-size="large" />
+                                                        
+                                                    </div>
+                                                </div>
+                                                
                                             </div>
                                         </div>
                                     </div>
@@ -361,12 +545,10 @@ async function submitForm(type) {
 
                             <div class="row">
                                 <div class="col-md-9">
-                                    <div class="d-flex gap-2">
-                                        <router-link :to="{ name: 'depositList' }" class="btn btn-sm btn-secondary px-4">Cancel</router-link>
-                                        <button type="button" class="btn btn-sm btn-info px-4" :disabled="submitting" @click="submitForm('MFS')">
-                                            <template v-if="submitting"><i class="fa-solid fa-spinner fa-spin me-1"></i>Submitting...</template>
-                                            <template v-else>Submit</template>
-                                        </button>
+                                    <div class="d-flex gap-2 justify-content-end">
+                                        <AppButton variant="cancel" @click="router.push({ name: 'depositList' })" />
+                                        <AppButton variant="save" label="Submit" :loading="submitting"
+                                            loading-text="Submitting..." @click="submitForm('MFS')" />
                                     </div>
                                 </div>
                             </div>
@@ -383,14 +565,27 @@ async function submitForm(type) {
                                         <div class="card-body">
                                             <div class="row">
                                                 <div class="col-md-10">
-                                                    <label class="form-label">Payment Account</label>
-                                                    <select class="payment_acc form-control form-control-sm">
-                                                        <option value="">Choose...</option>
-                                                    </select>
+                                                    <label class="form-label">Payment Account
+                                                        <span class="text-danger">*</span>
+                                                    </label>
+                                                    <div :class="{ 'select2-error': errors.payment_acc }">
+                                                        <Select2 v-model="form.payment_acc" :options="paymentAccounts"
+                                                        value-key="id" label-key="text"
+                                                        placeholder="=Select Payment Account=" :clearable="true"
+                                                        @update:modelValue="onPaymentAccChange" />
+                                                    </div>
+                                                    <div v-if="errors.payment_acc" class="invalid-feedback d-block">
+                                                        {{ errors.payment_acc }}
+                                                    </div>
                                                 </div>
                                                 <div class="col-md-4 mt-2">
-                                                    <label class="form-label">Request Amount</label>
-                                                    <NumberInput v-model="form.requested_amount" placeholder="0.00" />
+                                                    <label class="form-label">Request Amount
+                                                        <span class="text-danger">*</span>
+                                                    </label>
+                                                    <NumberInput v-model="form.requested_amount" placeholder="0.00" :class="{ 'is-invalid': errors.requested_amount }"/>
+                                                    <div v-if="errors.requested_amount" class="invalid-feedback d-block">
+                                                        {{ errors.requested_amount }}
+                                                    </div>
                                                     <small v-if="requestedAmountWords" class="text-muted d-block mt-2">{{ requestedAmountWords }}</small>
                                                 </div>
                                                 <div class="col-md-3 mt-2">
@@ -422,39 +617,51 @@ async function submitForm(type) {
                                         <div class="card-body">
                                             <div class="row">
                                                 <div class="col-md-6">
-                                                    <label class="form-label">Issued Bank</label>
-                                                    <select class="issued_bank form-control form-control-sm">
-                                                        <option value="">Select Issued Bank</option>
-                                                    </select>
+                                                    <label class="form-label">Issued Bank
+                                                        <span class="text-danger">*</span>
+                                                    </label>
+                                                    <div :class="{ 'select2-error': errors.issued_bank }">
+                                                        <Select2 v-model="form.issued_bank" :options="issuedBanks"
+                                                        value-key="id" label-key="label"
+                                                        placeholder="=Select Issued Bank="
+                                                        @update:modelValue="onIssuedBankChange" />
+                                                    </div>
+                                                    <div v-if="errors.issued_bank" class="invalid-feedback d-block">
+                                                        {{ errors.issued_bank }}
+                                                    </div>
                                                 </div>
                                                 <div class="col-md-6">
-                                                    <label class="form-label">Reference Number</label>
-                                                    <input type="text" v-model="form.reference_number" class="form-control form-control-sm" placeholder="Enter Reference Number" />
+                                                    <label class="form-label">Reference Number
+                                                        <span class="text-danger">*</span>
+                                                    </label>
+                                                    <input type="text" v-model="form.reference_number" class="form-control form-control-sm" placeholder="Enter Reference Number" 
+                                                    :class="{ 'is-invalid': errors.reference_number }"/>
+                                                    <div v-if="errors.reference_number" class="invalid-feedback d-block">
+                                                        {{ errors.reference_number }}
+                                                    </div>
                                                 </div>
                                                 <div class="col-md-6 mt-2">
-                                                    <label class="form-label">Reference Date</label>
-                                                    <AppDatePicker v-model="form.reference_date" :max-date="today" :inline="false" :full-width="true" :clear-button="true" :enable-time="false" />
+                                                    <label class="form-label">Reference Date
+                                                        <span class="text-danger">*</span>
+                                                    </label>
+                                                    <AppDatePicker v-model="form.reference_date" :max-date="today" :inline="false" 
+                                                    :full-width="true" :clear-button="true" :enable-time="false" 
+                                                    :input-class="errors.reference_date ? 'form-control is-invalid' : 'form-control'"/>
+                                                    <div v-if="errors.reference_date" class="invalid-feedback d-block">
+                                                        {{ errors.reference_date }}
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="col-md-6 mt-2">
+                                                    <label class="form-label">Remarks</label>
+                                                    <textarea v-model="form.remarks" class="form-control form-control-sm" rows="3"></textarea>
                                                 </div>
                                                 <div class="col-md-6 mt-2">
                                                     <label class="form-label">Reference File</label>
                                                     <div class="d-flex align-items-center gap-3">
-                                                        <ImageCropUpload
-                                                            v-model="refFile"
-                                                            :max-file-size-mb="2"
-                                                            accept="image/jpeg,image/png,image/webp"
-                                                            crop-modal-title="Crop Reference Image"
-                                                            shape="square"
-                                                            :free-aspect="true"
-                                                        />
-                                                        <span class="text-muted small">
-                                                            <template v-if="refFile"><i class="fa fa-circle-check text-success me-1"></i>Image selected — uploads on submit.</template>
-                                                            <template v-else>Click box to upload image (JPG, PNG, WebP — max 2 MB)</template>
-                                                        </span>
+                                                        <ImageUploader v-model="refFiles" :max-files="1"
+                                                            preview-size="large" />
                                                     </div>
-                                                </div>
-                                                <div class="col-md-6 mt-2">
-                                                    <label class="form-label">Remarks</label>
-                                                    <textarea v-model="form.remarks" class="form-control form-control-sm" rows="3"></textarea>
                                                 </div>
                                             </div>
                                         </div>
@@ -464,12 +671,10 @@ async function submitForm(type) {
 
                             <div class="row">
                                 <div class="col-md-9">
-                                    <div class="d-flex gap-2">
-                                        <router-link :to="{ name: 'depositList' }" class="btn btn-sm btn-secondary px-4">Cancel</router-link>
-                                        <button type="button" class="btn btn-sm btn-info px-4" :disabled="submitting" @click="submitForm('Cheque')">
-                                            <template v-if="submitting"><i class="fa-solid fa-spinner fa-spin me-1"></i>Submitting...</template>
-                                            <template v-else>Submit</template>
-                                        </button>
+                                    <div class="d-flex gap-2 justify-content-end">
+                                        <AppButton variant="cancel" @click="router.push({ name: 'depositList' })" />
+                                        <AppButton variant="save" label="Submit" :loading="submitting"
+                                            loading-text="Submitting..." @click="submitForm('Cheque')" />
                                     </div>
                                 </div>
                             </div>
@@ -486,14 +691,28 @@ async function submitForm(type) {
                                         <div class="card-body">
                                             <div class="row">
                                                 <div class="col-md-10">
-                                                    <label class="form-label">Payment Account</label>
-                                                    <select class="payment_acc form-control form-control-sm">
-                                                        <option value="">Choose...</option>
-                                                    </select>
+                                                    <label class="form-label">Payment Account
+                                                        <span class="text-danger">*</span>
+                                                    </label>
+                                                    <div>
+                                                        <Select2 v-model="form.payment_acc" :options="paymentAccounts"
+                                                        value-key="id" label-key="text"
+                                                        placeholder="=Select Payment Account=" :clearable="true"
+                                                        @update:modelValue="onPaymentAccChange" />
+                                                    </div>
+                                                    <div v-if="errors.payment_acc" class="invalid-feedback d-block">
+                                                        {{ errors.payment_acc }}
+                                                    </div>
+                                                    
                                                 </div>
                                                 <div class="col-md-4 mt-2">
-                                                    <label class="form-label">Request Amount</label>
-                                                    <NumberInput v-model="form.requested_amount" placeholder="0.00" />
+                                                    <label class="form-label">Request Amount
+                                                        <span class="text-danger">*</span>
+                                                    </label>
+                                                    <NumberInput v-model="form.requested_amount" placeholder="0.00" :class="{ 'is-invalid': errors.requested_amount }"/>
+                                                    <div v-if="errors.requested_amount" class="invalid-feedback d-block">
+                                                        {{ errors.requested_amount }}
+                                                    </div>
                                                     <small v-if="requestedAmountWords" class="text-muted d-block mt-2">{{ requestedAmountWords }}</small>
                                                 </div>
                                                 <div class="col-md-3 mt-2">
@@ -525,39 +744,53 @@ async function submitForm(type) {
                                         <div class="card-body">
                                             <div class="row">
                                                 <div class="col-md-6">
-                                                    <label class="form-label">Issued Bank &amp; MFS</label>
-                                                    <select class="issued_bank form-control form-control-sm">
-                                                        <option value="">Select Issued Bank</option>
-                                                    </select>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label class="form-label">Reference Number</label>
-                                                    <input type="text" class="form-control form-control-sm" v-model="form.reference_number" placeholder="Enter Reference Number" />
-                                                </div>
-                                                <div class="col-md-6 mt-2">
-                                                    <label class="form-label">Reference File</label>
-                                                    <div class="d-flex align-items-center gap-3">
-                                                        <ImageCropUpload
-                                                            v-model="refFile"
-                                                            :max-file-size-mb="2"
-                                                            accept="image/jpeg,image/png,image/webp"
-                                                            crop-modal-title="Crop Reference Image"
-                                                            shape="square"
-                                                            :free-aspect="true"
-                                                        />
-                                                        <span class="text-muted small">
-                                                            <template v-if="refFile"><i class="fa fa-circle-check text-success me-1"></i>Image selected — uploads on submit.</template>
-                                                            <template v-else>Click box to upload image (JPG, PNG, WebP — max 2 MB)</template>
-                                                        </span>
+                                                    <label class="form-label">Issued Bank &amp; MFS
+                                                        <span class="text-danger">*</span>
+                                                    </label>
+                                                    <div :class="{ 'select2-error': errors.issued_bank }">
+                                                        <Select2 v-model="form.issued_bank" :options="issuedBanks"
+                                                        value-key="id" label-key="label"
+                                                        placeholder="=Select Issued Bank="
+                                                        @update:modelValue="onIssuedBankChange" />
+                                                    </div>
+                                                    <div v-if="errors.issued_bank" class="invalid-feedback d-block">
+                                                        {{ errors.issued_bank }}
                                                     </div>
                                                 </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label">Reference Number
+                                                        <span class="text-danger">*</span>
+                                                    </label>
+                                                    <input type="text" class="form-control form-control-sm" v-model="form.reference_number" placeholder="Enter Reference Number" 
+                                                    :class="{ 'is-invalid': errors.reference_number }"/>
+                                                    <div v-if="errors.reference_number" class="invalid-feedback d-block">
+                                                        {{ errors.reference_number }}
+                                                    </div>
+                                                </div>
+                                                
                                                 <div class="col-md-6 mt-2">
-                                                    <label class="form-label">Reference Date</label>
-                                                    <AppDatePicker v-model="form.reference_date" :max-date="today" :inline="false" :full-width="true" :clear-button="true" :enable-time="false" />
+                                                    <label class="form-label">Reference Date
+                                                        <span class="text-danger">*</span>
+                                                    </label>
+                                                    <AppDatePicker v-model="form.reference_date" :max-date="today" :inline="false" 
+                                                    :full-width="true" :clear-button="true" :enable-time="false"
+                                                    :input-class="errors.reference_date ? 'form-control is-invalid' : 'form-control'" />
+                                                    <div v-if="errors.reference_date" class="invalid-feedback d-block">
+                                                        {{ errors.reference_date }}
+                                                    </div>
                                                 </div>
                                                 <div class="col-md-6 mt-2">
                                                     <label class="form-label">Remarks</label>
                                                     <textarea class="form-control form-control-sm" v-model="form.remarks" rows="3"></textarea>
+                                                </div>
+
+                                                <div class="col-md-6">
+                                                    <label class="form-label">Reference File</label>
+                                                    <div class="d-flex align-items-center gap-3">
+                                                        <ImageUploader v-model="refFiles" :max-files="1"
+                                                            preview-size="large" />
+                                                        
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -567,12 +800,11 @@ async function submitForm(type) {
 
                             <div class="row">
                                 <div class="col-md-9">
-                                    <div class="d-flex gap-2">
-                                        <router-link :to="{ name: 'depositList' }" class="btn btn-sm btn-secondary px-4">Cancel</router-link>
-                                        <button type="button" class="btn btn-sm btn-info px-4" :disabled="submitting" @click="submitForm('Bank_Transfer')">
-                                            <template v-if="submitting"><i class="fa-solid fa-spinner fa-spin me-1"></i>Submitting...</template>
-                                            <template v-else>Submit</template>
-                                        </button>
+                                    <div class="d-flex gap-2 justify-content-end">
+                                        <AppButton variant="cancel" tag="router-link"
+                                                :to="{ name: 'depositList' }" />
+                                        <AppButton variant="save" label="Submit" :loading="submitting"
+                                            loading-text="Submitting..." @click="submitForm('Bank_Transfer')" />
                                     </div>
                                 </div>
                             </div>
@@ -589,8 +821,13 @@ async function submitForm(type) {
                                         <div class="card-body">
                                             <div class="row">
                                                 <div class="col-md-4">
-                                                    <label class="form-label">Request Amount</label>
-                                                    <NumberInput v-model="form.requested_amount" placeholder="0.00" />
+                                                    <label class="form-label">Request Amount
+                                                        <span class="text-danger">*</span>
+                                                    </label>
+                                                    <NumberInput v-model="form.requested_amount" placeholder="0.00" :class="{ 'is-invalid': errors.requested_amount }"/>
+                                                    <div v-if="errors.requested_amount" class="invalid-feedback d-block">
+                                                        {{ errors.requested_amount }}
+                                                    </div>
                                                     <small v-if="requestedAmountWords" class="text-muted d-block mt-2">{{ requestedAmountWords }}</small>
                                                 </div>
                                                 <div class="col-md-3">
@@ -615,41 +852,54 @@ async function submitForm(type) {
                                         </div>
                                         <div class="card-body">
                                             <div class="row">
+                                                <!-- <div class="col-md-6">
+                                                    <label class="form-label">Issued Bank
+                                                        <span class="text-danger">*</span>
+                                                    </label>
+                                                    <div :class="{ 'select2-error': errors.issued_bank }">
+                                                        <Select2 v-model="form.issued_bank" :options="issuedBanks"
+                                                        value-key="id" label-key="label"
+                                                        placeholder="=Select Issued Bank="
+                                                        @update:modelValue="onIssuedBankChange" />
+                                                    </div>
+                                                    <div v-if="errors.issued_bank" class="invalid-feedback d-block">
+                                                        {{ errors.issued_bank }}
+                                                    </div>
+                                            
+                                                </div> -->
                                                 <div class="col-md-6">
-                                                    <label class="form-label">Issued Bank</label>
-                                                    <select class="issued_bank form-control form-control-sm">
-                                                        <option value="">Select Issued Bank</option>
-                                                    </select>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label class="form-label">Reference Number</label>
-                                                    <input type="text" class="form-control form-control-sm" v-model="form.reference_number" placeholder="Enter Reference Number" />
-                                                </div>
-                                                <div class="col-md-6 mt-2">
-                                                    <label class="form-label">Reference File</label>
-                                                    <div class="d-flex align-items-center gap-3">
-                                                        <ImageCropUpload
-                                                            v-model="refFile"
-                                                            :max-file-size-mb="2"
-                                                            accept="image/jpeg,image/png,image/webp"
-                                                            crop-modal-title="Crop Reference Image"
-                                                            shape="square"
-                                                            :free-aspect="true"
-                                                        />
-                                                        <span class="text-muted small">
-                                                            <template v-if="refFile"><i class="fa fa-circle-check text-success me-1"></i>Image selected — uploads on submit.</template>
-                                                            <template v-else>Click box to upload image (JPG, PNG, WebP — max 2 MB)</template>
-                                                        </span>
+                                                    <label class="form-label">Reference Number
+                                                        <span class="text-danger">*</span>
+                                                    </label>
+                                                    <input type="text" class="form-control form-control-sm" v-model="form.reference_number" 
+                                                    :class="{ 'is-invalid': errors.reference_number }" readonly style="padding: 0.5rem;"/>
+                                                    <div v-if="errors.reference_number" class="invalid-feedback d-block">
+                                                        {{ errors.reference_number }}
                                                     </div>
                                                 </div>
-                                                <div class="col-md-6 mt-2">
+                                                
+                                                <div class="col-md-6">
                                                     <label class="form-label">Reference Date</label>
-                                                    <AppDatePicker v-model="form.reference_date" :max-date="today" :inline="false" :full-width="true" :clear-button="true" :enable-time="false" />
+                                                    <AppDatePicker v-model="form.reference_date" :max-date="today" :inline="false" 
+                                                    :full-width="true" :clear-button="true" :enable-time="false" 
+                                                    :input-class="errors.reference_date ? 'form-control is-invalid' : 'form-control'"/>
+                                                    <div v-if="errors.reference_date" class="invalid-feedback d-block">
+                                                        {{ errors.reference_date }}
+                                                    </div>
                                                 </div>
+
+                                                
                                                 <div class="col-md-6 mt-2">
                                                     <label class="form-label">Remarks</label>
                                                     <textarea v-model="form.remarks" class="form-control form-control-sm" rows="3"></textarea>
                                                 </div>
+                                                 <!-- <div class="col-md-6 mt-2">
+                                                    <label class="form-label">Reference File</label>
+                                                    <div class="d-flex align-items-center gap-3">
+                                                        <ImageUploader v-model="refFiles" :max-files="1"
+                                                            preview-size="large" />
+                                                    </div>
+                                                </div> -->
                                             </div>
                                         </div>
                                     </div>
@@ -658,12 +908,11 @@ async function submitForm(type) {
 
                             <div class="row">
                                 <div class="col-md-9">
-                                    <div class="d-flex gap-2">
-                                        <router-link :to="{ name: 'depositList' }" class="btn btn-sm btn-secondary px-4">Cancel</router-link>
-                                        <button type="button" class="btn btn-sm btn-info px-4" :disabled="submitting" @click="submitForm('Credit_Request')">
-                                            <template v-if="submitting"><i class="fa-solid fa-spinner fa-spin me-1"></i>Submitting...</template>
-                                            <template v-else>Submit</template>
-                                        </button>
+                                    <div class="d-flex gap-2 justify-content-end">
+                                        <AppButton variant="cancel" @click="router.push({ name: 'depositList' })" />
+                                        <AppButton variant="save" label="Submit" :loading="submitting"
+                                            loading-text="Submitting..." @click="submitForm('Credit_Request')" />
+                                        
                                     </div>
                                 </div>
                             </div>
@@ -675,3 +924,9 @@ async function submitForm(type) {
         </div>
     </div>
 </template>
+
+<style scoped>
+.select2-error :deep(.app-select2-control) {
+    border-color: var(--bs-form-invalid-border-color);
+}
+</style>

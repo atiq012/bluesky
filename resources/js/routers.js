@@ -45,7 +45,7 @@ const CreateAgency = () => import('./components/admin/agent/create.vue')
 
 // deposit management
 const depositList = () => import('./components/admin/deposite/index.vue')
-const depoDetails = () => import('./components/admin/deposite/depoDetails.vue')
+const depoDetails = () => import('./components/admin/deposite/viewDepo.vue')
 const CreateDeposit = () => import('./components/admin/deposite/CreateDeposit.vue')
 const accountStatement = () => import('./components/admin/deposite/accountStatement.vue')
 
@@ -243,6 +243,11 @@ const routes = [
     { path: '/view-offer-price-of-group-request/:id', component: viewOfferPriceDetailReadOnly, name: 'viewOfferPrice', meta: { auth: true } },
     { path: '/group-pax-upload/:id', component: groupPAXUpload, name: 'groupPAXUpload', meta: { auth: true } },
     { path: '/all-group-uploaded-pax/:id', component: allGroupUploadedPAX, name: 'allGroupUploadedPAX', meta: { auth: true } },
+
+    // help desks
+    { path: '/help-desk-index', component: helpDesk, name: 'helpDesk', meta: { auth: true } },
+    { path: '/new-request-create', component: requestCreate, name: 'requestCreate', meta: { auth: true } },
+    { path: '/edit-request/:ids', component: requestEdit, name: 'requestEdit', meta: { auth: true }, props: true },
 
 ]
 
