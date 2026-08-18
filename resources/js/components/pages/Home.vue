@@ -1157,134 +1157,118 @@ onBeforeUnmount(() => {
       <!-- ══════════════════════════════════════════════════════
            ROW 1 — KPI cards (left col) + Sales & Commission bar
       ══════════════════════════════════════════════════════ -->
-      <div class="row g-4 mb-4">
+      <div class="row g-3 mb-3">
 
         <!-- Left: Total Booking + Total Ticket stacked -->
-        <div class="col-12 col-lg-4">
-          <div class="row g-4 h-100">
+        <div class="col-12 col-lg-4 d-flex flex-column h-100 gap-3">
+          <!-- Total Booking -->
+          <div class="kpi-card">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="kpi-label">Bookings</span>
+              <PeriodSelector v-model="bookingMonthSelection" />
 
-            <!-- Total Booking -->
-            <div class="col-12">
-              <div class="kpi-card">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <span class="kpi-label">Bookings</span>
-                  <PeriodSelector v-model="bookingMonthSelection" />
-                  <!-- <button class="btn-pill dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                    {{ selectedMonthLabel }}
-                  </button> -->
-                  <!-- <ul class="dropdown-menu dropdown-menu-end">
-                   
-                    <li>
-                      <button class="dropdown-item" type="button" @click="selectMonth(null)">
-                        All
-                      </button>
-                    </li>
+            </div>
+            <div class="kpi-value-row d-flex align-items-center gap-3">
+              <div class="kpi-value">{{ formatTotal(bookingStats.totalBookings) }}</div>
+              <div class="kpi-badge-row">
+                <span :class="['kpi-trend', bookingStats.bookingRatio >= 0 ? 'up' : 'down']">
+                  <i :class="bookingStats.bookingRatio >= 0
+                    ? 'fa-solid fa-arrow-trend-up'
+                    : 'fa-solid fa-arrow-trend-down'
+                    "></i>
 
-                    
-                    <li v-for="month in monthsSelection" :key="month.value">
-                      <button class="dropdown-item" type="button" @click="selectMonth(month)">
-                        {{ month.label }} {{ currentYear }}
-                      </button>
-                    </li>
-                  </ul> -->
-                </div>
-                <div class="kpi-value-row d-flex align-items-center gap-3">
-                  <div class="kpi-value">{{ formatTotal(bookingStats.totalBookings) }}</div>
-                  <div class="kpi-badge-row">
-                    <span :class="['kpi-trend', bookingStats.bookingRatio >= 0 ? 'up' : 'down']">
-                      <i :class="bookingStats.bookingRatio >= 0
-                        ? 'fa-solid fa-arrow-trend-up'
-                        : 'fa-solid fa-arrow-trend-down'
-                        "></i>
+                  {{ bookingStats.bookingRatio > 0 ? '+' + bookingStats.bookingRatio : bookingStats.bookingRatio }}%
+                </span>
 
-                      {{ bookingStats.bookingRatio > 0 ? '+' + bookingStats.bookingRatio : bookingStats.bookingRatio }}%
-                    </span>
+                <span class="text-secondary small">vs YD</span>
+              </div>
+              <span class="text-secondary small ms-auto fw-semibold today-live">
+                <svg class="live-wave" viewBox="0 0 32 12" aria-hidden="true">
+                  <path d="M1 6 C4 1, 7 1, 10 6 S16 11, 19 6 S25 1, 31 6" pathLength="1" />
+                </svg>
+                Today: {{ formatValues(bookingStats.todayBookings) }}
+              </span>
+            </div>
 
-                    <span class="text-secondary small">vs YD</span>
-                  </div>
-                  <span class="text-secondary small ms-auto fw-semibold today-live">
-                    <svg class="live-wave" viewBox="0 0 32 12" aria-hidden="true">
-                      <path d="M1 6 C4 1, 7 1, 10 6 S16 11, 19 6 S25 1, 31 6" pathLength="1" />
-                    </svg>
-                    Today: {{ formatValues(bookingStats.todayBookings) }}
-                  </span>
+
+            <div class="d-flex align-items-center gap-3 mt-3">
+              <div class="kpi-donut-wrap">
+                <canvas id="bookingDonut" width="120" height="60"></canvas>
+              </div>
+              <div class="chart-legend">
+
+                <div><span class="ldot" style="background:#10b981"></span>{{
+                  formatValues(bookingStats.confirmedBookings) }} Confirmed
                 </div>
 
-
-                <div class="d-flex align-items-center gap-3 mt-3">
-                  <div class="kpi-donut-wrap">
-                    <canvas id="bookingDonut" width="120" height="60"></canvas>
-                  </div>
-                  <div class="chart-legend">
-
-                    <div><span class="ldot" style="background:#10b981"></span>{{
-                      formatValues(bookingStats.confirmedBookings) }} Confirmed
-                    </div>
-
-                    <div><span class="ldot" style="background:#f97316"></span>{{
-                      formatValues(bookingStats.cancelledBookings) }} Canceled
-                    </div>
-                  </div>
+                <div><span class="ldot" style="background:#f97316"></span>{{
+                  formatValues(bookingStats.cancelledBookings) }} Canceled
                 </div>
               </div>
             </div>
+          </div>
+          <!-- <div class="col-12">
+            
+          </div> -->
 
-            <!-- Total Ticket -->
-            <div class="col-12">
-              <div class="kpi-card">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <span class="kpi-label">Tickets</span>
-                  <PeriodSelector v-model="ticketingMonthSelection" />
-                  <!-- <button class="btn-pill">All<i class="bi bi-chevron-down"></i></button> -->
-                </div>
-
-                <div class="kpi-value-row d-flex align-items-center gap-3">
-                  <div class="kpi-value">{{ formatTotal(ticketingStats.totalTicketing) }}</div>
-                  <div class="kpi-badge-row">
-                    <span :class="['kpi-trend', ticketingStats.ticketingRatio >= 0 ? 'up' : 'down']">
-                      <i :class="bookingStats.bookingRatio >= 0
-                        ? 'fa-solid fa-arrow-trend-up'
-                        : 'fa-solid fa-arrow-trend-down'
-                        "></i>
-
-                      {{ ticketingStats.ticketingRatio > 0 ? '+' + ticketingStats.ticketingRatio :
-                        ticketingStats.ticketingRatio }}%
-                    </span>
-                    <span class="text-secondary small">vs YD</span>
-                  </div>
-
-                  <span class="text-secondary small ms-auto fw-semibold today-live">
-                    <svg class="live-wave" viewBox="0 0 32 12" aria-hidden="true">
-                      <path d="M1 6 C4 1, 7 1, 10 6 S16 11, 19 6 S25 1, 31 6" pathLength="1" />
-                    </svg>
-                    Today: {{ formatValues(ticketingStats.todayTicketing) }}
-                  </span>
-                </div>
-
-                <div class="d-flex align-items-center gap-3 mt-3">
-                  <div class="kpi-donut-wrap">
-                    <canvas id="ticketingDonut"></canvas>
-                  </div>
-                  <div class="chart-legend">
-                    <div><span class="ldot" style="background:#10b981"></span>{{ formatValues(ticketingStats.ticketed)
-                    }}
-                      Ticketed</div>
-                    <div><span class="ldot" style="background:#ef4444"></span>{{ formatValues(ticketingStats.voided) }}
-                      Others</div>
-                  </div>
-                </div>
-              </div>
+          <!-- Total Ticket -->
+          <div class="kpi-card">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="kpi-label">Tickets</span>
+              <PeriodSelector v-model="ticketingMonthSelection" />
+              <!-- <button class="btn-pill">All<i class="bi bi-chevron-down"></i></button> -->
             </div>
 
-          </div><!-- /inner row -->
+            <div class="kpi-value-row d-flex align-items-center gap-3">
+              <div class="kpi-value">{{ formatTotal(ticketingStats.totalTicketing) }}</div>
+              <div class="kpi-badge-row">
+                <span :class="['kpi-trend', ticketingStats.ticketingRatio >= 0 ? 'up' : 'down']">
+                  <i :class="bookingStats.bookingRatio >= 0
+                    ? 'fa-solid fa-arrow-trend-up'
+                    : 'fa-solid fa-arrow-trend-down'
+                    "></i>
+
+                  {{ ticketingStats.ticketingRatio > 0 ? '+' + ticketingStats.ticketingRatio :
+                    ticketingStats.ticketingRatio }}%
+                </span>
+                <span class="text-secondary small">vs YD</span>
+              </div>
+
+              <span class="text-secondary small ms-auto fw-semibold today-live">
+                <svg class="live-wave" viewBox="0 0 32 12" aria-hidden="true">
+                  <path d="M1 6 C4 1, 7 1, 10 6 S16 11, 19 6 S25 1, 31 6" pathLength="1" />
+                </svg>
+                Today: {{ formatValues(ticketingStats.todayTicketing) }}
+              </span>
+            </div>
+
+            <div class="d-flex align-items-center gap-3 mt-3">
+              <div class="kpi-donut-wrap">
+                <canvas id="ticketingDonut"></canvas>
+              </div>
+              <div class="chart-legend">
+                <div><span class="ldot" style="background:#10b981"></span>{{ formatValues(ticketingStats.ticketed)
+                }}
+                  Ticketed</div>
+                <div><span class="ldot" style="background:#ef4444"></span>{{ formatValues(ticketingStats.voided) }}
+                  Others</div>
+              </div>
+            </div>
+          </div>
+          <!-- <div class="col-12">
+            
+          </div> -->
+          <!-- <div class="row g-3 h-100">
+
+          </div> -->
         </div><!-- /left col -->
 
         <!-- Right: Total Sales & Commission bar -->
         <div class="col-12 col-lg-8">
-          <div class="dash-card  d-flex flex-column">
+          <div class="dash-card d-flex flex-column h-100">
             <div class="dash-card-header">
               <h3>Total Sales &amp; Commission</h3>
-              <div class="d-flex align-items-center gap-3 flex-wrap">
+              <div class="d-flex align-items-center gap-2 flex-wrap">
                 <span class="d-flex align-items-center gap-2 text-muted small">
                   <span class="legend-pill-rect" style="background:#4f7ef8"></span>Total Sales
                 </span>
@@ -1304,7 +1288,7 @@ onBeforeUnmount(() => {
       <!-- ══════════════════════════════════════════════════════
            ROW 2 — Trending Routes | Upcoming Departure 
       ══════════════════════════════════════════════════════ -->
-      <div class="row g-4 mb-4">
+      <div class="row g-3 mb-3">
 
         <!-- Last Ticketing Time -->
         <div class="col-12 col-lg-6">
@@ -1504,7 +1488,7 @@ onBeforeUnmount(() => {
                 <span class="fdm-travel-main">
                   <span class="fdm-travel-date">{{ item.displayDate }}</span>
                   <span class="fdm-travel-sub">{{ item.flightCount }} flight{{ item.flightCount === 1 ? '' : 's'
-                    }}</span>
+                  }}</span>
                 </span>
                 <span class="fdm-travel-badge">{{ item.passengerCount }} pax</span>
               </button>
@@ -1641,7 +1625,7 @@ onBeforeUnmount(() => {
       <!-- ══════════════════════════════════════════════════════
            ROW 3 — Search vs Booking | Booking vs Ticketing
       ══════════════════════════════════════════════════════ -->
-      <div class="row g-4 mb-4">
+      <div class="row g-3 mb-3">
 
         <!-- Search vs Booking -->
         <div class="col-12 col-lg-6">
@@ -1692,7 +1676,7 @@ onBeforeUnmount(() => {
       <!-- ══════════════════════════════════════════════════════
            ROW 4 — Total Transaction bar | Top 10 Selling Airlines
       ══════════════════════════════════════════════════════ -->
-      <div class="row g-4 mb-4">
+      <div class="row g-3 mb-3">
 
         <!-- Total Transaction -->
         <div class="col-12 col-lg-6">
@@ -1759,8 +1743,8 @@ onBeforeUnmount(() => {
            ROW 5 — Total Traveler | Last Ticketing Time
       ══════════════════════════════════════════════════════ -->
 
-      <div class="row g-4 mb-4">
-        <div class="col-12 col-lg-3 d-flex flex-column gap-4">
+      <div class="row g-3 mb-3">
+        <div class="col-12 col-lg-3 d-flex flex-column gap-3">
           <!-- Total Traveler -->
           <div class="dash-card">
             <div class="dash-card-header">
@@ -1901,7 +1885,7 @@ onBeforeUnmount(() => {
 <style scoped>
 /* ── Root ── */
 .dashboard-wrapper {
-  padding: 24px;
+  /* padding: 24px; */
   background: #f0f4fa;
   min-height: 100vh;
   font-family: 'Plus Jakarta Sans', 'Nunito', sans-serif;
@@ -1987,6 +1971,11 @@ onBeforeUnmount(() => {
   height: 60px !important;
   flex-shrink: 0;
 }
+
+/* #salesBarChart {
+  width: 100%;
+  height: 320px !important;
+} */
 
 /* .kpi-donut-wrap {
   width: 88px;
