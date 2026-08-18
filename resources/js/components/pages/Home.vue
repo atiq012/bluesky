@@ -1160,9 +1160,9 @@ onBeforeUnmount(() => {
       <div class="row g-3 mb-3">
 
         <!-- Left: Total Booking + Total Ticket stacked -->
-        <div class="col-12 col-lg-4 d-flex flex-column h-100 gap-3">
+        <div class="col-12 col-lg-4 d-flex flex-column gap-3">
           <!-- Total Booking -->
-          <div class="kpi-card">
+          <div class="kpi-card h-auto flex-fill">
             <div class="d-flex justify-content-between align-items-center mb-2">
               <span class="kpi-label">Bookings</span>
               <PeriodSelector v-model="bookingMonthSelection" />
@@ -1212,7 +1212,7 @@ onBeforeUnmount(() => {
           </div> -->
 
           <!-- Total Ticket -->
-          <div class="kpi-card">
+          <div class="kpi-card h-auto flex-fill">
             <div class="d-flex justify-content-between align-items-center mb-2">
               <span class="kpi-label">Tickets</span>
               <PeriodSelector v-model="ticketingMonthSelection" />
