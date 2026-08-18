@@ -2,8 +2,10 @@
 namespace App\Http\Controllers\Admin\Group;
 
 use App\Http\Controllers\BaseController;
+use App\Models\AirlineLogo\AirlineLogo;
 use App\Models\GroupRequest\GroupRequest;
 use App\Models\GroupRequest\GroupRequestSegment;
+use App\Models\GroupRequest\PriceOffer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -22,9 +24,15 @@ class GroupController extends BaseController
             ->leftJoin('users as u2', 'u2.id', '=', 'group_requests.updated_by')
             ->leftJoin('agents as a', 'a.agent_code', '=', 'group_requests.agent_code')
             ->leftJoin('group_request_segments', 'group_requests.id', '=', 'group_request_segments.group_request_id')
+            ->leftJoin('group_p_a_x_infos as pax', 'group_requests.id', '=', 'pax.group_id')
+            ->leftJoin('price_offers as op', 'group_requests.id', '=', 'op.group_req_id')
+            ->leftJoin('offer_price_payment_terms', 'op.id', '=', 'offer_price_payment_terms.offer_price_id')
+            ->leftJoin('group_payments', 'group_requests.id', '=', 'group_payments.group_req_id')
             ->select(
                 'group_requests.id',
                 'group_requests.request_type',
+                'group_requests.group_type',
+                'group_requests.preferred_flight',
                 'group_requests.created_at',
                 'group_requests.group_code',
                 'group_requests.origin',
@@ -43,11 +51,22 @@ class GroupController extends BaseController
                 'group_requests.infant_traveler',
                 'group_requests.total_traveler',
                 'group_requests.status',
+                'group_requests.airline_code',
                 // Add all other columns you need explicitly
                 'u.name as createdby',
                 'u2.name as updatedby',
                 'a.name as agent_name',
                 'a.agent_code as agent_code',
+                'op.pnr as pnr',
+                'op.currency as opCurrency',
+                'op.estimate_net_payable as opEstimateNetPayable',
+                'op.exchange_rate as opExchangeRate',
+                'op.status as opstatus',
+                DB::raw('(SELECT SUM(paid_amount)
+          FROM group_payments
+          WHERE group_req_id = group_requests.id
+         ) as total_paid'),
+                DB::raw('COUNT(pax.id) as pax_count'),
                 DB::raw('f_username(NULLIF(group_requests.assigned_to, "")) as assigned_to_kam'),
                 DB::raw('GROUP_CONCAT(
             CONCAT_WS("- ",
@@ -63,10 +82,19 @@ class GroupController extends BaseController
             )
             ORDER BY group_request_segments.segment_order
             SEPARATOR " | "
-        ) as segments_date')
+        ) as segments_date'),
+         DB::raw('GROUP_CONCAT(DISTINCT
+            CONCAT_WS("- ",
+                offer_price_payment_terms.sequence,
+                offer_price_payment_terms.amount
+            ) ORDER BY offer_price_payment_terms.sequence
+            SEPARATOR " | "
+        ) as segments_payment_info')
             )
             ->groupBy('group_requests.id')
             ->groupBy('group_requests.request_type')
+            ->groupBy('group_requests.group_type',)
+            ->groupBy('group_requests.preferred_flight')
             ->groupBy('group_requests.group_code')
             ->groupBy('group_requests.origin')
             ->groupBy('group_requests.destination')
@@ -85,10 +113,17 @@ class GroupController extends BaseController
             ->groupBy('group_requests.infant_traveler')
             ->groupBy('group_requests.total_traveler')
             ->groupBy('group_requests.status')
+            ->groupBy('group_requests.airline_code')
             ->groupBy('u.name')
             ->groupBy('u2.name')
             ->groupBy('a.name')
-            ->groupBy('a.agent_code');
+            ->groupBy('op.status')
+            ->groupBy('op.pnr')
+            ->groupBy('op.currency')
+            ->groupBy('op.estimate_net_payable')
+            ->groupBy('op.exchange_rate')
+            ->groupBy('a.agent_code')
+            ->orderBy('group_requests.id', 'desc');
 
         return DataTables::of($data)
             ->addIndexColumn()
@@ -111,6 +146,8 @@ class GroupController extends BaseController
                 $route = "<i class='fa-regular fa-calendar me-1' style='font-size: 0.65rem;'></i> " . $row->departure_date;
 
                 return $route;
+            })->addColumn('payment_info', function ($row) {
+                return $row->segments_payment_info;
             })
             ->make(true);
     }
@@ -131,6 +168,7 @@ class GroupController extends BaseController
     {
 
         $groupCode = $this->generateGroupCode();
+        $airline = AirlineLogo::where('name', $request->preferredAirlines)->first();
 
         $groupRequest = GroupRequest::create([
             'agent_code'              => $request->agent_code ?? auth()->user()->agent->agent_code ?? null,
@@ -149,6 +187,7 @@ class GroupController extends BaseController
             'return_destination'      => $request->returnTo ?? null,
             'return_date'             => $request->returnDate ?? null,
             'preferred_flight'        => $request->preferredAirlines ?? null,
+            'airline_code'            => $airline->code ?? null,
             'flight_no'               => $request->flightNo ?? null,
 
             // Multi-city airline stored here
@@ -236,6 +275,29 @@ class GroupController extends BaseController
         return $this->SuccessResponse($groupData, 'Group retrieved successfully for editing.');
     }
 
+    public function showOffer(Request $request)
+    {
+        $groupId = $request->id;
+
+        if (! $groupId) {
+            return $this->ErrorResponse('Group ID is required for editing.', 'Group PNR ID is required for editing.');
+        }
+
+        $groupData = GroupRequest::with(['segments','agent'])->find($groupId);
+
+        if (! $groupData) {
+            return $this->ErrorResponse('Group not found.', 'Group PNR not found.');
+        }
+
+        //  offer price
+        $offer = PriceOffer::with(['segments', 'paymentTerms', 'groupRequest'])
+            ->where('group_req_id', $groupId)
+            ->first();
+        // return $offer and $groupData
+
+        return $this->SuccessResponse([$offer, $groupData], 'Group retrieved successfully for editing.');
+    }
+
     /**
      * Update the specified resource in storage.
      */
@@ -265,5 +327,29 @@ class GroupController extends BaseController
         $group->save();
 
         return $this->SuccessResponse($group, 'Group deleted successfully.');
+    }
+
+    /**
+     * Decline a group request.
+     */
+    public function DeclineGroup(Request $request)
+    {
+        $id = $request->id;
+
+        if (! $id) {
+            return $this->ErrorResponse('Group ID is required.', 'Group ID is required.');
+        }
+
+        $group = GroupRequest::find($id);
+
+        if (! $group) {
+            return $this->ErrorResponse('Group not found.', 'Group not found.');
+        }
+
+        $group->status       = 'Offer declined';
+        $group->decline_note = $request->note;
+        $group->save();
+
+        return $this->SuccessResponse($group, 'Group declined successfully.');
     }
 }

@@ -28,6 +28,8 @@ use App\Http\Controllers\Admin\Department\DepartmentController;
 use App\Http\Controllers\Admin\Deposit\DepositController;
 use App\Http\Controllers\Admin\Designation\DesignationController;
 use App\Http\Controllers\Admin\Group\GroupController;
+use App\Http\Controllers\Admin\Group\GroupPAXController;
+use App\Http\Controllers\Admin\Group\OfferPriceController;
 use App\Http\Controllers\Admin\IssuedBankMFS\IssuedBankMFSController;
 use App\Http\Controllers\Admin\OfficeLocation\LocationController;
 use App\Http\Controllers\Admin\PaymentAccount\PaymentAccountSController;
@@ -195,6 +197,22 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('group-requests', [GroupController::class, 'store'])->name('group.groupRequests');
     Route::post('edit-group-request/data', [GroupController::class, 'edit'])->name('group.edit');
     Route::post('CancelGroup', [GroupController::class, 'destroy'])->name('group.destroy');
+    Route::post('DeclineGroup', [GroupController::class, 'DeclineGroup'])->name('group.decline');
+
+    //group pax upload
+    Route::post('group-pax-upload/store', [GroupPAXController::class, 'store'])->name('groupPAX.store');
+    Route::get('group-pax-upload/{id}', [GroupPAXController::class, 'show'])->name('groupPAX.show');
+    Route::get('group-pnr/{id}', [GroupPAXController::class, 'groupPNR'])->name('groupPAX.groupPNR');
+    Route::post('group-eticket/{id}', [GroupPAXController::class, 'generateETicket'])->name('groupPAX.generateETicket');
+
+    //show offer price
+    Route::post('get-group-request-offer-price/data', [GroupController::class, 'showOffer'])->name('group.showOffer');
+
+    // Offer Price
+    Route::post('group-request/offer-price/store', [OfferPriceController::class, 'store'])->name('group.priceOffer.store');
+    Route::get('group-request/offer-price/{id}', [OfferPriceController::class, 'show'])->name('group.priceOffer.show');
+    Route::post('group-request/offer-price/accept', [OfferPriceController::class, 'accept'])->name('group.priceOffer.accept');
+    Route::post('group-request/offer-price/decline', [OfferPriceController::class, 'decline'])->name('group.priceOffer.decline');
 
     //Internal API
     Route::post('/Lowfaresearch', [APIController::class, 'Lowfaresearch']);

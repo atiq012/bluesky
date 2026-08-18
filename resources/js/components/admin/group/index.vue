@@ -1,6 +1,6 @@
 <script setup>
 import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
-import { ref, computed } from "vue";
+import { ref, computed,nextTick } from "vue";
 import { useRouter } from 'vue-router';
 import axiosInstance from "../../../axiosInstance";
 import { useAuthStore } from '../../../stores/authStore';
@@ -9,6 +9,8 @@ import ActionButtons from '../../common/ActionButtons.vue';
 import CreatedInfo from '../../common/CreatedInfo.vue';
 import AppTooltip from '../../common/AppTooltip.vue';
 import moment from "moment";
+import PaxSelectionModal from './PaxSelectionModal.vue';
+import GroupETicketDoc from './GroupETicketDoc.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -31,13 +33,13 @@ const statistics = computed(() => {
 const columns = [
     { field: 'sl', title: 'Sl.' },
     { field: 'group_info', title: 'Group Details' },
-    { field: 'group_n_way_type', title: 'Group and Way Type' },
+    { field: 'group_n_way_type', title: 'Group Type' },
     { field: 'airline', title: 'Airline' },
-    { field: 'sector', title: 'Sector & Class' },
-    { field: 'dates', title: 'Departure & Return Date' },
+    { field: 'sector', title: 'Sector' },
+    { field: 'dates', title: 'Date' },
     { field: 'seats', title: 'No. Of PAX' },
-    { field: 'fare', title: 'Total Fare and Payment Sequence' },
-    { field: 'paid', title: 'Total Paid & Due' },
+    { field: 'fare', title: 'Total Fare' },
+    { field: 'paid', title: 'Total Paid' },
     { field: 'kam', title: 'KAM' },
     { field: 'status', title: 'Status' },
     { field: 'created_col', title: 'Created By', sort: false },
@@ -70,10 +72,26 @@ function statusConfig(status) {
     switch ((status || '')) {
         case 'New Request':
             return { cls: 'status-pill status-inactive', icon: 'fa-solid fa-circle', label: 'New Request' };
-        case 'On Process':
-            return { cls: 'status-pill status-inactive', icon: 'fa-solid fa-circle', label: 'On Process' };
-        case 'Price Offered':
-            return { cls: 'status-pill status-expired', icon: 'fa-solid fa-circle', label: 'Price Offered' };
+        case 'Accepted':
+            return { cls: 'status-pill status-on-process', icon: 'fa-solid fa-circle', label: 'Accepted' };
+        case 'Price offer':
+            return { cls: 'status-pill status-price-offer', icon: 'fa-solid fa-circle', label: 'Price Offer' };
+        case 'Offer confirmed':
+            return { cls: 'status-pill status-price-offer', icon: 'fa-solid fa-circle', label: 'Offer Confirmed' };
+        case 'Assigned':
+            return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'Assigned' };
+        case 'PNR Shared':
+            return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'PNR Shared' };
+        case 'Partial Paid':
+            return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'Partial Paid' };
+        case 'Paid':
+            return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'Paid' };
+        case 'PAX Uploaded':
+            return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'PAX Uploaded' };
+        case 'PAX Partially Uploaded':
+            return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'PAX Partially Uploaded' };
+            case 'Ticketed':
+            return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'Ticketed' };
         case 'Decline':
             return { cls: 'status-pill status-expired', icon: 'fa-solid fa-circle', label: 'Decline' };
         case 'Confirmed':
@@ -88,9 +106,67 @@ function statusConfig(status) {
 }
 
 function canDelete(row) {
-    if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'On Process') {
-        return false
+    if (row.opstatus == null) {
+        if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'Accepted' ) {
+            return false
+        }
+    } else {
+        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus =='Paid' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'PAX Uploaded' || row.opstatus == 'PAX Partially Uploaded' || row.opstatus == 'Ticketed') {
+            return false
+        }
+        return true;
     }
+}
+
+function groupAssignDetails(row) { // can accept offer
+    if (row.opstatus == null) {
+        if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'Accepted' || row.status == 'New Request') {
+            return false;
+        }
+    } else {
+        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus =='Paid' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'PAX Uploaded' || row.opstatus == 'PAX Partially Uploaded' || row.opstatus == 'Ticketed') {
+            return false;
+        }
+        return true;
+    }
+}
+
+function groupPAXUpload(row) { // can accept offer
+    if (row.opstatus == null) {
+        if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'Accepted' || row.status == 'New Request') {
+            return false;
+        }
+    } else {
+        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'PAX Uploaded' || row.opstatus == 'Price offer' || row.opstatus == 'Ticketed') {
+            return false
+        }
+    }
+    return true;
+}
+function groupUploadedPAX(row) { // can view uploaded PAX details
+    if (row.opstatus == null) {
+        if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'Accepted' || row.status == 'New Request') {
+            return false;
+        }
+    } else {
+        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'Price offer') {
+            return false
+        }
+    }
+    return true;
+}
+
+function generateEticket(row) { // can generate e-ticket
+    if (row.opstatus == null) {
+        if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'Accepted' || row.status == 'New Request') {
+            return false;
+        }
+    } else {
+        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'Price offer' || row.opstatus == 'Paid' || row.opstatus == 'PAX Partially Uploaded' || row.opstatus == 'PAX Uploaded') {
+            return false
+        }
+    }
+    return true;
 }
 
 function availableSeats(row) {
@@ -118,16 +194,17 @@ function handleView(item) {
     router.push({ name: 'requestGroupView', params: { id: item.id } });
 }
 
-function handleEdit(item) {
-    // router.push({ name: 'myGroupEdit', params: { id: item.id } });
+function handleGroup(item) {
+
+    router.push({ name: 'viewOfferPrice', params: { id: item.id } });
 }
 
-function handleCopy(item) {
-    // router.push({ name: 'copyGroupPnr', params: { id: item.id } });
+function handlePAXUpload(item) {
+    router.push({ name: 'groupPAXUpload', params: { id: item.id } });
 }
 
-function handlePnr(item) {
-    // router.push({ name: 'pnrGroupPnr', params: { id: item.id } });
+function handleUploadedPAX(item) {
+    router.push({ name: 'allGroupUploadedPAX', params: { id: item.id } });
 }
 
 async function declineGroupReq() {
@@ -166,6 +243,42 @@ function closeDeclineModal() {
 }
 
 getListValues();
+
+// Generate E-Ticket modal
+const showEticketModal = ref(false);
+const eticketGroupItem = ref(null);
+const eticketDocRef = ref(null);
+const eticketGroupData = ref(null);
+const eticketPaxList = ref([]);
+
+function handleGenerateETicket(item) {
+    eticketGroupItem.value = item;
+    showEticketModal.value = true;
+}
+
+function closeEticketModal() {
+    showEticketModal.value = false;
+    eticketGroupItem.value = null;
+}
+
+async function handleEticketGenerated(data) {
+    showEticketModal.value = false;
+    eticketGroupItem.value = null;
+    eticketGroupData.value = data?.group ?? null;
+    eticketPaxList.value = data?.pax ?? [];
+
+    await nextTick();
+    try {
+        await eticketDocRef.value?.print();
+        if (typeof Notification !== 'undefined' && Notification?.showToast) {
+            Notification.showToast('s', 'E-Ticket generated successfully!');
+        }
+    } catch (error) {
+        if (typeof Notification !== 'undefined' && Notification?.showToast) {
+            Notification.showToast('e', error.message || 'Failed to generate e-ticket document.');
+        }
+    }
+}
 </script>
 
 <template>
@@ -301,7 +414,7 @@ getListValues();
                         <div class="airline-cell">
                             <div class="cell-main">
                                 <i class="fa-solid fa-plane-departure me-1 table-icon"></i>
-                                {{ row.airline || 'Qatar Airline' }}
+                                {{ row.airline_code }}
                             </div>
                             <div class="cell-link">PNR : {{ row.pnr || '-' }}</div>
 
@@ -368,7 +481,9 @@ getListValues();
                     <template #fare="{ value: row }">
                         <div class="fare-cell" v-if="row.status != 'New Request'">
                             <div class="cell-main amount-text">
-                                {{ row.currency }} {{ formatAmount(row.per_person_fare) }}
+                                {{ row.opCurrency }} {{ formatAmount(row.opEstimateNetPayable) }}
+                            </div>
+                            <div class="cell-main cell-link" v-if="row.payment_info" v-html="`<i class='fa-solid fa-scale-balanced me-1' style='font-size: 0.65rem;'></i>${row.payment_info.replaceAll(' | ', `<br> <i class='fa-solid fa-scale-balanced me-1' style='font-size: 0.65rem;'></i>`).replaceAll('|', `<br> <i class='fa-solid fa-scale-balanced me-1' style='font-size: 0.65rem;'></i>`)}`">
                             </div>
                         </div>
                         <div v-else>
@@ -378,35 +493,35 @@ getListValues();
 
                     <!-- Paid Amount -->
                     <template #paid="{ value: row }">
-                        <div class="paid-cell" v-if="row.status != 'New Request'">
+                        <div class="paid-cell">
                             <div class="cell-main amount-text">
-                                {{ row.currency }} {{ formatAmount(row.total_paid_from_sequences) }}
+                                {{ row.opCurrency }} {{ formatAmount(row.total_paid) }}
                             </div>
-                        </div>
-                        <div v-else>
-                            -
+                            <div class="cell-main cell-link" v-if="(row.opEstimateNetPayable - row.total_paid) > 0">
+                                Due: {{ formatAmount(row.opEstimateNetPayable - row.total_paid) }}
+                            </div>
                         </div>
                     </template>
                     <!-- KAM -->
                     <template #kam="{ value: row }">
-                        <!-- <div class="status-cell" v-if="row.assigned_to">
-                            <span class="cell-link">
-                                <i class="fa-regular fa-user"></i>
-                                {{ row.assigned_to_kam ?? '-' }}
-                            </span>
-                        </div>
-                        <div v-else>
-                            -
-                        </div> -->
+
                         <CreatedInfo :name="row?.assigned_to_kam" :date="row?.assigned_date" />
 
                     </template>
                     <!-- Status -->
                     <template #status="{ value: row }">
-                        <div class="status-cell">
-                            <span :class="['rounded-pill', statusConfig(row.status).cls]">
+                        <div class="status-cell d-flex flex-column">
+                            <span v-if="row.opstatus == null" :class="['rounded-pill', statusConfig(row.status).cls]">
                                 <i :class="[statusConfig(row.status).icon, 'me-1 tiny']"></i>
                                 {{ statusConfig(row.status).label }}
+                            </span>
+                            <span v-else :class="['rounded-pill', statusConfig(row.opstatus).cls]">
+                                <i :class="[statusConfig(row.opstatus).icon, 'me-1 tiny']"></i>
+                                {{ statusConfig(row.opstatus).label }}
+                            </span>
+
+                            <span v-if="row.opstatus=='PAX Partially Uploaded'" class="cell-link small mt-2">
+                                <i class="fa fa-info-circle "></i> {{ row.total_traveler - row.pax_count }} PAX Remaining
                             </span>
                         </div>
                     </template>
@@ -424,9 +539,16 @@ getListValues();
 
                     <!-- Action -->
                     <template #action="{ value: row }">
-                        <ActionButtons :item="row" :show-edit="false" :show-view="true" :show-copy="true"
-                            :show-delete="canDelete(row)" :show-authorize="false" copy-label="PNR" @edit="handleEdit"
-                            @view="handleView" @copy="handlePnr" @delete="handleDelete" />
+                        <ActionButtons :item="row" :show-edit="false" :showGroupAssign="groupAssignDetails(row)"
+                        :showPAXUpload="groupPAXUpload(row)"
+                        :showUploadedPAX="groupUploadedPAX(row)"
+                            :show-view="true" :show-copy="true" :show-delete="canDelete(row)" :show-authorize="false"
+                            :generateEticket="generateEticket(row)"
+                            copy-label="PNR" @view="handleView" @view-group="handleGroup"
+                            @pax-upload="handlePAXUpload"
+                            @uploaded-pax="handleUploadedPAX"
+                            @generate-eticket="handleGenerateETicket"
+                            @delete="handleDelete"/>
                     </template>
                 </AppDataTable>
             </div>
@@ -460,6 +582,20 @@ getListValues();
             </div>
         </div>
     </div>
+
+
+    <!-- Generate E-Ticket -->
+    <PaxSelectionModal
+        :visible="showEticketModal"
+        :group-id="eticketGroupItem?.id"
+        @close="closeEticketModal"
+        @generated="handleEticketGenerated"
+    />
+
+    <!-- Off-screen print doc -->
+    <div class="eticket-print-offstage" aria-hidden="true">
+        <GroupETicketDoc ref="eticketDocRef" :group="eticketGroupData" :pax-list="eticketPaxList" />
+    </div>
 </template>
 
 <style scoped>
@@ -478,6 +614,7 @@ getListValues();
     color: #fff;
     box-shadow: 0 1px 3px rgba(59, 130, 246, 0.25);
 }
+
 /* Stats card styles */
 .info-agency {
     box-shadow: 0 0 1px rgba(0, 0, 0, .125), 0 1px 3px rgba(0, 0, 0, .2);
@@ -755,10 +892,28 @@ getListValues();
     border: 1px solid #f2dea6;
 }
 
+.status-on-process {
+    color: #00719c;
+    background: #e8eaff;
+    border: 1px solid #a6ddf2;
+}
+
 .status-expired {
     color: #c84545;
     background: #fff2f2;
     border: 1px solid #f4c5c5;
+}
+
+.status-assigned {
+    color: #45c86a;
+    background: #f2fff6;
+    border: 1px solid #c5f4c7;
+}
+
+.status-price-offer {
+    color: #b0c845;
+    background: #f2fffb;
+    border: 1px solid #e8f4c5;
 }
 
 .status-other {
@@ -832,6 +987,18 @@ getListValues();
 
 [data-bs-theme="dark"] .status-expired {
     color: #f87171;
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+[data-bs-theme="dark"] .status-assigned {
+    color: #71f87c;
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+[data-bs-theme="dark"] .status-price-offer {
+    color: #d2f871;
     background: rgba(239, 68, 68, 0.15);
     border-color: rgba(239, 68, 68, 0.3);
 }

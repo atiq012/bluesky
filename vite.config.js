@@ -6,7 +6,7 @@ import path from "path";
 export default defineConfig({
     server: {
         host: "0.0.0.0",
-        port: 5173,
+        port: 5000,
         strictPort: true,
         cors: {
             origin: [
@@ -18,12 +18,15 @@ export default defineConfig({
                 "http://127.0.0.1:5173",
                 "http://localhost:5181",
                 "http://127.0.0.1:5181",
+                "http://localhost:5000",
+                "http://127.0.0.1:5000",
                 "http://127.0.0.1:8000",
             ],
         },
         hmr: {
             host: "localhost",
-            clientPort: 5181,
+            port: 5000,
+            clientPort: 5000,
         },
         watch: {
             usePolling: true,
