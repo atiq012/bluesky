@@ -2,6 +2,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\BaseController;
+use App\Models\Department\Department;
+use App\Models\Designation\Designation;
 use App\Models\User;
 use DB;
 use Illuminate\Http\Request;
@@ -129,13 +131,34 @@ class UserController extends BaseController
         if ($validator->fails()) {
             return response()->json(['message' => $validator->errors()->all(), 'types' => 'e']);
         }
+        $department = Department::where('name', trim($request->dept_name))->first();
+        if (! $department) {
+            $department            = new Department;
+            $department->name      = trim($request->dept_name);
+            $department->status    = 1;
+            $department->created_by = $auth->id;
+            $department->save();
+        }
+
+        $designation = null;
+        if ($request->desg_id) {
+            $designation = Designation::where('name', trim($request->desg_id))->first();
+            if (! $designation) {
+                $designation             = new Designation;
+                $designation->name       = trim($request->desg_id);
+                $designation->status     = 1;
+                $designation->created_by = $auth->id;
+                $designation->save();
+            }
+        }
+
         $user                 = new User;
         $user->name           = $request->name;
         $user->email          = $request->email;
         $user->emp_id         = $request->staff_id;
         $user->phone          = $request->phone;
-        $user->dept_id        = $request->dept_name;
-        $user->designation_id = $request->desg_id;
+        $user->dept_id        = $department->id;
+        $user->designation_id = $designation ? $designation->id : null;
         // $user->office_loc_id = $request->off_loct;
         // $user->report_to = $request->report_to;
         // $user->user_role = $request->role_id;

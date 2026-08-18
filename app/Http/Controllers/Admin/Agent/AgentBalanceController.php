@@ -43,6 +43,6 @@ class AgentBalanceController extends BaseController
 
     private function resolveAgent(): ?Agent
     {
-        return Agent::where('user_id', Auth::id())->first();
+        return Agent::where('id', Auth::user()->agent_id)->first();
     }
 }
