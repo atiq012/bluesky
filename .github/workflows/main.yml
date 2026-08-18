@@ -23,6 +23,11 @@ jobs:
       - name: Install Node.js dependencies
         run: npm install --prefer-offline --no-audit
 
+      # vite.config.js is gitignored — its ports and CORS origins are per-machine — so the
+      # checkout has no config and vite would fall back to its default (index.html) entry.
+      - name: Prepare vite config
+        run: cp vite.config.js.example vite.config.js
+
       - name: Build assets
         run: npm run build
         env:
