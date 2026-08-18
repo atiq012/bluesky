@@ -10,6 +10,7 @@ const props = defineProps({
     showHeader: { type: Boolean, default: true },
     align: { type: String, default: 'center' },
     closeOnBackdrop: { type: Boolean, default: true },
+    backdropOpacity: { type: Number, default: 0.5 },
 });
 
 defineEmits(['close']);
@@ -37,15 +38,20 @@ const panelStyle = computed(() => {
 <template>
     <Teleport to="body">
         <Transition name="app-modal-fade">
-            <div v-if="isOpen" class="app-modal-backdrop" :class="align === 'top' ? 'app-modal-backdrop-top' : ''"
-                @click.self="closeOnBackdrop && $emit('close')">
+            <div
+                v-if="isOpen"
+                class="app-modal-backdrop"
+                :class="align === 'top' ? 'app-modal-backdrop-top' : ''"
+                :style="{ background: `rgba(0, 0, 0, ${backdropOpacity})` }"
+                @click.self="closeOnBackdrop && $emit('close')"
+            >
                 <div :class="dialogClass" :style="panelStyle" class="app-modal-dialog">
                     <div class="modal-content app-modal-content">
                         <div v-if="showHeader" class="modal-header app-modal-header">
                             <slot name="header">
                                 <h5 class="modal-title app-modal-title">{{ title }}</h5>
                             </slot>
-                            <button type="button" class="btn-close ms-auto" aria-label="Close" @click="$emit('close')"></button>
+                            <button type="button" class="btn-close" aria-label="Close" @click="$emit('close')"></button>
                         </div>
                         <slot />
                     </div>
@@ -87,15 +93,16 @@ const panelStyle = computed(() => {
     overflow: hidden;
     border-radius: 0.5rem;
     box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.2);
-    background-color: #fff;
-    border: 1px solid #e2e8f0;
+    background-color: #ffffff;
 }
 
 .app-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     flex-shrink: 0;
     padding: 0.65rem 1rem;
-    background-color: #fff;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid var(--bs-border-color, #dee2e6);
 }
 
 .app-modal-title {

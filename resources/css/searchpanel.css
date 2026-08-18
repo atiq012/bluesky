@@ -383,6 +383,25 @@ li.menu-item {
     display: flex;
     align-items: center;
     gap: 12px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.selected-location .hstack {
+    min-width: 0;
+}
+
+.selected-location #oCityAirport,
+.selected-location #dCityAirport {
+    min-width: 0;
+    overflow: hidden;
+}
+
+.selected-location .airport-name-ellipsis {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .selected-location .location-code {
@@ -537,6 +556,30 @@ li.menu-item {
     border-color: transparent;
     padding: 8px 18px 8px 18px;
     border-radius: 8px 8px 8px 8px;
+}
+
+/* ── Dark mode overrides ───────────────────────────────────── */
+[data-bs-theme="dark"] .swap-icon-wrapper {
+    background: var(--bs-body-bg) !important;
+    border-color: var(--bs-border-color) !important;
+}
+
+[data-bs-theme="dark"] .loading-container {
+    background: rgba(0, 0, 0, 0.75) !important;
+}
+
+[data-bs-theme="dark"] .selected-location .location-details {
+    color: var(--bs-secondary-color) !important;
+    border-left-color: var(--bs-border-color) !important;
+}
+
+[data-bs-theme="dark"] .fare-summary-bg {
+    background: rgba(135, 90, 233, 0.08) !important;
+}
+
+[data-bs-theme="dark"] .origin_name:focus,
+[data-bs-theme="dark"] .destination_name:focus {
+    background-color: var(--bs-body-bg) !important;
 }
 
 /* ── Compact Search Summary Bar ────────────────────────────────────── */

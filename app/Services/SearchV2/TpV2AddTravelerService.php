@@ -223,7 +223,7 @@ class TpV2AddTravelerService
         foreach ($travelers as $traveler) {
             $ptc = $traveler['pax_type'] ?? '';
 
-            if ($ptc === 'INF') {
+            if (in_array($ptc, ['INF', 'INS'], true)) {
                 $hasInf = true;
             }
             if ($ptc === 'ADT') {
@@ -233,7 +233,7 @@ class TpV2AddTravelerService
                 }
             }
 
-            if (in_array($ptc, ['CNN', 'INF'], true) && empty($traveler['dob'])) {
+            if (in_array($ptc, ['CNN', 'INF', 'INS'], true) && empty($traveler['dob'])) {
                 throw new Exception("Date of birth is required for {$ptc} passengers.");
             }
 
@@ -259,11 +259,11 @@ class TpV2AddTravelerService
                         }
                     }
 
-                    if ($ptc === 'INF') {
+                    if (in_array($ptc, ['INF', 'INS'], true)) {
                         $monthsAtTravel = $dob->diffInMonths($departure);
                         if ($monthsAtTravel >= 24) {
                             throw new Exception(
-                                "INF passenger must be under 24 months at travel date. "
+                                "{$ptc} passenger must be under 24 months at travel date. "
                                 . "Provided birth date gives {$monthsAtTravel} months on departure."
                             );
                         }
@@ -273,7 +273,7 @@ class TpV2AddTravelerService
         }
 
         if ($hasInf && !$hasAdt) {
-            throw new Exception('At least one adult (ADT) is required when booking an infant (INF).');
+            throw new Exception('At least one adult (ADT) is required when booking an infant (INF/INS).');
         }
 
         if ($primaryCount > 1) {
@@ -436,9 +436,9 @@ class TpV2AddTravelerService
     private function toPassengerTypeCode(string $paxType): ?string
     {
         return match (strtoupper($paxType)) {
-            'CNN', 'INF' => strtoupper($paxType),
-            'ADT'        => null,
-            default      => null,
+            'CNN', 'INF', 'INS' => strtoupper($paxType),
+            'ADT'                => null,
+            default              => null,
         };
     }
 

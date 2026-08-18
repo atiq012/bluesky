@@ -33,6 +33,7 @@ class PriceV2Controller extends BaseController
             'form.CNN'              => ['nullable', 'integer', 'min:0'],
             'form.KID'              => ['nullable', 'integer', 'min:0'],
             'form.INF'              => ['nullable', 'integer', 'min:0'],
+            'form.INS'              => ['nullable', 'integer', 'min:0'],
             'search_log_id'         => ['nullable', 'integer'],
             'booking_attempt_id'  => ['nullable', 'string'],
             'selection_json'        => ['nullable', 'array'],

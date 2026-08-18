@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use App\Models\Agent\Agent;
 use App\Services\SearchV2\SearchResponseMapper;
-use App\Services\DynamicRule\DynamicRulePricingApplier;
+use App\Services\FareRule\FareRuleSearchIntegration;
 
 class TravelportSearchService
 {
@@ -22,8 +22,15 @@ class TravelportSearchService
         private readonly TravelportTokenService $tokenService,
         private readonly SearchResponseMapper $mapper,
         private readonly BookingAttemptService $bookingAttemptService,
-        private readonly DynamicRulePricingApplier $dynamicRulePricingApplier,
+        private readonly FareRuleSearchIntegration $fareRuleSearchIntegration,
     ) {}
+
+    // Phase 13 cutover — the old DynamicRule applier is gone; the fare rule engine is the only
+    // pricing path now (plan §12.1 "swap applier").
+    private function applyPricing(array $flights, array $form, ?int $agencyId): array
+    {
+        return $this->fareRuleSearchIntegration->applyToFlights($flights, $form, $agencyId);
+    }
 
     public function search(array $form, int|string|null $userId = null): array
     {
@@ -43,7 +50,7 @@ class TravelportSearchService
                 [$providerResp, $fixtureForm] = $fixture;
                 $effectiveForm     = is_array($fixtureForm) && !empty($fixtureForm) ? $fixtureForm : $form;
                 $mapResult         = $this->mapper->map($providerResp, $effectiveForm, $agencyId);
-                $flights           = $this->dynamicRulePricingApplier->applyToFlights($mapResult['flights'], $effectiveForm, $agencyId);
+                $flights           = $this->applyPricing($mapResult['flights'], $effectiveForm, $agencyId);
                 $catalogIdentifier = $mapResult['catalog_identifier'];
 
                 return [
@@ -66,7 +73,7 @@ class TravelportSearchService
             $providerResp      = $this->resolveProviderResponseWithCache($searchUrl, $providerPayload);
 
             $mapResult         = $this->mapper->map($providerResp, $form, $agencyId);
-            $flights           = $this->dynamicRulePricingApplier->applyToFlights($mapResult['flights'], $form, $agencyId);
+            $flights           = $this->applyPricing($mapResult['flights'], $form, $agencyId);
             $catalogIdentifier = $mapResult['catalog_identifier'];
             $snapshotKey       = $this->persistSnapshot($form, $providerResp, $userId);
 
@@ -144,7 +151,8 @@ class TravelportSearchService
             'cnn'          => (int) ($form['CNN'] ?? 0),
             'kid'          => (int) ($form['KID'] ?? 0),
             'inf'          => (int) ($form['INF'] ?? 0),
-            'cabin_class'  => (string) ($form['cabin_class'] ?? 'Economy'),
+            'ins'          => (int) ($form['INS'] ?? 0),
+            'cabin_class'  => (string) ($form['cabin_class'] ?? config('search.travelport.default_cabin_class', 'Economy')),
         ];
     }
 
@@ -192,7 +200,9 @@ class TravelportSearchService
             'passengers' => count($payload['CatalogProductOfferingsRequest']['PassengerCriteria'] ?? []),
         ]);
 
-        $response = Http::timeout(60)
+        $timeout = (int) config('search.travelport.request_timeout_seconds', 60);
+
+        $response = Http::timeout($timeout)
             ->withHeaders($headers)
             ->acceptJson()
             ->withToken($token)
@@ -200,7 +210,7 @@ class TravelportSearchService
 
         if ($response->status() === 401) {
             $token = $this->tokenService->getAccessToken(true);
-            $response = Http::timeout(60)
+            $response = Http::timeout($timeout)
                 ->withHeaders($headers)
                 ->acceptJson()
                 ->withToken($token)
@@ -229,7 +239,7 @@ class TravelportSearchService
         $departureDate = (string) ($form['dep_date'] ?? '');
         $returnDate = (string) ($form['arrival_date'] ?? '');
         $preferredCarriers = is_array($form['preferred_carriers'] ?? null) ? $form['preferred_carriers'] : [];
-        $cabinClass = (string) ($form['cabin_class'] ?? 'Economy');
+        $cabinClass = (string) ($form['cabin_class'] ?? config('search.travelport.default_cabin_class', 'Economy'));
 
         $searchCriteriaFlight = [
             [
@@ -251,14 +261,14 @@ class TravelportSearchService
 
         $request = [
             '@type' => 'CatalogProductOfferingsRequestAir',
-            'maxNumberOfUpsellsToReturn' => 4,
-            'offersPerPage' => 999,
-            'contentSourceList' => ['GDS', 'NDC'],
+            'maxNumberOfUpsellsToReturn' => (int) config('search.travelport.max_upsells', 4),
+            'offersPerPage' => (int) config('search.travelport.offers_per_page', 999),
+            'contentSourceList' => config('search.travelport.content_sources', ['GDS', 'NDC']),
             'PassengerCriteria' => $this->buildPassengerCriteria($form),
             'SearchCriteriaFlight' => $searchCriteriaFlight,
             'CustomResponseModifiersAir' => [
                 '@type' => 'CustomResponseModifiersAir',
-                'SearchRepresentation' => 'Journey',
+                'SearchRepresentation' => config('search.travelport.search_representation', 'Journey'),
             ],
         ];
 
@@ -309,11 +319,15 @@ class TravelportSearchService
             $criteria[] = $entry;
         };
 
-        $append(max(1, (int) ($form['ADT'] ?? 1)), 'ADT', 25);
-        $append((int) ($form['CNN'] ?? 0), 'CNN', 8);
-        $append((int) ($form['KID'] ?? 0), 'CHD');
-        $append((int) ($form['INF'] ?? 0), 'INF', 1);
-        $append((int) ($form['INS'] ?? 0), 'INS', 1);
+        // "Kids" (2-<5) is not a real GDS PTC — Travelport docs recommend against CHD
+        // (child of unknown age); send it as CNN with an age so the fare prices correctly
+        // instead of colliding with real CNN/CHD data and rendering duplicate fare blocks.
+        $ages = config('search.travelport.passenger_ages', []);
+        $append(max(1, (int) ($form['ADT'] ?? 1)), 'ADT', $ages['ADT'] ?? 25);
+        $append((int) ($form['CNN'] ?? 0), 'CNN', $ages['CNN'] ?? 8);
+        $append((int) ($form['KID'] ?? 0), 'CNN', $ages['KID'] ?? 3);
+        $append((int) ($form['INF'] ?? 0), 'INF', $ages['INF'] ?? 1);
+        $append((int) ($form['INS'] ?? 0), 'INS', $ages['INS'] ?? 1);
         $append((int) ($form['UNN'] ?? 0), 'UNN');
 
         return $criteria;
@@ -334,6 +348,7 @@ class TravelportSearchService
                 'CNN' => $form['CNN'] ?? 0,
                 'KID' => $form['KID'] ?? 0,
                 'INF' => $form['INF'] ?? 0,
+                'INS' => $form['INS'] ?? 0,
             ],
             'provider_summary' => $this->buildSnapshotSummary($providerResponse),
         ], now()->addHours(6));

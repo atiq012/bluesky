@@ -1,4 +1,22 @@
 import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+import timezone from 'dayjs/plugin/timezone'
+
+dayjs.extend(utc)
+dayjs.extend(timezone)
+
+// Travelport returns ticketing deadlines as UTC instants ("2026-07-31T17:59:00Z").
+// Rendering them in browser-local time makes an agent abroad see a different deadline than the
+// one the server enforces, so every deadline is pinned to the agency's timezone instead.
+export const TICKETING_TZ = 'Asia/Dhaka'
+
+// Formats a Travelport deadline in agency time. Returns '' for missing/unparseable input so
+// callers can fall back to their own placeholder.
+export function formatTicketingDeadline(iso, format = 'DD-MMM-YYYY hh:mm A') {
+    if (!iso) return ''
+    const d = dayjs(iso)
+    return d.isValid() ? d.tz(TICKETING_TZ).format(format) : ''
+}
 
 /**
  * Format date string to "03-Jun-2026"

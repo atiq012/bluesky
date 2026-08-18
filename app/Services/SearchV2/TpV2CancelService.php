@@ -4,6 +4,7 @@ namespace App\Services\SearchV2;
 
 use Exception;
 use App\Models\BookingAttempt;
+use App\Services\FareRule\FareRulePromoRedemptionService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use App\Services\SearchV2\BookingActivityLogger;
@@ -14,6 +15,7 @@ class TpV2CancelService
         private readonly TravelportTokenService $tokenService,
         private readonly BookingSessionLogger $sessionLogger,
         private readonly BookingActivityLogger $activityLogger,
+        private readonly FareRulePromoRedemptionService $promoRedemption,
     ) {}
 
     public function cancel(BookingAttempt $attempt, int|string|null $userId = null): array
@@ -54,6 +56,9 @@ class TpV2CancelService
                 'cancelled_at' => $now,
                 'updated_by'   => $userId,
             ]);
+
+            // §7.6 — cancel releases any promo redemption exactly like void does.
+            $this->promoRedemption->release($attempt->fresh());
 
             $this->activityLogger->log(
                 $attempt->fresh(),

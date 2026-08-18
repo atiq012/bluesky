@@ -27,7 +27,14 @@ class SearchV2Controller extends BaseController
             'ADT' => ['nullable', 'integer', 'min:1', 'max:9'],
             'CNN' => ['nullable', 'integer', 'min:0', 'max:8'],
             'KID' => ['nullable', 'integer', 'min:0', 'max:8'],
-            'INF' => ['nullable', 'integer', 'min:0', 'max:4'],
+            // A lap infant (INF) must be held by an adult — cannot exceed the adult count.
+            // INS (infant with own seat) has no such limit.
+            'INF' => ['nullable', 'integer', 'min:0', 'max:4', function ($attribute, $value, $fail) use ($request) {
+                $adt = (int) ($request->input('ADT') ?? 1);
+                if ((int) $value > $adt) {
+                    $fail('Infant (lap) count cannot exceed adult count.');
+                }
+            }],
             'INS' => ['nullable', 'integer', 'min:0', 'max:4'],
             'UNN' => ['nullable', 'integer', 'min:0', 'max:4'],
         ]);

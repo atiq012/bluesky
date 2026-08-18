@@ -10,17 +10,20 @@ export default defineConfig({
         strictPort: true,
         cors: {
             origin: [
+                "http://bsagency.lo",
                 "http://bluesky.lo",
                 "http://localhost:8081",
                 "http://127.0.0.1:8081",
                 "http://localhost:5173",
                 "http://127.0.0.1:5173",
+                "http://localhost:5181",
+                "http://127.0.0.1:5181",
                 "http://127.0.0.1:8000",
             ],
         },
         hmr: {
             host: "localhost",
-            port: 5173,
+            clientPort: 5181,
         },
         watch: {
             usePolling: true,

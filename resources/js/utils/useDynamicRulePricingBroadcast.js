@@ -1,3 +1,4 @@
+import { ref } from 'vue';
 import Echo from 'laravel-echo';
 import Ably from 'ably';
 import axiosInstance from '../axiosInstance';
@@ -6,6 +7,12 @@ import Notification from '../Helpers/Notification.js';
 let echoInstance = null;
 let subscriberCount = 0;
 let activeUnsubscribe = null;
+
+// Fare-rule-engine plan §12.2 (blueskyb2b safe-mode) — flips true once the backend reports
+// `dynamic_rules` is gone (BlueSky's drop migration ran). Module-level singleton, not per-
+// component state, so every subscriber (only the search page today) reads the same flag from the
+// same poll rather than each running its own.
+export const fareRulesDegraded = ref(false);
 
 const DEFAULT_POLL_MS = 10000;
 
@@ -42,7 +49,7 @@ function getEcho() {
 async function fetchCacheStamp() {
     const response = await axiosInstance.get('dynamic-rules/cache-stamp');
     const payload = response?.data?.data ?? response?.data ?? {};
-    return `${payload.version}:${payload.stamp}`;
+    return { key: `${payload.version}:${payload.stamp}`, degraded: !!payload.degraded };
 }
 
 function notifyAndRefresh(onUpdated) {
@@ -79,7 +86,9 @@ function startPolling(onUpdated, shouldRefresh) {
         if (inFlight) return;
         inFlight = true;
         try {
-            const nextStamp = await fetchCacheStamp();
+            const { key: nextStamp, degraded } = await fetchCacheStamp();
+            fareRulesDegraded.value = degraded;
+
             if (lastStamp !== null && nextStamp !== lastStamp) {
                 if (!shouldRefresh || shouldRefresh()) {
                     notifyAndRefresh(onUpdated);

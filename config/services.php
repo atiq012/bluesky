@@ -59,6 +59,11 @@ return [
         'fare_rules_inbound_fixture'   => env('TRAVELPORT_V2_FARE_RULES_INBOUND_FIXTURE'),
         'fop_mode'                     => env('TRAVELPORT_V2_FOP_MODE', 'cash'),
         'iata_number'                  => env('TRAVELPORT_V2_IATA_NUMBER', ''),
+
+        // Ticketing guards
+        'ticket_lease_minutes'         => (int) env('TRAVELPORT_V2_TICKET_LEASE_MINUTES', 5), //must stay >= the worst-case issue() run: 5 calls x 2 retries x 30s timeout = 5 min
+        'ticket_ttl_check'             => env('TRAVELPORT_V2_TICKET_TTL_CHECK', true), //block issuance past the airline ticketing deadline
+        'ticket_ssr_check'             => env('TRAVELPORT_V2_TICKET_SSR_CHECK', true), //block issuance while SSRs are still Pending
     ],
 
 ];

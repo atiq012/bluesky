@@ -15,7 +15,9 @@ export function buildSelectionJson({ flight, selectedBrand, form, contentSource 
             arrival_date: form.arrival_date,
             ADT: form.ADT,
             CNN: form.CNN,
+            KID: form.KID,
             INF: form.INF,
+            INS: form.INS,
             cabin_class: form.cabin_class,
         } : null,
         outbound: {

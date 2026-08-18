@@ -391,7 +391,10 @@ class BookingListMapper
         }
 
         try {
-            $dt = Carbon::parse($iso);
+            // Travelport sends these as UTC instants ("2026-07-31T17:59:00Z"). Formatting without
+            // converting prints the UTC wall-clock, which is 6 hours early for a Dhaka agency —
+            // an 11:59 PM deadline was showing as 05:59 PM.
+            $dt = Carbon::parse($iso)->setTimezone(config('app.timezone'));
             $date = $dt->format('d-M-Y');
             $time = $dt->format('h:i A');
 
@@ -511,12 +514,19 @@ class BookingListMapper
             $price?->price_payload
         );
         $wayBadge     = self::resolveWayBadge($search?->way, $journeyLines);
-        $deadline     = self::formatDeadlineParts(self::extractPaymentDeadline($commitResponse));
+        // The live PNR read wins over the commit body, which often reports the offer's fare validity
+        // (weeks out) rather than the airline's real ticketing deadline
+        $deadline     = self::formatDeadlineParts(
+            $row->ticketing_time_limit?->toIso8601String()
+                ?? self::extractPaymentDeadline($commitResponse)
+        );
 
         $adt = (int) ($search?->adt ?? 0);
         $cnn = (int) ($search?->cnn ?? 0);
+        $kid = (int) ($search?->kid ?? 0);
         $inf = (int) ($search?->inf ?? 0);
-        $paxCount = $adt + $cnn + $inf;
+        $ins = (int) ($search?->ins ?? 0);
+        $paxCount = $adt + $cnn + $kid + $inf + $ins;
 
         $gdsPnr      = $row->gds_pnr;
         $airlinePnr  = $row->airline_pnr;
@@ -542,7 +552,9 @@ class BookingListMapper
             'pax_count'              => $paxCount,
             'pax_adt'                => $adt,
             'pax_cnn'                => $cnn,
+            'pax_kid'                => $kid,
             'pax_inf'                => $inf,
+            'pax_ins'                => $ins,
             'gds_pnr'                => $gdsPnr,
             'airline_pnr'            => $airlinePnr,
             'airline_code'           => $airlineCode,
@@ -551,7 +563,8 @@ class BookingListMapper
             'total_fare'             => $totalFare,
             'currency'               => $currency,
             'total_fare_label'       => $totalFare !== null ? number_format((float) $totalFare, 0, '.', ',') : '—',
-            'payment_deadline'       => self::extractPaymentDeadline($commitResponse),
+            'payment_deadline'       => $row->ticketing_time_limit?->toIso8601String()
+                ?? self::extractPaymentDeadline($commitResponse),
             'payment_deadline_date'  => $deadline['date'],
             'payment_deadline_time'  => $deadline['time'],
             'payment_deadline_fmt'   => $deadline['full'],

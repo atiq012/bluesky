@@ -8,7 +8,10 @@ use App\Http\Controllers\Admin\API\APIController;
 use App\Http\Controllers\Admin\API\BookingActivityLogController;
 use App\Http\Controllers\Admin\API\BookingAttemptAdminController;
 use App\Http\Controllers\Admin\API\BookingAttemptController;
+use App\Http\Controllers\Admin\Company\CompanyController;
 use App\Http\Controllers\Admin\API\DynamicRuleCacheController;
+use App\Http\Controllers\Admin\API\FareRuleCacheController;
+use App\Http\Controllers\Admin\Policy\PolicyController;
 use App\Http\Controllers\Admin\API\PriceV2Controller;
 use App\Http\Controllers\Admin\API\ReservationPaxController;
 use App\Http\Controllers\Admin\API\SearchV2Controller;
@@ -204,9 +207,14 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('/flight-search-logs', [SearchV2Controller::class, 'getFlightSearchLogs'])->name('search.v2.logs');
     Route::post('/flight-search-log/view', [SearchV2Controller::class, 'viewFlightSearchLog'])->name('search.v2.logs.view');
     Route::get('dynamic-rules/cache-stamp', [DynamicRuleCacheController::class, 'cacheStamp'])->name('dynamicRules.cacheStamp');
+    Route::get('fare-rules/cache-stamp', [FareRuleCacheController::class, 'cacheStamp'])->name('fareRules.cacheStamp');
     Route::get('/v2/fare-rules', [TravelportFareRulesController::class, 'index'])->name('fareRules.index');
     Route::get('/v2/fare-rules/saved', [TravelportFareRulesController::class, 'saved'])->name('fareRules.saved');
     Route::get('/v2/fare-rules/download', [TravelportFareRulesController::class, 'download'])->name('fareRules.download');
+
+    // Receipt letterhead / ticket terms — read-only, b2b never authors companies or policy points
+    Route::get('getActiveCompany', [CompanyController::class, 'active'])->name('settings.companies.active');
+    Route::post('/editPolicy', [PolicyController::class, 'edit'])->name('settings.policy.edit');
 
     // Price V2
     Route::post('/v2/price', [PriceV2Controller::class, 'price'])->name('price.v2');

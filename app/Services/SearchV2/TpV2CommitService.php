@@ -5,6 +5,7 @@ namespace App\Services\SearchV2;
 use Exception;
 use App\Models\BookingAttempt;
 use App\Models\BookingSession;
+use App\Services\FareRule\FareRulePromoRedemptionService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -18,6 +19,8 @@ class TpV2CommitService
         private readonly BookingSnapshotBuilder $snapshotBuilder,
         private readonly BookingSnapshotRecorder $snapshotRecorder,
         private readonly BookingActivityLogger $activityLogger,
+        private readonly TpV2ReservationRetrieveService $reservationRetrieve,
+        private readonly FareRulePromoRedemptionService $promoRedemption,
     ) {}
 
     public function commit(BookingAttempt $attempt, int|string|null $userId = null): array
@@ -113,6 +116,16 @@ class TpV2CommitService
             $postCommitSnapshot = $this->snapshotBuilder->buildPostCommit($attempt->fresh(), $body, $parsed);
             $this->snapshotRecorder->recordPostCommit($attempt->fresh(), $postCommitSnapshot, $userId);
             $attempt->update(['post_commit_snapshot_json' => $postCommitSnapshot]);
+
+            // The commit body above frequently reports the offer's fare validity as PaymentTimeLimit
+            // instead of the PNR's real ticketing deadline — observed up to 101 days apart. Read the
+            // live reservation so "Last Ticketing" is true from the moment the booking exists.
+            // Best-effort: the booking is already confirmed, so this must never fail the commit.
+            $this->reservationRetrieve->syncTicketingTimeLimit($attempt->fresh(), $userId);
+
+            // §7.6 — counts promo usage at commit, not issue. Best-effort: never fail a real
+            // GDS commit over a promo-accounting glitch (same reasoning as the sync call above).
+            $this->promoRedemption->redeem($attempt->fresh());
 
             BookingAttemptOutcome::record(
                 $attempt->fresh(),

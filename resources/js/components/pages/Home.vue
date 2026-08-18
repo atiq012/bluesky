@@ -348,7 +348,7 @@ onBeforeUnmount(() => {
       <div class="row g-4 mb-4">
 
         <!-- Left: Total Booking + Total Ticket stacked -->
-        <div class="col-12 col-lg-3">
+        <div class="col-12 col-lg-4">
           <div class="row g-4 h-100">
 
             <!-- Total Booking -->
@@ -407,7 +407,7 @@ onBeforeUnmount(() => {
         </div><!-- /left col -->
 
         <!-- Right: Total Sales & Commission bar -->
-        <div class="col-12 col-lg-9">
+        <div class="col-12 col-lg-8">
           <div class="dash-card h-100 d-flex flex-column">
             <div class="dash-card-header">
               <h3>Total Sales &amp; Commission</h3>

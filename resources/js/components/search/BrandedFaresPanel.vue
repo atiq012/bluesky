@@ -83,6 +83,7 @@ const headerTripMeta = computed(() => {
         + Number(props.form?.CNN ?? 0)
         + Number(props.form?.KID ?? 0)
         + Number(props.form?.INF ?? 0)
+        + Number(props.form?.INS ?? 0)
     const traveler = `${pax || 1} Traveler${(pax || 1) === 1 ? '' : 's'}`
     return [trip, datePart, traveler].filter(Boolean).join(' . ')
 })

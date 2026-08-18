@@ -108,22 +108,26 @@ function wayTypeMeta(row) {
 
 function paxTotal(row) {
     if (row?.pax_count != null) return Number(row.pax_count) || 0
-    return (Number(row?.pax_adt) || 0) + (Number(row?.pax_cnn) || 0) + (Number(row?.pax_inf) || 0)
+    return (Number(row?.pax_adt) || 0) + (Number(row?.pax_cnn) || 0) + (Number(row?.pax_kid) || 0)
+        + (Number(row?.pax_inf) || 0) + (Number(row?.pax_ins) || 0)
 }
 
 function paxTooltipHtml(row) {
     const adt = Number(row?.pax_adt) || 0
     const cnn = Number(row?.pax_cnn) || 0
+    const kid = Number(row?.pax_kid) || 0
     const inf = Number(row?.pax_inf) || 0
-    return [
-        '<div class="attempt-pax-tooltip">',
+    const ins = Number(row?.pax_ins) || 0
+    const sep = '<span class="attempt-pax-tooltip__sep">|</span>'
+    const items = [
         `<span class="attempt-pax-tooltip__item attempt-pax-tooltip__item--adt"><i class="fa-solid fa-user"></i> ${adt}</span>`,
-        '<span class="attempt-pax-tooltip__sep">|</span>',
+        sep,
         `<span class="attempt-pax-tooltip__item attempt-pax-tooltip__item--cnn"><i class="fa-solid fa-child"></i> ${cnn}</span>`,
-        '<span class="attempt-pax-tooltip__sep">|</span>',
-        `<span class="attempt-pax-tooltip__item attempt-pax-tooltip__item--inf"><i class="fa-solid fa-baby"></i> ${inf}</span>`,
-        '</div>',
-    ].join('')
+    ]
+    if (kid) items.push(sep, `<span class="attempt-pax-tooltip__item attempt-pax-tooltip__item--cnn"><i class="fa-solid fa-child-reaching"></i> ${kid}</span>`)
+    items.push(sep, `<span class="attempt-pax-tooltip__item attempt-pax-tooltip__item--inf"><i class="fa-solid fa-baby"></i> ${inf}</span>`)
+    if (ins) items.push(sep, `<span class="attempt-pax-tooltip__item attempt-pax-tooltip__item--inf"><i class="fa-solid fa-baby"></i> ${ins}</span>`)
+    return ['<div class="attempt-pax-tooltip">', ...items, '</div>'].join('')
 }
 
 onMounted(() => load())

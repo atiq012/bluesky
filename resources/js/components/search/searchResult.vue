@@ -21,20 +21,20 @@ import AppTooltip from '../common/AppTooltip.vue'
 import AgencyPayableBreakdownModal from '../common/AgencyPayableBreakdownModal.vue'
 import { completePriceAttempt, completeSearchAttempt } from '../../utils/bookingAttemptSession'
 import {
-    subscribeDynamicRulePricingUpdates,
-    unsubscribeDynamicRulePricingUpdates,
-} from '../../utils/useDynamicRulePricingBroadcast'
-import {
+    brandDynamicPricing,
     brandGrossFare,
     canShowPayableBreakdown,
 } from '../../utils/dynamicRulePricingDisplay'
+import {
+    subscribeFareRuleUpdates,
+    unsubscribeFareRuleUpdates,
+} from '../../utils/fareRule/useFareRuleBroadcast'
 import { User, Users, CalendarDays, Plane, Globe } from 'lucide-vue-next'
-
-let unsubscribeDynamicRuleBroadcast = null;
 
 const authStore    = useAuthStore();
 const bookingStore = useBookingStore();
 const searchStore  = useSearchStore();
+let unsubscribeFareRuleBroadcast = null;
 
 const {
     flights, totalFlights,
@@ -264,6 +264,7 @@ const form = reactive({
     CNN: 0,
     KID: 0,
     INF: 0,
+    INS: 0,
     cabin_class: 'Economy',
 });
 
@@ -271,6 +272,8 @@ const form = reactive({
 
 // Create a ref for the input element
 const datePickerRef = ref(null);
+const departurePickerOpen = ref(false);
+const returnPickerOpen = ref(false);
 
 // Initialize default flight dates: today+20 (departure), today+30 (return)
 function addDaysFromToday(days) {
@@ -469,6 +472,7 @@ onMounted(async () => {
     tourTypeChange(2);
     getAirports();
     document.addEventListener("click", handleClickOutside);
+    document.addEventListener("keydown", handleCalendarEnterKey, true);
 
     const updateTotalPassengers = () => {
         const totalAdult = parseInt($(".adult").val()) || 0;
@@ -568,7 +572,7 @@ onMounted(async () => {
         stopBookingTimerDisplay()
     }
 
-    unsubscribeDynamicRuleBroadcast = subscribeDynamicRulePricingUpdates({
+    unsubscribeFareRuleBroadcast = subscribeFareRuleUpdates({
         onUpdated: () => {
             if (flights.value.length > 0 && !loadging.value) {
                 void Lowfaresearch();
@@ -579,7 +583,7 @@ onMounted(async () => {
 });
 
 const totalTravellers = computed(() => {
-    return Number(form.ADT || 0) + Number(form.CNN || 0) + Number(form.KID || 0) + Number(form.INF || 0);
+    return Number(form.ADT || 0) + Number(form.CNN || 0) + Number(form.KID || 0) + Number(form.INF || 0) + Number(form.INS || 0);
 });
 
 const paxSummary = computed(() => `${totalTravellers.value} Travellers - ${form.cabin_class}`);
@@ -610,6 +614,7 @@ async function clearAndReset() {
     form.CNN = 0;
     form.KID = 0;
     form.INF = 0;
+    form.INS = 0;
     form.cabin_class = 'Economy';
     // Reset airport select2 display
     selectedOriginDetails.value = {
@@ -641,10 +646,21 @@ const changePassenger = (type, delta) => {
         CNN: { min: 0, max: 4 },
         KID: { min: 0, max: 4 },
         INF: { min: 0, max: 4 },
+        INS: { min: 0, max: 4 },
     };
 
     const current = Number(form[type] || 0);
-    const next = Math.max(limits[type].min, Math.min(current + delta, limits[type].max));
+    let next = Math.max(limits[type].min, Math.min(current + delta, limits[type].max));
+
+    // Lap infant (INF) must sit on an adult's lap — cap it at the adult count.
+    if (type === 'INF') {
+        next = Math.min(next, Number(form.ADT || 0));
+    }
+    // Reducing adults can no longer support the current lap-infant count.
+    if (type === 'ADT') {
+        form.INF = Math.min(Number(form.INF || 0), next);
+    }
+
     form[type] = next;
 };
 
@@ -678,8 +694,9 @@ onBeforeRouteLeave(async (to) => {
 });
 
 onUnmounted(() => {
-    unsubscribeDynamicRulePricingUpdates(unsubscribeDynamicRuleBroadcast);
+    unsubscribeFareRuleUpdates(unsubscribeFareRuleBroadcast);
     document.removeEventListener("click", handleClickOutside);
+    document.removeEventListener("keydown", handleCalendarEnterKey, true);
     document.removeEventListener('visibilitychange', handleVisibilityChange);
     if (bookingTimerInterval.value) clearInterval(bookingTimerInterval.value)
     _themeObserver.disconnect()
@@ -841,9 +858,14 @@ function onOriginEnter(event) {
 }
 
 function onDestinationEnter(event) {
-    if (!showDestinationList.value || !filteredDestinationAirports.value.length) return;
+    if (showDestinationList.value && filteredDestinationAirports.value.length) {
+        event.preventDefault();
+        selectDestination(filteredDestinationAirports.value[0]);
+        return;
+    }
+    // Destination + dates already set — Enter here jumps straight to Search
     event.preventDefault();
-    selectDestination(filteredDestinationAirports.value[0]);
+    document.getElementById('search-flight-btn')?.focus();
 }
 
 function onOriginFocus() {
@@ -1252,6 +1274,17 @@ const openReturnPicker = () => {
     }
 };
 
+// Calendar popup steals focus on open (no day cell focused), so Enter is
+// otherwise a dead end once a date is already picked — jump to Search instead.
+function handleCalendarEnterKey(event) {
+    if (event.key !== 'Enter') return;
+    if (!departurePickerOpen.value && !returnPickerOpen.value) return;
+    event.preventDefault();
+    datePickerRef.value?.closeMenu();
+    returnDatePickerRef.value?.closeMenu();
+    document.getElementById('search-flight-btn')?.focus();
+}
+
 
 </script>
 <template>
@@ -1464,14 +1497,29 @@ const openReturnPicker = () => {
                                     <div class="pax-row-left">
                                         <i class="fa-solid fa-baby pax-row-icon" aria-hidden="true"></i>
                                         <div>
-                                            <div class="row-name">Infants</div>
-                                            <div class="row-sub">Under 2 years</div>
+                                            <div class="row-name">Infant (lap)</div>
+                                            <div class="row-sub">Under 2 years, no seat</div>
                                         </div>
                                     </div>
                                     <div class="pax-stepper">
                                         <button type="button" class="pax-step-btn" :disabled="form.INF <= 0" @click="changePassenger('INF', -1)">−</button>
                                         <span class="pax-step-val">{{ form.INF }}</span>
-                                        <button type="button" class="pax-step-btn pax-step-btn--plus" :disabled="form.INF >= 4" @click="changePassenger('INF', 1)">+</button>
+                                        <button type="button" class="pax-step-btn pax-step-btn--plus" :disabled="form.INF >= 4 || form.INF >= form.ADT" @click="changePassenger('INF', 1)">+</button>
+                                    </div>
+                                </div>
+
+                                <div class="popup-row pax-breakdown-row">
+                                    <div class="pax-row-left">
+                                        <i class="fa-solid fa-baby-carriage pax-row-icon" aria-hidden="true"></i>
+                                        <div>
+                                            <div class="row-name">Infant (seat)</div>
+                                            <div class="row-sub">Under 2 years, own seat</div>
+                                        </div>
+                                    </div>
+                                    <div class="pax-stepper">
+                                        <button type="button" class="pax-step-btn" :disabled="form.INS <= 0" @click="changePassenger('INS', -1)">−</button>
+                                        <span class="pax-step-val">{{ form.INS }}</span>
+                                        <button type="button" class="pax-step-btn pax-step-btn--plus" :disabled="form.INS >= 4" @click="changePassenger('INS', 1)">+</button>
                                     </div>
                                 </div>
 
@@ -1636,6 +1684,8 @@ const openReturnPicker = () => {
                                                 ref="datePickerRef"
                                                 :model-value="form.Way === 1 ? selectedDate : selectedDateRange"
                                                 @update:model-value="handleDateChange"
+                                                @open="departurePickerOpen = true"
+                                                @closed="departurePickerOpen = false"
                                                 :enable-time-picker="false"
                                                 :format="formatDisplayDate"
                                                 :range="form.Way === 2"
@@ -1692,6 +1742,8 @@ const openReturnPicker = () => {
                                                 ref="datePickerRef"
                                                 :model-value="form.Way === 1 ? selectedDate : selectedDateRange"
                                                 @update:model-value="handleDateChange"
+                                                @open="departurePickerOpen = true"
+                                                @closed="departurePickerOpen = false"
                                                 :enable-time-picker="false"
                                                 :format="formatDisplayDate"
                                                 :range="form.Way === 2"
@@ -1736,8 +1788,10 @@ const openReturnPicker = () => {
                                             v-model="selectedDateRange[1]"
                                             :enable-time-picker="false"
                                             auto-apply
-                                            :format="formatSelectedDate"
+                                            :format="formatDisplayDate"
                                             @update:model-value="handleReturnDateChange"
+                                            @open="returnPickerOpen = true"
+                                            @closed="returnPickerOpen = false"
                                             :min-date="returnMinDate"
                                             :teleport="true"
                                             :auto-position="true"
@@ -2171,7 +2225,7 @@ const openReturnPicker = () => {
                                                 </div>
                                                 <div class="col-md-8 col-12 border-md-start border-md-end">
                                                     <div class="row p-2">
-                                                        <div class="col-md-4 col-4">
+                                                        <div class="col-4">
                                                             <div
                                                                 class="d-block justify-content-center align-items-center h-100 w-100">
                                                                 <div class="fcolor"><b>{{
@@ -2188,7 +2242,7 @@ const openReturnPicker = () => {
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                        <div class="col-md-4 col-4">
+                                                        <div class="col-4">
                                                             <div class="d-block">
                                                                 <div> <small class="ps-2"
                                                                         style="font-size: 11px; color: #5e6878;">{{
@@ -2229,7 +2283,7 @@ const openReturnPicker = () => {
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                        <div class="col-md-4 col-4">
+                                                        <div class="col-4">
                                                             <div
                                                                 class="d-block justify-content-center align-items-center h-100 w-100">
                                                                 <div class="fcolor"><b>{{
@@ -2283,7 +2337,7 @@ const openReturnPicker = () => {
                                                 </div>
                                                 <div class="col-md-8 col-12 border-md-start border-md-end">
                                                     <div class="row p-2">
-                                                        <div class="col-md-4 col-4">
+                                                        <div class="col-4">
                                                             <div
                                                                 class="d-block justify-content-center align-items-center h-100 w-100">
                                                                 <div class="fcolor"><b>{{
@@ -2300,7 +2354,7 @@ const openReturnPicker = () => {
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                        <div class="col-md-4 col-4">
+                                                        <div class="col-4">
                                                             <div class="d-block">
                                                                 <div> <small class="ps-2"
                                                                         style="font-size: 11px; color: #5e6878;">{{
@@ -2339,7 +2393,7 @@ const openReturnPicker = () => {
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                        <div class="col-md-4 col-4">
+                                                        <div class="col-4">
                                                             <div
                                                                 class="d-block justify-content-center align-items-center h-100 w-100">
                                                                 <div class="fcolor"><b>{{ flight.inbound.arrival_time }}</b>
@@ -2549,7 +2603,7 @@ const openReturnPicker = () => {
 
                                                             <div class="card-body">
                                                                 <div class="row">
-                                                                    <div class="col-4 col-sm-4 col-md-4">
+                                                                    <div class="col-4">
                                                                         <div
                                                                             class="d-block justify-content-center align-items-center h-100 w-100">
                                                                             <div class="text-black-"
@@ -2575,14 +2629,14 @@ const openReturnPicker = () => {
 
                                                                         </div>
                                                                     </div>
-                                                                    <div class="col-sm-4 col-4 col-md-4 ">
+                                                                    <div class="col-4 ">
                                                                         <img src="../../../../public/theme/appimages/Route.svg"
                                                                             alt="" class="details-route-image">
                                                                         <span class="flight-time-mobile">{{
                                                                             route.flightTime1
                                                                             }}</span>
                                                                     </div>
-                                                                    <div class="col-4 col-sm-4 col-md-4">
+                                                                    <div class="col-4">
                                                                         <div
                                                                             class="d-block justify-content-center align-items-center h-100 w-100">
                                                                             <div class="text-black-"
@@ -2677,7 +2731,7 @@ const openReturnPicker = () => {
 
                                                                             <!-- section image -->
                                                                             <img style="height: 20px;width: 20px;margin: 8px 5px 10px 10px;"
-                                                                                src="../../../../public/theme/appimages/Layover_&_Destination.svg"
+                                                                                src="../../../../public/theme/appimages/layover_dstina.svg"
                                                                                 alt="">
 
                                                                             <!-- section text -->
@@ -2739,7 +2793,7 @@ const openReturnPicker = () => {
 
                                                             <div class="card-body">
                                                                 <div class="row">
-                                                                    <div class="col-md-4 col-4 col-sm-4">
+                                                                    <div class="col-4">
                                                                         <div
                                                                             class="d-block justify-content-center align-items-center h-100 w-100">
                                                                             <div class="text-black-"
@@ -2765,7 +2819,7 @@ const openReturnPicker = () => {
                                                                             </div>
                                                                         </div>
                                                                     </div>
-                                                                    <div class="col-sm-4 col-4 col-md-4 ">
+                                                                    <div class="col-4 ">
                                                                         <img src="../../../../public/theme/appimages/Route.svg"
                                                                             alt="" class="details-route-image">
                                                                         <span class="flight-time-mobile">{{
@@ -2773,7 +2827,7 @@ const openReturnPicker = () => {
                                                                             }}</span>
                                                                     </div>
 
-                                                                    <div class="col-md-4 col-4">
+                                                                    <div class="col-4">
                                                                         <div
                                                                             class="d-block justify-content-center align-items-center h-100 w-100">
                                                                             <div class="text-black-"
@@ -2868,7 +2922,7 @@ const openReturnPicker = () => {
 
 
                                                                                     <img style="height: 20px;width: 20px;margin: 8px 5px 10px 10px;"
-                                                                                        src="../../../../public/theme/appimages/Layover_&_Destination.svg"
+                                                                                        src="../../../../public/theme/appimages/layover_dstina.svg"
                                                                                         alt="">
 
 
@@ -3359,7 +3413,7 @@ const openReturnPicker = () => {
 
     <AgencyPayableBreakdownModal
         :is-open="payableBreakdownOpen"
-        :pricing="payableBreakdownBrand?.dynamic_pricing ?? null"
+        :pricing="payableBreakdownBrand ? brandDynamicPricing(payableBreakdownBrand) : null"
         :currency="payableBreakdownBrand?.currency ?? 'BDT'"
         :gross-payment="payableBreakdownBrand ? brandGrossFare(payableBreakdownBrand) : null"
         @close="closePayableBreakdown"
@@ -4094,6 +4148,7 @@ html[data-bs-theme="dark"] .price-cta-btn__divider {
         opacity: 0;
     }
 }
+
 
 </style>
 

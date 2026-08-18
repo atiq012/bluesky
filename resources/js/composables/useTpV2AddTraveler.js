@@ -9,8 +9,8 @@ export function useTpV2AddTraveler() {
     const bookingStore = useBookingStore()
 
     function mapUiPaxType(travelerMeta) {
+        if (travelerMeta?.type === 'Infant') return travelerMeta?.seat ? 'INS' : 'INF'
         if (travelerMeta?.type === 'Child') return 'CNN'
-        if (travelerMeta?.type === 'Infant') return 'INF'
         return 'ADT'
     }
 
@@ -111,7 +111,9 @@ export function useTpV2AddTraveler() {
 
             const totalPax = (bookingStore.form?.ADT ?? 0)
                 + (bookingStore.form?.CNN ?? 0)
+                + (bookingStore.form?.KID ?? 0)
                 + (bookingStore.form?.INF ?? 0)
+                + (bookingStore.form?.INS ?? 0)
 
             if (totalPax > 0 && travelers.length !== totalPax) {
                 throw new Error('Traveler count does not match search passengers.')

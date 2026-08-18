@@ -23,7 +23,7 @@ class ReservationPaxController extends BaseController
             'workbench_identifier' => ['required', 'string'],
             'session_id'           => ['required', 'integer', 'exists:booking_sessions,id'],
             'travelers'            => ['required', 'array', 'min:1', 'max:9'],
-            'travelers.*.pax_type' => ['required', 'in:ADT,CNN,INF'],
+            'travelers.*.pax_type' => ['required', 'in:ADT,CNN,INF,INS'],
             'travelers.*.sequence' => ['required', 'integer', 'min:1'],
             'travelers.*.first_name' => ['required', 'string', 'max:150'],
             'travelers.*.last_name'  => ['required', 'string', 'max:150'],
