@@ -171,6 +171,7 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('/user-details/update', [UserController::class, 'update'])->name('user.update');
     Route::post('/deleteUser', [UserController::class, 'destroy'])->name('user.deleteUser');
     Route::post('/user-status/update', [UserController::class, 'statusUpdate'])->name('user.statusUpdate');
+    Route::post('/user-reset-password', [UserController::class, 'resetUserPassword'])->name('user.resetPassword');
 
     //agets wise extrenal users
     Route::get('getAgentExternalUsers', [UserController::class, 'getAgentExternalUsers'])->name('user.getAgentExternalUsers');

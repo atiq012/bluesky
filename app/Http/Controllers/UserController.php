@@ -9,6 +9,7 @@ use DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password as Pass;
 use Yajra\DataTables\DataTables;
 
 
@@ -207,9 +208,9 @@ class UserController extends BaseController
     {
         //dd($request->all());
         //$data = User::find($request->id);
-        $data = User::where('id', $request->id)->first();
+        $data = User::where('id', $request->id)->where('agent_id', auth()->user()->agent_id)->first();
         //dd($data);
-        
+
         if(!$data){
             return response()->json(['message' => 'User not found.', 'types' => 'e'], 404);
         }
@@ -244,7 +245,10 @@ class UserController extends BaseController
         // dd($request->all());
         $auth = User::where('email', $request->useEmail)->first();
 
-        $user                 = User::where('id', $request->user_id)->first();
+        $user = User::where('id', $request->user_id)->where('agent_id', auth()->user()->agent_id)->first();
+        if (! $user) {
+            return response()->json(['message' => 'User not found.', 'types' => 'e'], 404);
+        }
         $user->name           = $request->name ? $request->name : $user->name;
         $user->phone          = $request->phone ? $request->phone : $user->phone;
         $user->email          = $request->email ? $request->email : $user->email;
@@ -285,7 +289,10 @@ class UserController extends BaseController
     public function statusUpdate(Request $request)
     {
         if ($id = $request->useridStatus) {
-            $user         = User::where('id', $id)->first();
+            $user = User::where('id', $id)->where('agent_id', auth()->user()->agent_id)->first();
+            if (! $user) {
+                return $this->ErrorResponse('User not found.');
+            }
             $user->status = $request->status;
             $user->save();
             $success = '';
@@ -329,6 +336,26 @@ class UserController extends BaseController
         ]);
     }
 
+    public function resetUserPassword(Request $request)
+    {
+        $request->validate([
+            'id' => ['required', 'exists:users,id'],
+            'password' => ['required', 'confirmed', Pass::min(8)->mixedCase()->numbers()->symbols()],
+        ]);
+
+        $user = User::where('id', $request->id)->where('agent_id', auth()->user()->agent_id)->first();
+        if (! $user) {
+            return $this->ErrorResponse('User not found.');
+        }
+        $user->password = Hash::make($request->password);
+        $user->password_updated_at = now();
+        $user->login_attamp = 0;
+        $user->save();
+
+        $success = '';
+        return $this->SuccessResponse($success, 'Password reset successfully.');
+    }
+
     /**
      * Remove the specified resource from storage.
      */
@@ -336,7 +363,11 @@ class UserController extends BaseController
     {
         if ($request->id) {
 
-            $user = User::where('id', $request->id)->first();
+            $user = User::where('id', $request->id)->where('agent_id', auth()->user()->agent_id)->first();
+            if (! $user) {
+                $error = 'User not found.';
+                return $this->ErrorResponse($error);
+            }
             if ($user->img_path) {
                 if ($user->img_path) {
 

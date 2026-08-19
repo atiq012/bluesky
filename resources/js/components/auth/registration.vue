@@ -1140,7 +1140,7 @@ onUnmounted(() => {
 
         <!-- ══════════════ SUCCESS MODAL ══════════════ -->
         <div class="success-modal-overlay" :class="{ show: isSuccessModalOpen }" role="dialog" aria-modal="true"
-            aria-labelledby="modalTitle" @click.self="closeSuccessModal">
+            aria-labelledby="modalTitle">
             <div class="success-modal">
 
                 <div class="modal-hero-band">
