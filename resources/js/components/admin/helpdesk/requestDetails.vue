@@ -14,7 +14,12 @@ const authStore = useAuthStore();
 
 // Left panel: full request list (reused from the Support Request list page)
 const requests = ref([]);
-const selectedId = ref(route.params.ids || null);
+const selectedId = ref(history.state?.ids || null);
+const page = ref(1);
+const perPage = ref(15);
+const hasMore = ref(true);
+const isLoadingMore = ref(false);
+
 
 // Middle panel state
 const activeTab = ref('details');
@@ -39,7 +44,7 @@ const ticketData = reactive({
         phone: '-'
     },
     notes: [],
-    attachment: null   
+    attachment: null
 });
 
 const historyList = ref([]);
@@ -214,13 +219,45 @@ function openAttachment(file) {
     }
 }
 
+// async function getListValues() {
+//     try {
+//         authStore.GlobalLoading = true;
+//         const response = await axiosInstance.get("getAllRequests");
+//         requests.value = response.data.data ?? [];
+//         console.log("list data: ",requests.value);
+//         authStore.GlobalLoading = false;
+
+//         if (!selectedId.value && requests.value.length) {
+//             selectedId.value = requests.value[0].idd;
+//         }
+//         if (selectedId.value) {
+//             loadDetails(selectedId.value);
+//         }
+//     } catch (error) {
+//         console.log(error);
+//         authStore.GlobalLoading = false;
+//     }
+// }
+
 async function getListValues() {
     try {
         authStore.GlobalLoading = true;
-        const response = await axiosInstance.get("getAllRequests");
-        requests.value = response.data.data ?? [];
-        authStore.GlobalLoading = false;
+        page.value = 1;
+        hasMore.value = true;
 
+        // Pass page & per_page params
+        const response = await axiosInstance.get("getAllRequests", {
+            params: { page: page.value, per_page: perPage.value }
+        });
+
+        const data = response.data.data ?? [];
+        requests.value = data;
+
+        // If received items are less than perPage, no more items exist
+        if (data.length < perPage.value) {
+            hasMore.value = false;
+        }
+        authStore.GlobalLoading = false;
         if (!selectedId.value && requests.value.length) {
             selectedId.value = requests.value[0].idd;
         }
@@ -267,7 +304,7 @@ async function loadDetails(idd) {
 
         historyList.value = data.history || [];
         ticketData.attachment = normalizeAttachment(data.data.file_path);
-        console.log(ticketData.attachment);
+        //console.log(ticketData.attachment);
 
         addNoteForm.ticketId = idd;
 
@@ -276,10 +313,41 @@ async function loadDetails(idd) {
     }
 }
 
+async function loadMoreRequests() {
+    if (!hasMore.value || isLoadingMore.value) return;
+    try {
+        isLoadingMore.value = true;
+        page.value += 1;
+        const response = await axiosInstance.get("getAllRequests", {
+            params: { page: page.value, per_page: perPage.value }
+        });
+        const newItems = response.data.data ?? [];
+        if (newItems.length < perPage.value) {
+            hasMore.value = false; // Reached end of list
+        }
+        // Append new requests to existing list
+        requests.value.push(...newItems);
+    } catch (error) {
+        //console.log(error);
+        Notification.showToast('e', error.response?.data?.message || error.message);
+    } finally {
+        isLoadingMore.value = false;
+    }
+}
+
+function handleListScroll(e) {
+    const { scrollTop, clientHeight, scrollHeight } = e.target;
+
+    // Check if scrolled within 50px of bottom
+    if (scrollTop + clientHeight >= scrollHeight - 50) {
+        loadMoreRequests();
+    }
+}
+
 function selectRequest(idd) {
     if (idd === selectedId.value) return;
     selectedId.value = idd;
-    router.push({ name: 'requestDetails', params: { ids: idd } }).catch(() => { });
+    // router.push({ name: 'requestDetails', params: { ids: idd } }).catch(() => { });
     loadDetails(idd);
 }
 
@@ -346,27 +414,41 @@ onMounted(() => {
     <div class="card border-0 shadow-sm rd-shell overflow-hidden position-relative">
         <div v-if="authStore.GlobalLoading" class="rd-loading">
             <div class="loader-circle-57">
-                <img class="position-absolute" src="../../../../../public/theme/appimages/blueskywings.png"
-                    height="22" width="22" alt="">
+                <img class="position-absolute" src="../../../../../public/theme/appimages/blueskywings.png" height="22"
+                    width="22" alt="">
             </div>
         </div>
 
         <div class="rd-shell-header d-flex align-items-center justify-content-between">
-            <span>Open Request ({{ requests.length }})</span>
+            <span>Requests ({{ requests.length }})</span>
             <i class="fa-solid fa-chevron-down"></i>
         </div>
 
         <div class="row g-0">
             <!-- Left: request list -->
-            <div class="col-12 col-lg-3 rd-list-col border-end">
+            <!-- <div class="col-12 col-lg-3 rd-list-col border-end">
                 <div v-if="!requests.length" class="p-4 text-center text-muted small">No requests found</div>
 
                 <button v-for="r in requests" :key="r.idd" type="button" class="rd-request-item w-100 text-start"
-                    :class="{ 'is-active': r.idd === selectedId }" @click="selectRequest(r.idd)">
+                    :class="{ 'is-active': String(r.idd) === String(selectedId) }" @click="selectRequest(r.idd)">
                     <div class="rd-request-title text-truncate">{{ r.request_number }} {{ r.subject }}</div>
                     <div class="rd-request-date">{{ r.created_at }}</div>
                     <div class="rd-request-requester">Requester : {{ r.requester_name || '-' }}</div>
                 </button>
+            </div> -->
+
+            <div class="col-12 col-lg-3 rd-list-col border-end" @scroll="handleListScroll">
+                <div v-if="!requests.length" class="p-4 text-center text-muted small">No requests found</div>
+                <button v-for="r in requests" :key="r.idd" type="button" class="rd-request-item w-100 text-start"
+                    :class="{ 'is-active': String(r.idd) === String(selectedId) }" @click="selectRequest(r.idd)">
+                    <div class="rd-request-title text-truncate">{{ r.request_number }} {{ r.subject }}</div>
+                    <div class="rd-request-date">{{ r.created_at }}</div>
+                    <div class="rd-request-requester">Requester : {{ r.requester_name || '-' }}</div>
+                </button>
+                <!-- Loading spinner at bottom of list when fetching more -->
+                <div v-if="isLoadingMore" class="p-3 text-center text-muted small">
+                    <i class="fa-solid fa-spinner fa-spin me-1"></i> Loading...
+                </div>
             </div>
 
             <!-- Middle: details / history -->
@@ -474,7 +556,7 @@ onMounted(() => {
                 <div class="rd-info-row">
                     <span class="rd-info-label">Status</span>
                     <span class="rd-info-value" :class="statusMeta(ticketData.status)">: {{ ticketData.status || '-'
-                    }}</span>
+                        }}</span>
                 </div>
                 <div class="rd-info-row">
                     <span class="rd-info-label">Priority</span>
@@ -489,8 +571,8 @@ onMounted(() => {
                 <hr class="rd-divider">
 
                 <div class="rd-assignee-card d-flex align-items-center gap-2">
-                    <img :src="ticketData.assignedTo.avatar || defaultAvatar"
-                        @error="$event.target.src = defaultAvatar" class="rd-assignee-avatar" alt="Avatar">
+                    <img :src="ticketData.assignedTo.avatar || defaultAvatar" @error="$event.target.src = defaultAvatar"
+                        class="rd-assignee-avatar" alt="Avatar">
                     <div class="overflow-hidden">
                         <div class="rd-assignee-name text-truncate">{{ ticketData.assignedTo.name }}</div>
                         <div class="rd-assignee-email text-truncate">{{ ticketData.assignedTo.email }}</div>

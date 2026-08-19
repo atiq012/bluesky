@@ -249,7 +249,7 @@ const routes = [
     { path: '/help-desk-index', component: helpDesk, name: 'helpDesk', meta: { auth: true } },
     { path: '/new-request-create', component: requestCreate, name: 'requestCreate', meta: { auth: true } },
     { path: '/edit-request/:ids', component: requestEdit, name: 'requestEdit', meta: { auth: true }, props: true },
-    { path: '/support-requests/:ids', component: requestDetails, name: 'requestDetails', meta: { auth: true }, props: true },
+    { path: '/helpdesk/support-requests', component: requestDetails, name: 'requestDetails', meta: { auth: true }, props: true },
 
 ]
 

@@ -17,7 +17,7 @@ class RequestController extends BaseController
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
+    /* public function index(Request $request)
     {
         $user = $request->user() ?? Auth::user();
         $query = DB::table('requests as req')
@@ -46,7 +46,60 @@ class RequestController extends BaseController
         // $data = DB::table('requests as req')
         //     ->selectRaw('req.id as idd,req.request_number as request_number,req.category_id,req.requester_id,req.priority,req.subject,req.description,req.file_path,req.status,req.updated_at,f_username(req.updated_by) as updated_by,f_username(req.created_by) as created_by,req.created_at,req.updated_at,(SELECT name FROM categories WHERE id = req.category_id) as category_name,(SELECT name FROM users WHERE id = req.requester_id) as requester_name,(SELECT name FROM users WHERE id = req.assignee_id) as assigned_to_name',)->get();
         // return DataTables::of($data)->addIndexColumn()->make(true);
+    } */
+
+    public function index(Request $request)
+    {
+        $user = $request->user() ?? Auth::user();
+        $perPage = $request->input('per_page', 15);
+
+        $query = DB::table('requests as req')
+            ->selectRaw('req.id as idd,req.request_number as request_number,req.category_id,req.requester_id,req.priority,req.subject,
+            req.description,req.file_path,req.status,req.updated_at,f_username(req.updated_by) as updated_by,f_username(req.created_by) as created_by,
+            req.created_at,req.updated_at,(SELECT name FROM categories WHERE id = req.category_id) as category_name,(SELECT name FROM users WHERE id = req.requester_id) as requester_name,
+            (SELECT name FROM users WHERE id = req.assignee_id) as assigned_to_name')
+            ->orderBy('req.id', 'desc');
+
+        // $agencyId = $user->agent_id ?? Agent::where('user_id', $user->id)->value('id');
+
+        // if ($agencyId) {
+        //     $agencyUserIds = User::where('agent_id', $agencyId)->pluck('id')->toArray();
+        //     $ownerId = Agent::where('id', $agencyId)->value('user_id');
+        //     if ($ownerId) {
+        //         $agencyUserIds[] = (int) $ownerId;
+        //     }
+        //     $agencyUserIds = array_unique(array_filter($agencyUserIds));
+        //     $query->whereIn('req.requester_id', $agencyUserIds);
+        // }
+
+
+        $agencyId = $user->agent_id
+            ?? Agent::where('user_id', $user->id)->value('id');
+
+        if ($agencyId && $user->is_primary) {
+            // Primary user: every request created by this agency's users.
+            $agencyUserIds = User::where('agent_id', $agencyId)->pluck('id')->all();
+
+            $ownerId = Agent::whereKey($agencyId)->value('user_id');
+            if ($ownerId) {
+                $agencyUserIds[] = (int) $ownerId;
+            }
+
+            $query->whereIn('req.requester_id', array_unique($agencyUserIds));
+        } else {
+            $query->where('req.requester_id', $user->id);
+        }
+
+        // If request contains page parameter, return standard paginated JSON
+        if ($request->has('page')) {
+            return response()->json($query->paginate($perPage));
+        }
+
+        // Default DataTables response for index.vue
+        $data = $query->get();
+        return DataTables::of($data)->addIndexColumn()->make(true);
     }
+
 
     private function generateRequestNumber()
     {

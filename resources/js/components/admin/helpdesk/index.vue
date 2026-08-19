@@ -310,7 +310,7 @@ function handleTableClick(e) {
     const subjectBtn = e.target.closest(".subject-link");
     if (subjectBtn) {
         const itemIdd = subjectBtn.getAttribute("data-item-id");
-        router.push({ name: 'requestDetails', params: { ids: itemIdd } });
+        router.push({ name: 'requestDetails', state: { ids: itemIdd } });
         return;
     }
 
