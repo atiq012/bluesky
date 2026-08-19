@@ -633,7 +633,7 @@ function init() {
 
 const handleKeyDown = (e) => {
     if (e.key !== 'Escape') return;
-    if (isTermsModalOpen.value) closeTermsModal();
+    // if (isTermsModalOpen.value) closeTermsModal();
     else if (isPrivacyModalOpen.value) closePrivacyModal();
     else closeSuccessModal();
 };
@@ -1076,7 +1076,9 @@ onUnmounted(() => {
                                     earlier).</div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Email <span class="text-danger">*</span></label>
+                                <label class="form-label">Email <span class="text-danger">*</span>
+                                </label>
+                                <span class="small"> (Agent login email)</span>
                                 <input type="email" class="form-control" placeholder="user@email.com"
                                     v-model="form.email"
                                     :class="{ 'is-invalid': errors.email === true, 'is-valid': errors.email === false }"

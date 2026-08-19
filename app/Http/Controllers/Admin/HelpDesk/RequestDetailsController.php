@@ -81,7 +81,7 @@ class RequestDetailsController extends BaseController
         $data = DB::table('requests as req')
             ->where('req.id', '=', $id)
             ->selectRaw('req.id as idd,req.category_id,req.requester_id,req.priority,req.subject,req.description,
-                req.file_path,req.status,req.updated_at,f_username(req.updated_by) as updated_by,
+                req.assignee_id, req.file_path,req.status,req.updated_at,f_username(req.updated_by) as updated_by,
                 f_username(req.created_by) as created_by,req.created_at,req.updated_at,
                 (SELECT name FROM categories WHERE id = req.category_id) as category_name,
                 (SELECT name FROM users WHERE id = req.requester_id) as requester_name,
@@ -95,7 +95,8 @@ class RequestDetailsController extends BaseController
 
         $me     = auth()->user();
         $author = DB::table('users')->where('id', $data->requester_id)->first();
-        return response()->json(['data' => $data, 'details' => $details, 'me' => $me, 'author' => $author]);
+        $assignee = DB::table('users')->where('id', $data->assignee_id)->first();
+        return response()->json(['data' => $data, 'details' => $details, 'me' => $me, 'author' => $author, 'assignee' => $assignee]);
     }
 
     /**

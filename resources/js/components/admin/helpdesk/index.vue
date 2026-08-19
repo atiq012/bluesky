@@ -13,6 +13,8 @@ import "quill/dist/quill.core.css";
 import 'quill/dist/quill.snow.css'
 // end editor
 
+import defaultAvatar from '../../../../../public/theme/appimages/default_avatar.svg';
+
 import { useRouter } from 'vue-router';
 const router = useRouter();
 import { useAuthStore } from '../../../stores/authStore';
@@ -186,7 +188,8 @@ const options = {
             title: "Subject",
             render: function (data, type, row) {
                 var html = "";
-                html += row.subject;
+                // html += row.subject;
+                html += '<span class="subject-link" data-item-id=' + row.idd + '>' + row.subject + '</span>';
 
                 return html;
             },
@@ -270,11 +273,18 @@ const options = {
                 // need add field for check edit permission
                 html += '<button  style="size: 30px; width: 30px; height: 30px;margin-left: 5px;" class="btn btn-outline-only-edit rounded-circle edit-item" placement="top" data-item-id=' + idd + '> <i class="fa-solid fa-pencil" style="margin: 0px 0px 10px -5px; font-size: 14px;"></i> </button>';
 
-                html += '<button  style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-only-edit rounded-circle assign-item-id" data-bs-toggle="modal" data-bs-target="#exampleScrollableModal" placement="top" data-item-id=' + idd + '> <i class="fa-solid fa-user-tie" style="margin: 0px 0px 10px -3px; font-size: 14px;"></i> </button>';
+                // html += '<button  style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-only-edit rounded-circle assign-item-id" data-bs-toggle="modal" data-bs-target="#exampleScrollableModal" placement="top" data-item-id=' + idd + '> <i class="fa-solid fa-user-tie" style="margin: 0px 0px 10px -3px; font-size: 14px;"></i> </button>';
 
 
-                html += '<button  style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-only-edit rounded-circle status-item-id" data-bs-toggle="modal" data-bs-target="#statusChangeModal" placement="top" data-item-id=' + idd + '> <i class="fa-solid fa-recycle" style="margin: 1px 0px 7px -4px; font-size: 14px;"></i> </button>';
+                // html += '<button  style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-only-edit rounded-circle status-item-id" data-bs-toggle="modal" data-bs-target="#statusChangeModal" placement="top" data-item-id=' + idd + '> <i class="fa-solid fa-recycle" style="margin: 1px 0px 7px -4px; font-size: 14px;"></i> </button>';
 
+                if (status.toLowerCase() !== 'closed' && status.toLowerCase() !== 'Cancelled') {
+                    html += '<button style="width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-danger rounded-circle d-inline-flex align-items-center justify-content-center p-0 cancel-item" title="Cancel Request" data-item-id=' + idd + '>';
+                    html += '  <i class="fa-solid fa-ban" style="font-size: 14px; margin: 0;"></i>';
+                    html += '</button>';
+
+                    // html += '<button style="width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-danger rounded-circle cancel-item" title="Cancel Request" data-item-id=' + idd + '> <i class="fa-solid fa-ban" style="font-size: 14px;"></i> </button>';
+                }
 
 
                 html += '</div>';
@@ -282,13 +292,13 @@ const options = {
                 // 2nd row
 
 
-                html += '<div class="d-flex mt-1">';
+                // html += '<div class="d-flex mt-1">';
 
-                html += '<button  style="size: 30px; width: 30px; height: 30px" class="btn btn-outline-action-log rounded-circle" data-item-id=' + idd + '> <i class="fa-solid fa-clock-rotate-left" style="margin: 2px 0px 10px -5px; font-size: 14px;"></i> </button>';
+                // html += '<button  style="size: 30px; width: 30px; height: 30px" class="btn btn-outline-action-log rounded-circle" data-item-id=' + idd + '> <i class="fa-solid fa-clock-rotate-left" style="margin: 2px 0px 10px -5px; font-size: 14px;"></i> </button>';
 
-                html += '<button style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-danger rounded-circle delete-item" data-item-id=' + idd + '> <i class="fa-solid fa-trash" style="margin: 2px 0px 10px  -4px; font-size: 14px;"></i> </button>';
+                // html += '<button style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-danger rounded-circle delete-item" data-item-id=' + idd + '> <i class="fa-solid fa-trash" style="margin: 2px 0px 10px  -4px; font-size: 14px;"></i> </button>';
 
-                html += '</div>';
+                // html += '</div>';
 
                 return html;
             },
@@ -296,10 +306,14 @@ const options = {
     ],
 };
 
-// Single delegated (jQuery-free) click handler for the raw HTML action
-// buttons rendered inside DataTables cells. Attached/detached natively
-// on the table wrapper element in onMounted/onBeforeUnmount below.
 function handleTableClick(e) {
+    const subjectBtn = e.target.closest(".subject-link");
+    if (subjectBtn) {
+        const itemIdd = subjectBtn.getAttribute("data-item-id");
+        router.push({ name: 'requestDetails', state: { ids: itemIdd } });
+        return;
+    }
+
     const editBtn = e.target.closest(".edit-item");
     if (editBtn) {
         const itemIdd = editBtn.getAttribute("data-item-id");
@@ -511,7 +525,7 @@ async function ticketDetails(idd) {
         const response = await axiosInstance.get("getRequestDetails/" + idd);
         const data = response.data;
 
-        console.log("ticket details: ",data);
+        console.log("ticket details: ", data);
 
         ticketData.requestNumber = data.data.request_number ?? '';
         ticketData.subject = data.data.subject ?? '-';
@@ -527,19 +541,19 @@ async function ticketDetails(idd) {
 
         // Chronological message list
         ticketData.messages = (data.details || []).map((detail, index) => {
-            
+
             const isOut = detail.from_user_id == data.data.requester_id;
             return {
                 id: detail.idd ?? detail.id ?? index,
                 align: isOut ? 'out' : 'in',
-                name: isOut ? data.me.name : data.author.name,
-                avatar: isOut ? data.me.img_path : data.author.img_path,
+                name: isOut ? data.me.name : data.assignee.name,
+                avatar: isOut ? data.me.img_path : data.assignee.img_path,
                 time: moment(detail.created_at).format('DD-MMM-YYYY | hh:mm A'),
                 note: detail.note
             };
         });
 
-        console.log("ticket msg: ",ticketData.messages);
+        console.log("ticket msg: ", ticketData.messages);
 
         // Wait for the list to render, then scroll to the latest message
         await nextTick();
@@ -639,17 +653,14 @@ defineExpose({
 })
 </script>
 <template>
-    <AppBreadcrumbs
-        title="Support Request"
-        :back-to="{ name: 'Home' }"
-        :breadcrumbs="[
-            { label: 'Dashboard', to: { name: 'Home' } },
-            { label: 'Helpdesk', to: { name: 'helpDesk' } },
-            { label: 'Support Request List' },
-        ]"
-    >
+    <AppBreadcrumbs title="Support Request" :back-to="{ name: 'Home' }" :breadcrumbs="[
+        { label: 'Dashboard', to: { name: 'Home' } },
+        { label: 'Helpdesk', to: { name: 'helpDesk' } },
+        { label: 'Support Request List' },
+    ]">
         <template #actions>
-            <router-link :to="{ name: 'requestCreate' }" class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2">
+            <router-link :to="{ name: 'requestCreate' }"
+                class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2">
                 <i class="fa fa-circle-plus"></i>
                 <span>Request</span>
             </router-link>
@@ -714,7 +725,8 @@ defineExpose({
                 <div class="col-12 col-md-3 col-lg-2">
                     <div class="input-group input-group-sm">
                         <span class="input-group-text bg-white"><i class="fa-regular fa-calendar"></i></span>
-                        <input v-model="filterDate" type="text" class="form-control" placeholder="01-Aug-2024 - 22-Aug-2024">
+                        <input v-model="filterDate" type="text" class="form-control"
+                            placeholder="01-Aug-2024 - 22-Aug-2024">
                     </div>
                 </div>
                 <div class="col-6 col-md-2 col-lg">
@@ -842,44 +854,68 @@ defineExpose({
 
             <div class="offcanvas-body d-flex flex-column p-0">
                 <!-- Ticket meta: badges + details + attachment -->
-                <div class="p-3 p-md-4 border-bottom">
+                <div class="p-3 border-bottom">
                     <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                        <span class="hd-badge" :class="statusBadgeMeta(ticketData.status).cls">{{ statusBadgeMeta(ticketData.status).label }}</span>
-                        <span v-if="ticketData.categoryName" class="hd-badge hd-badge-neutral">{{ ticketData.categoryName }}</span>
-                        <span v-if="ticketData.priority" class="hd-badge" :class="priorityBadgeMeta(ticketData.priority)">{{ ticketData.priority }}</span>
-                        <span class="hd-badge hd-badge-by">By : {{ ticketData.requesterName }} on {{ ticketCreatedAtLabel }}</span>
+                        <span class="hd-badge" :class="statusBadgeMeta(ticketData.status).cls">{{
+                            statusBadgeMeta(ticketData.status).label }}</span>
+                        <span v-if="ticketData.categoryName" class="hd-badge hd-badge-neutral">{{
+                            ticketData.categoryName
+                            }}</span>
+                        <span v-if="ticketData.priority" class="hd-badge"
+                            :class="priorityBadgeMeta(ticketData.priority)">{{
+                                ticketData.priority }}</span>
+                        <span class="hd-badge hd-badge-by">By : {{ ticketData.requesterName }} on {{
+                            ticketCreatedAtLabel
+                            }}</span>
                     </div>
 
-                    <label class="hd-section-label mb-2">Details</label>
+                    <!-- <label class="hd-section-label mb-2">Details</label>
                     <div class="ticket-details hd-details-box mb-2" v-html="ticketData.description"></div>
 
                     <div v-if="ticketData.attachmentsCount">
                         <button type="button" class="hd-attachment-chip">
                             <i class="fa-solid fa-paperclip"></i>{{ ticketData.attachmentsCount }} Attachment{{ ticketData.attachmentsCount > 1 ? 's' : '' }}
                         </button>
-                    </div>
+                    </div> -->
                 </div>
 
+
                 <!-- Conversation thread -->
-                <div class="flex-grow-1 overflow-auto p-3 p-md-4 scrollable-messages note-messages">
+                <div class="flex-grow-1 overflow-auto p-3 scrollable-messages note-messages">
                     <div class="messages-list">
                         <div v-for="msg in ticketData.messages" :key="msg.id" class="hd-msg"
                             :class="msg.align === 'out' ? 'hd-msg-out' : 'hd-msg-in'">
-                            <div class="hd-msg-meta" :class="{ 'justify-content-end': msg.align === 'out' }">
-                                <img v-if="msg.align === 'in'" :src="msg.avatar" class="hd-avatar" alt="" />
+
+                            <!--  Sender Info ABOVE the bubble (for Incoming / "in" messages) -->
+                            <div v-if="msg.align === 'in'" class="hd-msg-meta">
+                                <img :src="msg.avatar || defaultAvatar" @error="$event.target.src = defaultAvatar"
+                                    class="hd-avatar" alt="Avatar" />
+
                                 <span class="hd-msg-name">{{ msg.name }}</span>
                                 <span class="hd-msg-time">{{ msg.time }}</span>
-                                <img v-if="msg.align === 'out'" :src="msg.avatar" class="hd-avatar" alt="" />
                             </div>
+
+                            <!-- 2. Message Bubble -->
                             <div class="hd-msg-bubble" :class="msg.align === 'out' ? 'hd-bubble-out' : 'hd-bubble-in'"
                                 v-html="msg.note"></div>
+
+                            <!-- 3. Sender Info BELOW the bubble (for Outgoing / "out" messages) -->
+                            <div v-if="msg.align === 'out'" class="hd-msg-meta justify-content-end mt-1">
+                                <!-- <img :src="msg.avatar" class="hd-avatar" alt="" /> -->
+                                <img :src="msg.avatar || defaultAvatar" @error="$event.target.src = defaultAvatar"
+                                    class="hd-avatar" alt="Avatar" />
+                                <span class="hd-msg-name">{{ msg.name }}</span>
+                                <span class="hd-msg-time">{{ msg.time }}</span>
+                            </div>
+
                         </div>
                     </div>
                 </div>
 
+
                 <!-- Reply / note composer -->
-                <form id="addNoteForm" class="border-top p-3 p-md-4">
-                    <div class="editor-container mb-3">
+                <form id="addNoteForm" class="border-top p-3">
+                    <div class="editor-container">
                         <div ref="editorRef" id="note"></div>
                         <!-- Quill editor container -->
                     </div>
@@ -903,8 +939,8 @@ defineExpose({
                     </div>
 
                     <div class="d-flex flex-column-reverse flex-sm-row justify-content-sm-end gap-2">
-                        <button class="btn btn-sm hd-btn-cancel px-4" type="button"
-                            data-bs-dismiss="offcanvas" aria-label="Close">Cancel</button>
+                        <button class="btn btn-sm hd-btn-cancel px-4" type="button" data-bs-dismiss="offcanvas"
+                            aria-label="Close">Cancel</button>
                         <button type="button" @click="save()"
                             class="btn btn-sm hd-btn-save px-4 text-white">Save</button>
                     </div>
@@ -979,6 +1015,17 @@ defineExpose({
 
 .table-search .input-group-text {
     border-right: 0;
+}
+
+.subject-link {
+    color: #182432;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.subject-link:hover {
+    color: #7239EA;
+    text-decoration: underline;
 }
 
 .closed-card {
@@ -1481,8 +1528,16 @@ defineExpose({
 
 .offcanvas.offcanvas-end.hd-note-canvas {
     --bs-offcanvas-width: 50vw;
-    width: 50vw !important;
+    width: 50vw;
     max-width: 100vw !important;
+}
+
+/* #addNoteForm :deep(.ql-editor) {
+    min-height: 300px;
+} */
+
+#addNoteForm .ql-editor {
+    min-height: 80px;
 }
 
 
@@ -1703,6 +1758,7 @@ defineExpose({
 
 /* Small screens: stack composer controls, keep buttons full-width */
 @media (max-width: 575.98px) {
+
     .hd-note-canvas .hd-btn-save,
     .hd-note-canvas .hd-btn-cancel {
         width: 100%;

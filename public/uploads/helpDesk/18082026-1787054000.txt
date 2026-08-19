@@ -1,0 +1,122 @@
+-- phpMyAdmin SQL Dump
+-- version 5.2.1
+-- https://www.phpmyadmin.net/
+--
+-- Host: 127.0.0.1:3306
+-- Generation Time: Aug 12, 2026 at 10:06 AM
+-- Server version: 10.4.32-MariaDB
+-- PHP Version: 8.2.12
+
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
+
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+
+--
+-- Database: `bluesky`
+--
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `agents`
+--
+
+CREATE TABLE `agents` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `name` varchar(50) NOT NULL,
+  `agent_code` varchar(10) DEFAULT NULL,
+  `email` varchar(50) NOT NULL,
+  `phone` varchar(20) NOT NULL,
+  `logo_path` varchar(255) DEFAULT NULL,
+  `country` varchar(255) NOT NULL,
+  `city` varchar(255) NOT NULL,
+  `zone` varchar(255) DEFAULT NULL,
+  `address` varchar(255) NOT NULL,
+  `trade_licence` varchar(50) NOT NULL,
+  `ca_number` varchar(50) DEFAULT NULL,
+  `established_date` date DEFAULT NULL,
+  `reg_number` varchar(50) DEFAULT NULL,
+  `postal_code` varchar(50) DEFAULT NULL,
+  `fax` varchar(50) DEFAULT NULL,
+  `iata_number` varchar(50) DEFAULT NULL,
+  `hajj_agency_number` varchar(50) DEFAULT NULL,
+  `net_balance` double DEFAULT NULL,
+  `credit_balance` decimal(14,2) NOT NULL DEFAULT 0.00,
+  `erp_customer_id` varchar(255) DEFAULT NULL,
+  `account_ledger_id` bigint(20) DEFAULT NULL,
+  `user_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `kam` bigint(20) UNSIGNED DEFAULT NULL,
+  `remarks` varchar(255) DEFAULT NULL,
+  `status` varchar(255) NOT NULL DEFAULT 'Pending' COMMENT 'Approved,Reject,Hold,Pending',
+  `created_by` bigint(20) UNSIGNED NOT NULL,
+  `updated_by` bigint(20) UNSIGNED DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `agents`
+--
+
+INSERT INTO `agents` (`id`, `name`, `agent_code`, `email`, `phone`, `logo_path`, `country`, `city`, `zone`, `address`, `trade_licence`, `ca_number`, `established_date`, `reg_number`, `postal_code`, `fax`, `iata_number`, `hajj_agency_number`, `net_balance`, `credit_balance`, `erp_customer_id`, `account_ledger_id`, `user_id`, `kam`, `remarks`, `status`, `created_by`, `updated_by`, `created_at`, `updated_at`) VALUES
+(20, 'hijibiji', 'BS-26-0001', 'hijibiji@gmail.com', '01768418833', NULL, 'Bangladesh', '24', '5', 'bhdsjhb', '123456', NULL, '2004-07-04', NULL, NULL, NULL, NULL, NULL, NULL, 0.00, NULL, 1, 7, 1, NULL, 'Approved', 1, 1, '2026-07-19 07:22:17', '2026-07-19 08:14:48'),
+(21, 'testing agency', 'BS-26-0002', 'testing.agency@gmail.com', '01712348657', NULL, 'Bangladesh', '14', '4', ' is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry\'s standard dummy text ever since 1966', '123456ygfvf', NULL, '2015-07-04', NULL, NULL, NULL, '546546', '65765', NULL, 0.00, NULL, 1, 8, 1, NULL, 'Approved', 1, 1, '2026-07-19 09:06:34', '2026-07-19 09:07:30'),
+(22, 'bdajb', 'BS-26-0003', 'shbdhb@gmai.com', '01878748712', NULL, 'Bangladesh', '8', '4', 'ndbn', '21e12e34', NULL, '2026-07-05', NULL, NULL, NULL, NULL, NULL, NULL, 0.00, NULL, 1, NULL, 1, NULL, 'Decline', 1, 1, '2026-07-20 04:02:53', '2026-07-20 04:03:20'),
+(24, 'b2b agency', 'BS-26-0005', 'b2b.agency@gmail.com', '01787781268', NULL, 'Bangladesh', '14', '3', 'jfbsd', '137712648763687', NULL, '2010-07-04', NULL, NULL, NULL, NULL, NULL, 160368, 10000.00, NULL, 1, 11, 1, 'Agency registration submitted via online registration form.', 'Approved', 1, 1, '2026-07-22 10:38:34', '2026-08-10 10:14:07');
+
+--
+-- Indexes for dumped tables
+--
+
+--
+-- Indexes for table `agents`
+--
+ALTER TABLE `agents`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `agents_email_unique` (`email`),
+  ADD UNIQUE KEY `agents_trade_licence_unique` (`trade_licence`),
+  ADD UNIQUE KEY `agents_agent_code_unique` (`agent_code`),
+  ADD UNIQUE KEY `agents_ca_number_unique` (`ca_number`),
+  ADD UNIQUE KEY `agents_reg_number_unique` (`reg_number`),
+  ADD UNIQUE KEY `agents_fax_unique` (`fax`),
+  ADD UNIQUE KEY `agents_iata_number_unique` (`iata_number`),
+  ADD UNIQUE KEY `agents_hajj_agency_number_unique` (`hajj_agency_number`),
+  ADD KEY `agents_country_city_zone_index` (`country`,`city`,`zone`),
+  ADD KEY `agents_status_index` (`status`),
+  ADD KEY `agents_user_id_index` (`user_id`),
+  ADD KEY `agents_kam_index` (`kam`),
+  ADD KEY `agents_created_by_foreign` (`created_by`),
+  ADD KEY `agents_updated_by_foreign` (`updated_by`);
+
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `agents`
+--
+ALTER TABLE `agents`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+
+--
+-- Constraints for dumped tables
+--
+
+--
+-- Constraints for table `agents`
+--
+ALTER TABLE `agents`
+  ADD CONSTRAINT `agents_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `agents_kam_foreign` FOREIGN KEY (`kam`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `agents_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`);
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

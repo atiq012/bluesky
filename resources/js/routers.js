@@ -115,6 +115,7 @@ const requestCreate = () => import('./components/admin/helpdesk/create.vue')
 const requestEdit = () => import('./components/admin/helpdesk/edit.vue')
 const categoryList = () => import('./components/admin/category/index.vue')
 const categoryCreate = () => import('./components/admin/category/create.vue')
+const requestDetails = () => import('./components/admin/helpdesk/requestDetails.vue')
 
 // /Group
 const groupList = () => import('./components/admin/group/index.vue');
@@ -248,6 +249,7 @@ const routes = [
     { path: '/help-desk-index', component: helpDesk, name: 'helpDesk', meta: { auth: true } },
     { path: '/new-request-create', component: requestCreate, name: 'requestCreate', meta: { auth: true } },
     { path: '/edit-request/:ids', component: requestEdit, name: 'requestEdit', meta: { auth: true }, props: true },
+    { path: '/helpdesk/support-requests', component: requestDetails, name: 'requestDetails', meta: { auth: true }, props: true },
 
 ]
 
