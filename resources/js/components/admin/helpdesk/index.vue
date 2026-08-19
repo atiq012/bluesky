@@ -278,6 +278,13 @@ const options = {
 
                 // html += '<button  style="size: 30px; width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-only-edit rounded-circle status-item-id" data-bs-toggle="modal" data-bs-target="#statusChangeModal" placement="top" data-item-id=' + idd + '> <i class="fa-solid fa-recycle" style="margin: 1px 0px 7px -4px; font-size: 14px;"></i> </button>';
 
+                if (status.toLowerCase() !== 'closed' && status.toLowerCase() !== 'Cancelled') {
+                    html += '<button style="width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-danger rounded-circle d-inline-flex align-items-center justify-content-center p-0 cancel-item" title="Cancel Request" data-item-id=' + idd + '>';
+                    html += '  <i class="fa-solid fa-ban" style="font-size: 14px; margin: 0;"></i>';
+                    html += '</button>';
+
+                    // html += '<button style="width: 30px; height: 30px; margin-left: 5px;" class="btn btn-outline-danger rounded-circle cancel-item" title="Cancel Request" data-item-id=' + idd + '> <i class="fa-solid fa-ban" style="font-size: 14px;"></i> </button>';
+                }
 
 
                 html += '</div>';

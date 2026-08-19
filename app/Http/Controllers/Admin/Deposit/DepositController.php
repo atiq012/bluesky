@@ -22,7 +22,7 @@ class DepositController extends BaseController
      */
     public function index()
     {
-        $agent = Agent::where('user_id', Auth::id())->first();
+        $agent = Agent::where('id', Auth::user()->agent_id)->first();
 
         $data = DB::table('deposits as dpt')
             ->leftJoin('agents as agt', 'dpt.agent_id', 'agt.id')
@@ -62,7 +62,7 @@ class DepositController extends BaseController
         // ]);
 
         $user = auth()->user();
-        $agent = Agent::where('user_id', $user->id)->first();
+        $agent = Agent::where('id', $user->agent_id)->first();
         $referenceFilePath = null;
         if ($request->hasFile('referenceFile')) {
             $referenceFilePath = $imageService->uploadAgentImage($request->file('referenceFile'), 'referenceFile');
@@ -178,7 +178,7 @@ class DepositController extends BaseController
             return $this->ErrorResponse('Deposit not found.', [], 404);
         }
 
-        $agent = Agent::where('user_id', Auth::id())->first();
+        $agent = Agent::where('id', Auth::user()->agent_id)->first();
         if (! $agent) {
             return $this->ErrorResponse('Agent account not found.', [], 404);
         }

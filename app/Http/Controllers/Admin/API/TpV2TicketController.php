@@ -33,10 +33,10 @@ class TpV2TicketController extends BaseController
 
         $userId = optional(auth()->user())->id;
 
-        // Already ticketed at entry — skip the wallet check entirely, the service will hand back
+        // Already ticketed at entry — skip the wallet entirely, the service will hand back
         // the existing documents without moving money again
-        $agent  = null;
-        $amount = null;
+        $agent    = null;
+        $reserved = false;
 
         if ($attempt->status !== 'ticketed') {
             $agent = $this->balanceService->resolveAgentForUser($userId);
@@ -49,8 +49,12 @@ class TpV2TicketController extends BaseController
             }
 
             try {
+                // The hold is taken before Travelport is called, not after it returns. Issuance
+                // takes minutes, and a check made at the start of that window is stale by the
+                // end of it — a concurrent request would still see the full balance.
                 $amount = $this->balanceService->resolveBookingAmount($attempt);
-                $this->balanceService->assertSufficientBalance($agent, $amount);
+                $this->balanceService->reserveForBooking($agent, $amount, $attempt, $userId);
+                $reserved = true;
             } catch (Exception $e) {
                 return response()->json([
                     'status'  => false,
@@ -63,14 +67,21 @@ class TpV2TicketController extends BaseController
             $result = $this->ticketService->issue($attempt, $userId);
 
             $alreadyIssued = (bool) ($result['already_issued'] ?? false);
+            $settleFailed  = false;
 
-            // Also guards the mid-flight race case: a lost ticketing claim resolves to the same
-            // existing-ticket result, so the wallet must not be debited a second time either
-            if (!$alreadyIssued && $agent) {
+            if ($reserved) {
                 try {
-                    $this->balanceService->debitForBooking($agent, $amount, $attempt, $userId);
+                    // A lost ticketing claim resolves to the existing-ticket result: no new
+                    // documents were bought, so the hold is released rather than charged
+                    $alreadyIssued
+                        ? $this->balanceService->releaseReservation($agent, $attempt, $userId)
+                        : $this->balanceService->settleReservation($agent, $attempt, $userId);
                 } catch (Exception $e) {
+                    // Tickets exist at the airline and cannot be pulled back, so the response
+                    // must not claim a clean success. The hold stays in place — the money is
+                    // still ring-fenced — and the booking is flagged for manual settlement.
                     report($e);
+                    $settleFailed = true;
                 }
             }
 
@@ -82,9 +93,23 @@ class TpV2TicketController extends BaseController
                 'already_issued' => $alreadyIssued,
                 'ticket_numbers' => $result['ticket_numbers'],
                 'ticketed_at'    => $result['ticketed_at'],
+                'payment_settled' => !$settleFailed,
+                'payment_warning' => $settleFailed
+                    ? 'Ticket issued, but the balance could not be settled. Funds remain on hold — contact support.'
+                    : null,
             ]);
         } catch (Exception $e) {
             report($e);
+
+            // Nothing was bought, so the held funds go back. Guarded on the attempt's real
+            // status in case the failure happened after the documents were issued.
+            if ($reserved && $attempt->fresh()?->status !== 'ticketed') {
+                try {
+                    $this->balanceService->releaseReservation($agent, $attempt->fresh() ?? $attempt, $userId);
+                } catch (Exception $releaseEx) {
+                    report($releaseEx);
+                }
+            }
 
             // A lost claim is a conflict, not a server fault — the client may retry later
             $httpStatus = $e->getCode() === TpV2TicketService::ERROR_IN_PROGRESS ? 409 : 500;

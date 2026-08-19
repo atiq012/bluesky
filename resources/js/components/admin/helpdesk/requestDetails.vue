@@ -6,7 +6,7 @@ import moment from "moment";
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../../../stores/authStore';
 
-import defaultAvatar from '../../../../../public/theme/appimages/Plane_origin.svg';
+import defaultAvatar from '../../../../../public/theme/appimages/default_avatar.svg';
 
 const router = useRouter();
 const route = useRoute();
@@ -38,10 +38,17 @@ const ticketData = reactive({
         department: '-',
         phone: '-'
     },
-    notes: []
+    notes: [],
+    attachment: null   
 });
 
 const historyList = ref([]);
+
+// Attachment preview state
+const previewFile = ref(null);   // { id, name, url, size }
+const previewType = ref('');     // 'image' | 'pdf' | 'text' | 'excel' | 'word' | 'other'
+const previewText = ref('');
+const previewLoading = ref(false);
 
 const addNoteForm = reactive({
     note: '',
@@ -68,6 +75,143 @@ function priorityMeta(priority) {
     if (p === 'high') return 'rd-priority-high';
     if (p === 'medium') return 'rd-priority-medium';
     return 'rd-priority-low';
+}
+
+// ---- Attachments: type detection, icons, preview, download ----
+
+function getExt(filename) {
+    const name = String(filename ?? '');
+    const dot = name.lastIndexOf('.');
+    return dot === -1 ? '' : name.slice(dot + 1).toLowerCase();
+}
+
+function fileTypeOf(file) {
+    const ext = getExt(file?.name);
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].includes(ext)) return 'image';
+    if (ext === 'pdf') return 'pdf';
+    if (['txt', 'csv', 'log', 'md', 'json'].includes(ext)) return 'text';
+    if (['xls', 'xlsx'].includes(ext)) return 'excel';
+    if (['doc', 'docx'].includes(ext)) return 'word';
+    return 'other';
+}
+
+function fileIcon(type) {
+    switch (type) {
+        case 'image': return 'fa-solid fa-file-image';
+        case 'pdf': return 'fa-solid fa-file-pdf';
+        case 'text': return 'fa-solid fa-file-lines';
+        case 'excel': return 'fa-solid fa-file-excel';
+        case 'word': return 'fa-solid fa-file-word';
+        default: return 'fa-solid fa-file';
+    }
+}
+
+function fileIconColor(type) {
+    switch (type) {
+        case 'image': return '#3B79F2';
+        case 'pdf': return '#F01B1B';
+        case 'text': return '#8A93A3';
+        case 'excel': return '#05CC61';
+        case 'word': return '#3B79F2';
+        default: return '#8A93A3';
+    }
+}
+
+function humanFileSize(bytes) {
+    if (!bytes) return '';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let val = Number(bytes);
+    let i = 0;
+    while (val >= 1024 && i < units.length - 1) {
+        val /= 1024;
+        i++;
+    }
+    return (i > 0 ? val.toFixed(1) : Math.round(val)) + ' ' + units[i];
+}
+
+function getFileNameFromPath(path) {
+    const clean = String(path ?? '').split('?')[0];
+    const parts = clean.split('/');
+    return decodeURIComponent(parts[parts.length - 1] || 'attachment');
+}
+
+
+function normalizeAttachment(raw) {
+    if (!raw) return null;
+
+    if (Array.isArray(raw)) {
+        return raw.length ? normalizeAttachment(raw[0]) : null;
+    }
+
+    if (typeof raw === 'string') {
+        return {
+            id: raw,
+            name: getFileNameFromPath(raw),
+            url: raw,
+            size: 0
+        };
+    }
+
+    if (typeof raw === 'object') {
+        return {
+            id: raw.idd ?? raw.id ?? raw.file_path ?? raw.url,
+            name: raw.file_name || raw.name || getFileNameFromPath(raw.file_path || raw.url || raw.path || ''),
+            url: raw.file_path || raw.file_url || raw.url || raw.path || '',
+            size: raw.file_size || raw.size || 0
+        };
+    }
+
+    return null;
+}
+
+// Triggers a normal browser download without leaving the page.
+function downloadFile(file) {
+    const link = document.createElement('a');
+    link.href = file.url;
+    link.download = file.name || '';
+    link.target = '_blank';
+    link.rel = 'noopener';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+
+async function loadTextPreview(file) {
+    previewLoading.value = true;
+    previewText.value = '';
+    try {
+        const res = await fetch(file.url);
+        previewText.value = await res.text();
+    } catch (error) {
+        console.log(error);
+        previewText.value = 'Unable to load this file for preview. Please download it instead.';
+    } finally {
+        previewLoading.value = false;
+    }
+}
+
+
+function openAttachment(file) {
+    const type = fileTypeOf(file);
+
+    if (type === 'excel' || type === 'word' || type === 'other') {
+        downloadFile(file);
+        return;
+    }
+
+    previewFile.value = file;
+    previewType.value = type;
+
+    if (type === 'text') {
+        loadTextPreview(file);
+    }
+
+    const modalEl = document.getElementById('attachmentPreviewModal');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+    }
 }
 
 async function getListValues() {
@@ -122,6 +266,8 @@ async function loadDetails(idd) {
         });
 
         historyList.value = data.history || [];
+        ticketData.attachment = normalizeAttachment(data.data.file_path);
+        console.log(ticketData.attachment);
 
         addNoteForm.ticketId = idd;
 
@@ -144,8 +290,6 @@ function resetNoteForm() {
     addNoteForm.sendAsNotification = false;
 }
 
-// Bootstrap 5's vanilla-JS component classes (bootstrap.Modal) are loaded as
-// a global script in this project, so referenced directly here.
 function closeOverlay(elementId, kind) {
     const el = document.getElementById(elementId);
     if (!el || typeof bootstrap === 'undefined') return;
@@ -209,7 +353,7 @@ onMounted(() => {
 
         <div class="rd-shell-header d-flex align-items-center justify-content-between">
             <span>Open Request ({{ requests.length }})</span>
-            <!-- <i class="fa-solid fa-chevron-down"></i> -->
+            <i class="fa-solid fa-chevron-down"></i>
         </div>
 
         <div class="row g-0">
@@ -250,10 +394,27 @@ onMounted(() => {
                 <div v-show="activeTab === 'details'">
                     <div class="rd-details-box mb-3" v-html="ticketData.description"></div>
 
-                    <div class="rd-dropzone mb-3 text-center">
+                    <!-- <div class="rd-dropzone mb-3 text-center">
                         <i class="fa-solid fa-paperclip me-1"></i>
                         <a href="javascript:void(0)" class="rd-browse-link">Browse Files</a>
                         <span class="text-muted"> or Drag &amp; Drop Files Here (Max 4 mb)</span>
+                    </div> -->
+
+                    <div v-if="ticketData.attachment" class="mb-3">
+                        <label class="rd-section-label d-block mb-2">Attachment</label>
+                        <div class="rd-attachment-grid">
+                            <button type="button" class="rd-attachment-chip"
+                                @click="openAttachment(ticketData.attachment)"
+                                :title="['excel', 'word', 'other'].includes(fileTypeOf(ticketData.attachment)) ? 'Download ' + ticketData.attachment.name : 'Preview ' + ticketData.attachment.name">
+                                <i :class="fileIcon(fileTypeOf(ticketData.attachment))"
+                                    :style="{ color: fileIconColor(fileTypeOf(ticketData.attachment)) }"></i>
+                                <span class="rd-attachment-name text-truncate">{{ ticketData.attachment.name }}</span>
+                                <span v-if="ticketData.attachment.size" class="rd-attachment-size">{{
+                                    humanFileSize(ticketData.attachment.size) }}</span>
+                                <i v-if="['excel', 'word', 'other'].includes(fileTypeOf(ticketData.attachment))"
+                                    class="fa-solid fa-download rd-attachment-download-badge"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
@@ -382,6 +543,42 @@ onMounted(() => {
                     <button type="button" class="btn btn-sm rd-btn-cancel px-4" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-sm rd-btn-add-note px-4 text-white"
                         @click="saveNote">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attachment preview modal: images, PDFs, and text render inline (larger view) -->
+    <div class="modal fade" id="attachmentPreviewModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered"
+            :class="previewType === 'image' || previewType === 'pdf' ? 'modal-xl' : 'modal-lg'">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title text-truncate mb-0">{{ previewFile?.name }}</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body rd-preview-body">
+                    <div v-if="previewType === 'image'" class="text-center">
+                        <img :src="previewFile?.url" class="img-fluid rd-preview-image" alt="Attachment preview">
+                    </div>
+
+                    <div v-else-if="previewType === 'pdf'" class="rd-preview-pdf">
+                        <iframe :src="previewFile?.url" title="PDF preview"></iframe>
+                    </div>
+
+                    <div v-else-if="previewType === 'text'">
+                        <div v-if="previewLoading" class="text-center text-muted py-5">
+                            <i class="fa-solid fa-spinner fa-spin me-2"></i>Loading preview...
+                        </div>
+                        <pre v-else class="rd-preview-text">{{ previewText }}</pre>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <a :href="previewFile?.url" :download="previewFile?.name"
+                        class="btn btn-sm rd-btn-add-note text-white">
+                        <i class="fa-solid fa-download me-1"></i>Download
+                    </a>
+                    <button type="button" class="btn btn-sm rd-btn-cancel px-4" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
@@ -570,6 +767,108 @@ onMounted(() => {
 
 .rd-browse-link:hover {
     text-decoration: underline;
+}
+
+.rd-section-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #3F4754;
+}
+
+.rd-attachment-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.rd-attachment-chip {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 220px;
+    background: #fff;
+    border: 1px solid #E4EAEF;
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.rd-attachment-chip:hover {
+    border-color: #7239EA;
+    box-shadow: 0 2px 8px rgba(114, 57, 234, 0.12);
+}
+
+.rd-attachment-chip i {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.rd-attachment-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: #182432;
+    max-width: 110px;
+}
+
+.rd-attachment-size {
+    font-size: 11px;
+    color: #A1ABB7;
+    margin-left: auto;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.rd-attachment-download-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: #fff;
+    border: 1px solid #E4EAEF;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px !important;
+    color: #8A93A3 !important;
+}
+
+.rd-preview-body {
+    max-height: 75vh;
+    overflow: auto;
+    background: #fafbfc;
+}
+
+.rd-preview-image {
+    max-height: 70vh;
+}
+
+.rd-preview-pdf {
+    height: 75vh;
+}
+
+.rd-preview-pdf iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+.rd-preview-text {
+    background: #F5F8FA;
+    border: 1px solid #E4EAEF;
+    border-radius: 6px;
+    padding: 16px;
+    font-size: 13px;
+    line-height: 20px;
+    color: #3F4754;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 70vh;
+    overflow: auto;
+    margin: 0;
 }
 
 .rd-btn-add-note {
