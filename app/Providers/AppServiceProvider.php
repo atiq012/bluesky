@@ -22,7 +22,7 @@ class AppServiceProvider extends ServiceProvider
     {
         ResetPassword::createUrlUsing(function ($notifiable, string $token){
             $nEmail=base64_encode($notifiable->email);
-            return 'https://dev.blueskyndc.com/PassReset/'.$token.'/'.$nEmail;
+            return 'https://devb2b.blueskyndc.com/PassReset/'.$token.'/'.$nEmail;
         });
     }
 }
