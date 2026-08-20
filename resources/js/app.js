@@ -89,6 +89,14 @@ const authStore = useAuthStore();
 
 app.mount("#app");
 
+// Force reload on bfcache restore so the router guard re-checks auth
+// (prevents a logged-out user from seeing a protected page via browser Back).
+window.addEventListener("pageshow", (e) => {
+    if (e.persisted) {
+        location.reload();
+    }
+});
+
 router.beforeEach(async (to, from) => {
     if (authStore.isDarkMode) {
         if (to.name == "Login") {

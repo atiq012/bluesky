@@ -12,29 +12,23 @@ const authStore = useAuthStore();
 
 LogOutLaravel();
 
-function LogOutLaravel() {
+async function LogOutLaravel() {
 
     const tkn = authStore.decryptWithAES(authStore.token);
-
-    authStore.logout();
-    router.push({ name: 'Login' });
 
     const config = {
         headers: { Authorization: 'Bearer ' + tkn, "Accept": "application/json", }
     };
 
-    axios.get('/api/logout', config
-    ).then(
-        res => {
-            console.log(res.data);
-            Notification.showToast("w", res.data.message);
-
-        }
-    ).catch((eEes) => {
-        console.log(eEes.data);
-        // ErrorCatch.CatchError(eEes);
+    try {
+        const res = await axios.get('/api/logout', config);
+        Notification.showToast("w", res.data.message);
+    } catch (eEes) {
+        console.log(eEes);
+    } finally {
+        authStore.logout();
+        router.push({ name: 'Login' });
     }
-    );
 
 }
 </script>
