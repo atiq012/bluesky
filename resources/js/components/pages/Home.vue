@@ -400,11 +400,11 @@ const initCharts = () => {
           y: {
             beginAtZero: true,
             grid: { color: '#eef1f9' },
-            ticks: {
-              color: '#94a3b8', font: { size: 11 },
-              callback: (v) => v >= 1e6 ? (v / 1e6).toFixed(0) + 'M' : v >= 1e3 ? (v / 1e3).toFixed(0) + 'K' : v,
-              stepSize: 200000,
-            },
+            // ticks: {
+            //   color: '#94a3b8', font: { size: 11 },
+            //   callback: (v) => v >= 1e6 ? (v / 1e6).toFixed(0) + 'M' : v >= 1e3 ? (v / 1e3).toFixed(0) + 'K' : v,
+            //   stepSize: 200000,
+            // },
           },
           x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 11 } } },
         },
@@ -599,11 +599,11 @@ const initCharts = () => {
         scales: {
           y: {
             beginAtZero: true, grid: { color: '#eef1f9' },
-            ticks: {
-              color: '#94a3b8', font: { size: 11 },
-              callback: (v) => v >= 1e6 ? (v / 1e6).toFixed(0) + 'M' : v >= 1e3 ? (v / 1e3).toFixed(0) + 'K' : v,
-              stepSize: 200000,
-            },
+            // ticks: {
+            //   color: '#94a3b8', font: { size: 11 },
+            //   callback: (v) => v >= 1e6 ? (v / 1e6).toFixed(0) + 'M' : v >= 1e3 ? (v / 1e3).toFixed(0) + 'K' : v,
+            //   stepSize: 200000,
+            // },
           },
           x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 11 } } },
         },
