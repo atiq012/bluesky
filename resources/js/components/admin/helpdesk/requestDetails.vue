@@ -1,8 +1,11 @@
 <script setup>
 import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
 import axiosInstance from "../../../axiosInstance";
-import { ref, reactive, computed, onMounted, watch } from "vue";
+import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from "vue";
 import moment from "moment";
+import Quill from 'quill';
+import 'quill/dist/quill.core.css';
+import 'quill/dist/quill.snow.css';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../../../stores/authStore';
 
@@ -44,6 +47,7 @@ const ticketData = reactive({
         phone: '-'
     },
     notes: [],
+    messages: [],
     attachment: null
 });
 
@@ -63,6 +67,9 @@ const addNoteForm = reactive({
     sendAsNotification: false
 });
 
+const editorRef = ref(null);
+let quillInstance = null;
+
 const ticketCreatedAtLabel = computed(() => (ticketData.createdAt ? moment(ticketData.createdAt).format('DD-MMM-YYYY') : ''));
 
 function statusMeta(status) {
@@ -80,6 +87,24 @@ function priorityMeta(priority) {
     if (p === 'high') return 'rd-priority-high';
     if (p === 'medium') return 'rd-priority-medium';
     return 'rd-priority-low';
+}
+
+// The offcanvas uses the same badge tokens as the helpdesk list canvas.
+function statusBadgeMeta(status) {
+    const s = String(status ?? '').toLowerCase();
+    if (s === 'closed' || s === 'resolved') return { cls: 'hd-badge-success', label: status };
+    if (s === 'open') return { cls: 'hd-badge-success', label: status };
+    if (s === 'in progress') return { cls: 'hd-badge-info', label: status };
+    if (s === 'on hold') return { cls: 'hd-badge-danger', label: status };
+    if (s === 'cancelled') return { cls: 'hd-badge-secondary', label: status };
+    return { cls: 'hd-badge-warning', label: status };
+}
+
+function priorityBadgeMeta(priority) {
+    const p = String(priority ?? '').toLowerCase();
+    if (p === 'high') return 'hd-badge-danger';
+    if (p === 'medium') return 'hd-badge-warning';
+    return 'hd-badge-neutral';
 }
 
 // ---- Attachments: type detection, icons, preview, download ----
@@ -302,6 +327,18 @@ async function loadDetails(idd) {
             };
         });
 
+        ticketData.messages = (data.details || []).map((detail, index) => {
+            const isOut = detail.from_user_id == data.data.requester_id;
+            return {
+                id: detail.idd ?? detail.id ?? index,
+                align: isOut ? 'out' : 'in',
+                name: isOut ? (data.me?.name || ticketData.requesterName) : (data.assignee?.name || ticketData.assignedTo.name),
+                avatar: isOut ? (data.me?.img_path || defaultAvatar) : (data.assignee?.img_path || defaultAvatar),
+                time: detail.created_at ? moment(detail.created_at).format('DD-MMM-YYYY | hh:mm A') : '',
+                note: detail.note
+            };
+        });
+
         historyList.value = data.history || [];
         ticketData.attachment = normalizeAttachment(data.data.file_path);
         //console.log(ticketData.attachment);
@@ -352,6 +389,9 @@ function selectRequest(idd) {
 }
 
 function resetNoteForm() {
+    if (quillInstance) {
+        quillInstance.root.innerHTML = '<p></p>';
+    }
     addNoteForm.note = '';
     addNoteForm.showToAssignee = false;
     addNoteForm.sendAsEmail = false;
@@ -380,7 +420,8 @@ async function saveNote() {
 
         const response = await axiosInstance.post('/addRequestNote', payload);
 
-        closeOverlay('addNoteModal', 'modal');
+        // closeOverlay('addNoteModal', 'modal');
+        closeOverlay('requestConversationCanvas', 'offcanvas');
         resetNoteForm();
         loadDetails(selectedId.value);
 
@@ -400,6 +441,34 @@ watch(() => route.params.ids, (newId) => {
 
 onMounted(() => {
     getListValues();
+
+    if (!editorRef.value) return;
+
+    quillInstance = new Quill(editorRef.value, {
+        theme: 'snow',
+        modules: {
+            toolbar: [
+                [{ size: ['small', false, 'large', 'huge'] }],
+                ['bold', 'italic', 'underline'],
+                ['blockquote', 'code-block'],
+                [{ header: 1 }, { header: 2 }],
+                [{ indent: '-1' }, { indent: '+1' }],
+                [{ direction: 'rtl' }],
+                ['clean'],
+                ['link', 'image', 'video']
+            ]
+        },
+        placeholder: 'Write something...'
+    });
+
+    quillInstance.on('text-change', () => {
+        // addNoteForm.note = quillInstance.getText().trim();
+        addNoteForm.note = quillInstance.root.innerHTML;
+    });
+});
+
+onBeforeUnmount(() => {
+    quillInstance = null;
 });
 </script>
 
@@ -508,8 +577,8 @@ onMounted(() => {
                                 <label class="form-check-label" for="notesToggle">Notes</label>
                             </div>
                         </div>
-                        <button type="button" class="btn btn-sm rd-btn-add-note text-white" data-bs-toggle="modal"
-                            data-bs-target="#addNoteModal">
+                        <button type="button" class="btn btn-sm rd-btn-add-note text-white" data-bs-toggle="offcanvas"
+                            data-bs-target="#requestConversationCanvas">
                             <i class="fa-solid fa-plus me-1"></i>Add Notes
                         </button>
                     </div>
@@ -556,7 +625,7 @@ onMounted(() => {
                 <div class="rd-info-row">
                     <span class="rd-info-label">Status</span>
                     <span class="rd-info-value" :class="statusMeta(ticketData.status)">: {{ ticketData.status || '-'
-                        }}</span>
+                    }}</span>
                 </div>
                 <div class="rd-info-row">
                     <span class="rd-info-label">Priority</span>
@@ -592,7 +661,7 @@ onMounted(() => {
     </div>
 
     <!-- Add note modal -->
-    <div class="modal fade" id="addNoteModal" tabindex="-1" aria-hidden="true">
+    <!-- <div class="modal fade" id="addNoteModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
@@ -628,7 +697,113 @@ onMounted(() => {
                 </div>
             </div>
         </div>
+    </div> -->
+
+    <!-- canvas -->
+    <div class="offcanvas offcanvas-end hd-note-canvas" data-bs-scroll="true" tabindex="-1" id="requestConversationCanvas">
+        <div class="offcanvas-header border-bottom py-3">
+            <div class="d-flex align-items-baseline flex-wrap gap-2">
+                <span class="hd-ticket-id">#{{ ticketData.requestNumber }}</span>
+                <span class="fw-semibold hd-ticket-title">{{ ticketData.subject }}</span>
+            </div>
+
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+
+        <div class="offcanvas-body d-flex flex-column p-0">
+            <!-- Ticket meta: badges + details + attachment -->
+            <div class="p-3 border-bottom">
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                    <span class="hd-badge" :class="statusBadgeMeta(ticketData.status).cls">
+                        {{ statusBadgeMeta(ticketData.status).label }}
+                    </span>
+                    <span v-if="ticketData.categoryName" class="hd-badge hd-badge-neutral">{{
+                        ticketData.categoryName
+                    }}</span>
+                    <span v-if="ticketData.priority" class="hd-badge" :class="priorityBadgeMeta(ticketData.priority)">{{
+                        ticketData.priority }}</span>
+                    <span class="hd-badge hd-badge-by">By : {{ ticketData.requesterName }} on {{
+                        ticketCreatedAtLabel
+                    }}</span>
+                </div>
+
+                <!-- <label class="hd-section-label mb-2">Details</label>
+                    <div class="ticket-details hd-details-box mb-2" v-html="ticketData.description"></div>
+
+                    <div v-if="ticketData.attachmentsCount">
+                        <button type="button" class="hd-attachment-chip">
+                            <i class="fa-solid fa-paperclip"></i>{{ ticketData.attachmentsCount }} Attachment{{ ticketData.attachmentsCount > 1 ? 's' : '' }}
+                        </button>
+                    </div> -->
+            </div>
+
+
+            <!-- Conversation thread -->
+            <div class="flex-grow-1 overflow-auto p-3 scrollable-messages note-messages">
+                <div class="messages-list">
+                    <div v-for="msg in ticketData.messages" :key="msg.id" class="hd-msg"
+                        :class="msg.align === 'out' ? 'hd-msg-out' : 'hd-msg-in'">
+
+                        <!--  Sender Info ABOVE the bubble (for Incoming / "in" messages) -->
+                        <div v-if="msg.align === 'in'" class="hd-msg-meta">
+                            <img :src="msg.avatar || defaultAvatar" @error="$event.target.src = defaultAvatar"
+                                class="hd-avatar" alt="Avatar" />
+
+                            <span class="hd-msg-name">{{ msg.name }}</span>
+                            <span class="hd-msg-time">{{ msg.time }}</span>
+                        </div>
+
+                        <!-- Message Bubble -->
+                        <div class="hd-msg-bubble" :class="msg.align === 'out' ? 'hd-bubble-out' : 'hd-bubble-in'"
+                            v-html="msg.note"></div>
+
+                        <!-- Sender Info BELOW the bubble (for Outgoing / "out" messages) -->
+                        <div v-if="msg.align === 'out'" class="hd-msg-meta justify-content-end mt-1">
+                            <!-- <img :src="msg.avatar" class="hd-avatar" alt="" /> -->
+                            <img :src="msg.avatar || defaultAvatar" @error="$event.target.src = defaultAvatar"
+                                class="hd-avatar" alt="Avatar" />
+                            <span class="hd-msg-name">{{ msg.name }}</span>
+                            <span class="hd-msg-time">{{ msg.time }}</span>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Reply / note composer -->
+            <form id="addNoteForm" class="border-top p-3">
+                <div class="editor-container mb-3">
+                    <div ref="editorRef" id="note"></div>
+                </div>
+
+                <div class="d-flex flex-column flex-sm-row flex-wrap column-gap-4 row-gap-2 mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="showToAssignee"
+                            v-model="addNoteForm.showToAssignee">
+                        <label class="form-check-label" for="showToAssignee">Show this note to assignee</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="sendAsEmail"
+                            v-model="addNoteForm.sendAsEmail">
+                        <label class="form-check-label" for="sendAsEmail">Also send as Email</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="sendAsNotification"
+                            v-model="addNoteForm.sendAsNotification">
+                        <label class="form-check-label" for="sendAsNotification">Send as Notification</label>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-column-reverse flex-sm-row justify-content-sm-end gap-2">
+                    <button class="btn btn-sm hd-btn-cancel px-4" type="button" data-bs-dismiss="offcanvas"
+                        aria-label="Close">Cancel</button>
+                    <button type="button" @click="saveNote()" class="btn btn-sm hd-btn-save px-4 text-white">Save</button>
+                </div>
+            </form>
+        </div>
     </div>
+    <!-- end canvas -->
 
     <!-- Attachment preview modal: images, PDFs, and text render inline (larger view) -->
     <div class="modal fade" id="attachmentPreviewModal" tabindex="-1" aria-hidden="true">
@@ -1120,5 +1295,167 @@ onMounted(() => {
     .rd-info-row {
         flex-wrap: wrap;
     }
+}
+
+/* Conversation offcanvas — kept here because this route can load directly. */
+.offcanvas.offcanvas-end.hd-note-canvas {
+    --bs-offcanvas-width: 50vw;
+    width: 50vw;
+    max-width: 100vw !important;
+}
+
+.hd-note-canvas .note-messages {
+    min-height: 160px;
+}
+
+.hd-ticket-id {
+    color: #7239EA;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.hd-ticket-title {
+    color: #182432;
+    font-size: 15px;
+}
+
+.hd-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: capitalize;
+    white-space: nowrap;
+}
+
+/* .hd-badge-neutral { background: #F6F6F6; color: #3F4754; }
+.hd-badge-by { background: #F6F9FF; color: #3B79F2; } */
+
+.hd-badge-success {
+    background: rgba(69, 241, 42, 0.07);
+    color: #05CC61;
+}
+
+.hd-badge-info {
+    background: #EAF3FF;
+    color: #3B79F2;
+}
+
+.hd-badge-danger {
+    background: #FFF1F1;
+    color: #F01B1B;
+}
+
+.hd-badge-warning {
+    background: #FFF7E8;
+    color: #FB8E28;
+}
+
+.hd-badge-secondary {
+    background: #F6F6F6;
+    color: #6c757d;
+}
+
+.hd-badge-neutral {
+    background: #F6F6F6;
+    color: #3F4754;
+}
+
+.hd-badge-by {
+    background: #F6F9FF;
+    color: #3B79F2;
+}
+
+.messages-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.hd-msg {
+    display: flex;
+    flex-direction: column;
+    max-width: 85%;
+    margin-bottom: 18px;
+}
+
+.hd-msg-in { align-items: flex-start; margin-right: auto; }
+.hd-msg-out { align-items: flex-end; margin-left: auto; }
+
+.hd-msg-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.hd-avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.hd-msg-name { font-size: 12px; font-weight: 500; color: #3F4754; }
+.hd-msg-time { font-size: 10px; color: #A1ABB7; }
+
+.hd-msg-bubble {
+    padding: 8px 14px;
+    font-size: 13px;
+    line-height: 20px;
+    letter-spacing: 0.2px;
+    word-break: break-word;
+}
+
+.hd-bubble-in {
+    background: #F6F2FF;
+    color: #7239EA;
+    border-radius: 4px 14px 14px 14px;
+}
+
+.hd-bubble-out {
+    background: #F2F7FF;
+    color: #3B79F2;
+    border-radius: 14px 4px 14px 14px;
+}
+
+.hd-note-canvas .form-check-input {
+    width: 18px;
+    height: 18px;
+    margin-top: 0;
+    border-color: #E4EAEF;
+    background-color: #E4EAEF;
+}
+
+.hd-note-canvas .form-check-input:checked {
+    background-color: #7239EA;
+    border-color: #7239EA;
+}
+
+.hd-note-canvas .form-check-label {
+    font-size: 13px;
+    color: #3F4754;
+    margin-left: 4px;
+}
+
+.hd-btn-save { background-color: #3B79F2; border-color: #3B79F2; }
+.hd-btn-save:hover { background-color: #2f66d0; border-color: #2f66d0; color: #fff; }
+.hd-btn-cancel { background-color: #E4EAEF; border-color: #E4EAEF; color: #182432; }
+.hd-btn-cancel:hover { background-color: #d7dee6; color: #182432; }
+
+@media (max-width: 991.98px) {
+    .offcanvas.offcanvas-end.hd-note-canvas {
+        --bs-offcanvas-width: 90vw;
+        width: 90vw;
+        
+    }
+}
+
+@media (max-width: 575.98px) {
+    .hd-note-canvas .hd-btn-save,
+    .hd-note-canvas .hd-btn-cancel { width: 100%; }
+    .hd-msg { max-width: 95%; }
 }
 </style>
