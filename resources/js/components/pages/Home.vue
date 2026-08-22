@@ -238,6 +238,8 @@ const cabinClassData = ref({
   first_class: 0
 });
 
+const supportTicketData = ref({ open: 0, in_progress: 0, closed: 0, hold: 0 });
+
 
 const bookingCache = reactive({});
 
@@ -320,6 +322,14 @@ const fetchDashboardStats = async () => {
       flightDetailsByDate.value = data.flightDetailsByDate;
     }
 
+    if (data.supportTicketStats) {
+      supportTicketData.value = data.supportTicketStats;
+      // console.log('support tickets: ', supportTicketData.value);
+      supportDonutCenterValue = Object.values(supportTicketData.value)
+        .reduce((total, value) => total + Number(value || 0), 0);
+
+    }
+
 
 
   } catch (error) {
@@ -376,6 +386,7 @@ const initCharts = () => {
   /* ── Total Sales & Commission bar ── */
   const sbEl = document.getElementById('salesBarChart');
   if (sbEl) {
+    const maxSales = Math.max(...salesData.value, 10);
     salesBarChart = new Chart(sbEl.getContext('2d'), {
       type: 'bar',
       data: {
@@ -394,12 +405,16 @@ const initCharts = () => {
         maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: (c) => ' BDT ' + c.parsed.y.toLocaleString() } },
+          tooltip: { callbacks: { label: (c) => ' ৳ ' + formatTotal(c.parsed.y).toLocaleString() } },
         },
         scales: {
           y: {
             beginAtZero: true,
             grid: { color: '#eef1f9' },
+            max: Math.ceil(maxSales * 1.1),
+            ticks: {
+              callback: (value) => value ? formatTotal(value) : '0'
+            },
             // ticks: {
             //   color: '#94a3b8', font: { size: 11 },
             //   callback: (v) => v >= 1e6 ? (v / 1e6).toFixed(0) + 'M' : v >= 1e3 ? (v / 1e3).toFixed(0) + 'K' : v,
@@ -501,6 +516,10 @@ const initCharts = () => {
   const raEl = document.getElementById('ratioAreaChart');
   if (raEl) {
     const raCtx = raEl.getContext('2d');
+    const maxBooking = Math.max(...(bookingVals.value || [0]), 0);
+    const maxTicketing = Math.max(...(ticketingVals.value || [0]), 0);
+    const peakValue = Math.max(maxBooking, maxTicketing, 5);
+    const maxRatioY = Math.ceil(peakValue * 1.2);
     ratioAreaChart = new Chart(raCtx, {
       type: 'line',
       data: {
@@ -529,7 +548,15 @@ const initCharts = () => {
           tooltip: { mode: 'index', intersect: false },
         },
         scales: {
-          y: { beginAtZero: true, grid: { color: '#eef1f9' }, ticks: { color: '#94a3b8', font: { size: 11 } } },
+          y: {
+            beginAtZero: true,
+            max: maxRatioY,
+            grid: { color: '#eef1f9' },
+            // ticks: { color: '#94a3b8', font: { size: 11 } }
+            ticks: {
+              callback: (value) => value ? formatValues(value) : '0'
+            }
+          },
           x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 11 } } },
         },
       },
@@ -566,6 +593,11 @@ const initCharts = () => {
   /* ── Total Transaction grouped bar ── */
   const txEl = document.getElementById('transactionBar');
   if (txEl) {
+    const maxDeposit = Math.max(...(depositData.value || [0]), 0);
+    const maxCredit = Math.max(...(creditData.value || [0]), 0);
+    const peakVal = Math.max(maxDeposit, maxCredit, 5);
+    const maxY = Math.ceil(peakVal * 1.2);
+
     transactionBar = new Chart(txEl.getContext('2d'), {
       type: 'bar',
       data: {
@@ -599,6 +631,10 @@ const initCharts = () => {
         scales: {
           y: {
             beginAtZero: true, grid: { color: '#eef1f9' },
+            max: maxY,
+            ticks: {
+              callback: (value) => value ? formatValues(value) : '0'
+            }
             // ticks: {
             //   color: '#94a3b8', font: { size: 11 },
             //   callback: (v) => v >= 1e6 ? (v / 1e6).toFixed(0) + 'M' : v >= 1e3 ? (v / 1e3).toFixed(0) + 'K' : v,
@@ -613,8 +649,9 @@ const initCharts = () => {
 
   const total = bookingStats.totalBookings;
   const confirmed = bookingStats.confirmedBookings;
+  const hasBookingData = total > 0;
 
-  const confirmedPercent = total > 0 ? Math.round((confirmed / total) * 100) : 0;
+  const confirmedPercent = hasBookingData ? Math.round((confirmed / total) * 100) : 0;
 
   const bookingCanvas = document.getElementById('bookingDonut');
   if (bookingCanvas) {
@@ -622,10 +659,10 @@ const initCharts = () => {
     bookingDonut = new Chart(ctx, {
       type: 'doughnut',
       data: {
-        labels: ['Confirmed', 'Cancelled'],
+        labels: hasBookingData ? ['Confirmed', 'Cancelled'] : ['No Data'],
         datasets: [{
-          data: [confirmedPercent, 100 - confirmedPercent],
-          backgroundColor: ['#10b981', '#f97316'], // Blue for confirmed, red for cancelled
+          data: hasBookingData ? [confirmedPercent, 100 - confirmedPercent] : [1],
+          backgroundColor: hasBookingData ? ['#10b981', '#f97316'] : ['#e2e8f0'],
           borderWidth: 0,
           cutout: '75%',
           borderRadius: 8,
@@ -649,13 +686,17 @@ const initCharts = () => {
   const ticketingCanvas = document.getElementById('ticketingDonut');
   if (ticketingCanvas) {
     const ctx = ticketingCanvas.getContext('2d');
+    const ticketedVal = ticketingStats.ticketed ?? 0;
+    const othersVal = ticketingStats.voided ?? 0;
+    const totalVal = ticketedVal + othersVal;
+
     ticketingDonut = new Chart(ctx, {
       type: 'doughnut',
       data: {
-        labels: ['Ticketed', 'Others'],
+        labels: totalVal > 0 ? ['Ticketed', 'Others'] : ['No Data'],
         datasets: [{
-          data: [ticketingStats.ticketed, ticketingStats.voided],
-          backgroundColor: ['#10b981', '#ef4444'],
+          data: totalVal > 0 ? [ticketingStats.ticketed, ticketingStats.voided] : [1],
+          backgroundColor: totalVal > 0 ? ['#10b981', '#ef4444'] : ['#e2e8f0'],
           borderWidth: 0,
           cutout: '70%',
           spacing: 0,
@@ -679,6 +720,11 @@ const initCharts = () => {
   const searchCanvas = document.getElementById('searchBookingChart');
   if (searchCanvas) {
     const searchCtx = searchCanvas.getContext('2d');
+    const maxSearch = Math.max(...(searchVals.value || [0]), 0);
+    const maxBooking = Math.max(...(bookingVals.value || [0]), 0);
+    const peakSearchVal = Math.max(maxSearch, maxBooking, 5);
+    const maxSearchY = Math.ceil(peakSearchVal * 1.2);
+
     searchBookingChart = new Chart(searchCtx, {
       type: 'bar',
       data: {
@@ -718,7 +764,14 @@ const initCharts = () => {
           tooltip: { mode: 'index', intersect: false }
         },
         scales: {
-          y: { beginAtZero: true, grid: { color: '#e2e8f0' } },
+          y: {
+            beginAtZero: true,
+            max: maxSearchY,
+            ticks: {
+              callback: (value) => value ? formatValues(value) : '0'
+            },
+            grid: { color: '#e2e8f0' }
+          },
           x: { grid: { display: false } }
         }
       }
@@ -849,10 +902,15 @@ const initCharts = () => {
     supportDonut = new Chart(ctx, {
       type: 'doughnut',
       data: {
-        labels: ['Open', 'Closed', 'Hold'],
+        labels: ['Open', 'In Progress', 'Closed', 'Hold'],
         datasets: [{
-          data: [5, 7, 2],
-          backgroundColor: ['#10B981', '#64748B', '#F59E0B'],
+          data: [
+            supportTicketData.value.open,
+            supportTicketData.value.in_progress,
+            supportTicketData.value.closed,
+            supportTicketData.value.hold,
+          ],
+          backgroundColor: ['#10B981', '#3B82F6', '#64748B', '#F59E0B'],
           borderWidth: 0,
           cutout: '75%',
           borderRadius: 5,
@@ -877,7 +935,7 @@ const initCharts = () => {
             supportDonutCenterValue = chart.data.datasets[0].data[index];
           } else {
             supportDonutCenterLabel = 'Total';
-            supportDonutCenterValue = chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+            supportDonutCenterValue = chart.data.datasets[0].data.reduce((total, value) => total + Number(value || 0), 0);
           }
           chart.draw();
         },
@@ -891,24 +949,28 @@ const initCharts = () => {
   /* ── Trending Booking Class polarArea (monochrome) ── */
   const bcEl = document.getElementById('bookingClassPie');
   if (bcEl) {
+    const hasBookingClassData = bookingClassData.value.some(
+      value => Number(value) > 0
+    );
     bookingClassPie = new Chart(bcEl.getContext('2d'), {
       type: 'polarArea',
       data: {
-        labels: ['Economy', 'Prem. Economy', 'Business Class', 'First Class'],
+        labels: hasBookingClassData
+          ? ['Economy', 'Prem. Economy', 'Business Class', 'First Class']
+          : ['No Data'],
         datasets: [{
-          data: bookingClassData.value,
-          backgroundColor: [
-            'rgba(79, 126, 248, 0.85)',   // Economy       — indigo (matches KPI cards)
-            'rgba(16, 185, 129, 0.85)',   // Prem. Economy — emerald
-            'rgba(249, 115, 22, 0.85)',   // Business      — orange
-            'rgba(139, 92, 246, 0.85)',   // First         — purple
-          ],
-          borderColor: [
-            '#4f7ef8',
-            '#10b981',
-            '#f97316',
-            '#8b5cf6',
-          ],
+          data: hasBookingClassData ? bookingClassData.value : [1],
+          backgroundColor: hasBookingClassData
+            ? [
+              'rgba(79, 126, 248, 0.85)',
+              'rgba(16, 185, 129, 0.85)',
+              'rgba(249, 115, 22, 0.85)',
+              'rgba(139, 92, 246, 0.85)',
+            ]
+            : ['#e2e8f0'],
+          borderColor: hasBookingClassData
+            ? ['#4f7ef8', '#10b981', '#f97316', '#8b5cf6']
+            : ['#e2e8f0'],
           borderWidth: 1,
         }],
       },
@@ -970,39 +1032,38 @@ const addCenterTextToBookingGauge = (percent) => {
   }
 };
 
-const addCenterTextToSupportDonut = () => {
-  if (supportDonut) {
-    // Set initial total count dynamically
-    supportDonutCenterValue = supportDonut.data.datasets[0].data.reduce((a, b) => a + b, 0);
+// const addCenterTextToSupportDonut = () => {
+//   if (supportDonut) {
+//     // Set initial total count dynamically
+//     supportDonutCenterValue = supportDonut.data.datasets[0].data.reduce((a, b) => a + b, 0);
 
-    const originalDraw = supportDonut.draw;
-    supportDonut.draw = function () {
-      originalDraw.apply(this, arguments);
-      const ctx = this.ctx;
+//     const originalDraw = supportDonut.draw;
+//     supportDonut.draw = function () {
+//       originalDraw.apply(this, arguments);
+//       const ctx = this.ctx;
 
-      const chartArea = this.chartArea;
-      const centerX = (chartArea.left + chartArea.right) / 2;
-      const centerY = chartArea.bottom; // center of half-gauge arc
+//       const chartArea = this.chartArea;
+//       const centerX = (chartArea.left + chartArea.right) / 2;
+//       const centerY = chartArea.bottom; // center of half-gauge arc
 
-      ctx.save();
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+//       ctx.save();
+//       ctx.textAlign = 'center';
+//       ctx.textBaseline = 'middle';
 
-      // Draw value (e.g. 5, 7, 2 or Total sum)
-      ctx.font = 'bold 16px "Plus Jakarta Sans", sans-serif';
-      ctx.fillStyle = '#0f1535';
-      ctx.fillText(`${supportDonutCenterValue}`, centerX, centerY - 22);
+//       // Draw value (e.g. 5, 7, 2 or Total sum)
+//       ctx.font = 'bold 16px "Plus Jakarta Sans", sans-serif';
+//       ctx.fillStyle = '#0f1535';
+//       ctx.fillText(`${supportDonutCenterValue}`, centerX, centerY - 22);
 
-      // Draw label (e.g. 'Open', 'Closed', 'Hold' or 'Total')
-      ctx.font = '10px "Plus Jakarta Sans", sans-serif';
-      ctx.fillStyle = '#64748b';
-      ctx.fillText(supportDonutCenterLabel, centerX, centerY - 8);
+//       ctx.font = '10px "Plus Jakarta Sans", sans-serif';
+//       ctx.fillStyle = '#64748b';
+//       ctx.fillText(supportDonutCenterLabel, centerX, centerY - 8);
 
-      ctx.restore();
-    };
-    supportDonut.draw();
-  }
-};
+//       ctx.restore();
+//     };
+//     supportDonut.draw();
+//   }
+// };
 
 const travelerDonutCenterText = {
   id: 'travelerDonutCenterText',
@@ -1043,7 +1104,7 @@ const travelerDonutCenterText = {
 };
 
 let supportDonutCenterLabel = 'Total';
-let supportDonutCenterValue = 14;
+let supportDonutCenterValue = 0;
 
 const supportDonutCenterText = {
   id: 'supportDonutCenterText',
@@ -1245,14 +1306,14 @@ onBeforeUnmount(() => {
               </div>
               <div class="chart-legend">
                 <div><span class="ldot" style="background:#10b981"></span>{{ formatValues(ticketingStats.ticketed)
-                }}
+                  }}
                   Ticketed</div>
                 <div><span class="ldot" style="background:#ef4444"></span>{{ formatValues(ticketingStats.voided) }}
                   Others</div>
               </div>
             </div>
           </div>
-         
+
         </div><!-- /left col -->
 
         <!-- Right: Total Sales & Commission bar -->
@@ -1474,13 +1535,18 @@ onBeforeUnmount(() => {
             <div class="dash-card-header mb-2">
               <h3>Upcoming Departures</h3>
             </div>
-            <div class="fdm-travel-list">
+            <!-- Empty State -->
+            <div v-if="!upcomingTravelDates.length" class="text-center text-muted py-4 small">
+              No upcoming departures.
+            </div>
+
+            <div v-else class="fdm-travel-list">
               <button v-for="item in upcomingTravelDates" :key="item.date" type="button" class="fdm-travel-row"
                 @click="openFlightModal(item)">
                 <span class="fdm-travel-main">
                   <span class="fdm-travel-date">{{ item.displayDate }}</span>
                   <span class="fdm-travel-sub">{{ item.flightCount }} flight{{ item.flightCount === 1 ? '' : 's'
-                  }}</span>
+                    }}</span>
                 </span>
                 <span class="fdm-travel-badge">{{ item.passengerCount }} pax</span>
               </button>
@@ -1699,7 +1765,12 @@ onBeforeUnmount(() => {
               <PeriodSelector v-model="routesMonthSelection" :include-all="false" />
               <!-- <button class="btn-pill">August, 2026 <i class="bi bi-chevron-down"></i></button> -->
             </div>
-            <div class="table-responsive">
+
+            <!-- Empty State -->
+            <div v-if="!airlines.length" class="text-center text-muted py-4 small">
+              No selling information found.
+            </div>
+            <div v-else class="table-responsive">
               <table class="table align-middle data-table mb-0">
                 <thead>
                   <tr>
@@ -1770,8 +1841,9 @@ onBeforeUnmount(() => {
                 <canvas id="supportDonut"></canvas>
 
               </div>
-              <div class="d-flex gap-3 justify-content-center flex-wrap">
+              <div class="d-flex gap-2 justify-content-center flex-wrap">
                 <span class="legend-item"><span class="ldot" style="background:#10B981"></span>Open</span>
+                <span class="legend-item"><span class="ldot" style="background:#3B82F6"></span>In Progress</span>
                 <span class="legend-item"><span class="ldot" style="background:#64748B"></span>Closed</span>
                 <span class="legend-item"><span class="ldot" style="background:#F59E0B"></span>Hold</span>
               </div>
@@ -1850,7 +1922,12 @@ onBeforeUnmount(() => {
               <!-- <button class="btn-pill">August, 2026 <i class="bi bi-chevron-down"></i></button> -->
             </div>
 
-            <div class="routes-list flex-grow-1">
+            <!-- Empty State -->
+            <div v-if="!routes.length" class="text-center text-muted py-4 small">
+              No frequent routes found.
+            </div>
+
+            <div v-else class="routes-list flex-grow-1">
               <div v-for="route in routes" :key="route.code" class="route-row">
                 <div class="route-badge-wrap">
                   <span class="route-badge" :style="{ background: route.color, color: route.textColor }">

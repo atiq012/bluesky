@@ -570,6 +570,20 @@ class DashboardController extends Controller
         // Sort chronologically by date
         usort($upcomingTravelDates, fn($a, $b) => strcmp($a['date'], $b['date']));
 
+        // helpdesk
+        $supportTicketStats = HelpdeskRequest::query()
+            ->when(!empty($agencyUserIds), function ($q) use ($agencyUserIds) {
+                $q->whereIn('requester_id', $agencyUserIds);
+            })
+            ->selectRaw("
+                SUM(CASE WHEN LOWER(status) = 'open' THEN 1 ELSE 0 END) AS open,
+                SUM(CASE WHEN LOWER(status) = 'on hold' THEN 1 ELSE 0 END) AS hold,
+                SUM(CASE WHEN LOWER(status) = 'closed' THEN 1 ELSE 0 END) AS closed,
+                SUM(CASE WHEN LOWER(status) = 'in progress' THEN 1 ELSE 0 END) AS in_progress
+
+            ")
+            ->first();
+
         return response()->json([
             'totalBookings'     => $totalBookings,
             'confirmedBookings' => $confirmedBookings,
@@ -595,6 +609,7 @@ class DashboardController extends Controller
             'lastTicketingInfo' => $ticketingBookings,
             'upcomingTravelDates' => $upcomingTravelDates,
             'flightDetailsByDate' => $flightDetailsByDate,
+            'supportTicketStats'  => $supportTicketStats,
         ]);
     }
 
