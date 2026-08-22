@@ -3,7 +3,7 @@ import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
 
 import { useAuthStore } from "../../../stores/authStore";
 import axiosInstance from "../../../axiosInstance"
-import { ref, onMounted, onBeforeUnmount, reactive, watch } from "vue";
+import { ref, onMounted, onBeforeUnmount, reactive, watch,computed } from "vue";
 import { mode } from "crypto-js";
 import { useRouter } from "vue-router";
 import Select2 from '../../common/Select2.vue';
@@ -16,6 +16,9 @@ let quillInstance = null;
 
 const authStore = useAuthStore();
 const router = useRouter();
+
+const isPrimaryUser = computed(() => Boolean(authStore.sInfo?.is_primary));
+
 
 const form = reactive({
     useEmail: authStore.email,
@@ -176,17 +179,63 @@ async function getSubCate(cate_id) {
 }
 
 
+// async function getRequester() {
+//     try {
+//         const response = await axiosInstance.get('getAllUsers');
+//         requesterOptions.value = (response.data || []).map(item => ({
+//             value: item.id,
+//             label: item.name
+//         }));
+//     } catch (error) {
+//         console.error(error);
+//     }
+// }
+
+
+// async function getRequester() {
+//     console.log("is primary: ",isPrimaryUser.value);
+//     if (isPrimaryUser.value) {
+//         // Primary User: Fetch all agency users
+//         try {
+//             const response = await axiosInstance.get('getHelpdeskRequesters');
+//             requesterOptions.value = (response.data || []).map(item => ({
+//                 value: item.id,
+//                 label: item.name
+//             }));
+//         } catch (error) {
+//             console.error(error);
+//         }
+//     } else {
+//         // Non-Primary User: Only self
+//         const currentUserId = authStore.sInfo?.id || authStore.sInfo?.idd;
+//         const currentUserName = authStore.name || authStore.sInfo?.name;
+
+//         requesterOptions.value = [
+//             { value: currentUserId, label: currentUserName }
+//         ];
+//         form.requester = currentUserId;
+//     }
+// }
+
 async function getRequester() {
     try {
-        const response = await axiosInstance.get('getAllUsers');
-        requesterOptions.value = (response.data || []).map(item => ({
-            value: item.id,
-            label: item.name
+        const response = await axiosInstance.get('getHelpdeskRequesters');
+        const users = response.data || [];
+
+        requesterOptions.value = users.map(user => ({
+            value: user.id,
+            label: user.name
         }));
+
+        // If only 1 user is returned (non-primary), select them automatically
+        if (users.length === 1) {
+            form.requester = users[0].id;
+        }
     } catch (error) {
         console.error(error);
     }
 }
+
 
 
 async function getInternalUsers() {

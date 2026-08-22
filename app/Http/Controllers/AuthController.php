@@ -235,6 +235,7 @@ class AuthController extends BaseController
             'is_active'        => $user->is_active,
             'require_2fa'      => $user->require_2fa,
             'registered_2fa'   => $user->registered_2fa,
+            'is_primary'       => $user->is_primary,
             'google2fa_secret' => $revealTwoFa ? $user->google2fa_secret : null,
             'google2fa_qr'     => $revealTwoFa ? $user->google2fa_qr : null,
             'access_token'     => $token,

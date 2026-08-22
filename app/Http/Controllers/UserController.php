@@ -1,16 +1,18 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\BaseController;
 use App\Models\Department\Department;
 use App\Models\Designation\Designation;
 use App\Models\User;
-use DB;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password as Pass;
 use Yajra\DataTables\DataTables;
+use App\Models\Agent\Agent;
 
 
 class UserController extends BaseController
@@ -33,7 +35,7 @@ class UserController extends BaseController
         $auth = auth()->user();
 
         $data = DB::table('users as u')->where('type', 2)->where('agent_id', $auth->agent_id)
-        // ->join('roles as r', 'r.id', 'u.user_role')
+            // ->join('roles as r', 'r.id', 'u.user_role')
             ->selectRaw('u.name,u.email,u.img_path as img,u.phone,u.status,u.img_path,u.id as idd,u.created_at,u.updated_at,u.dept_id as dept,u.designation_id as desg,u.emp_id,f_username(u.updated_by) as updated_by,f_username(u.created_by) as created_by')->get();
 
         return DataTables::of($data)->addIndexColumn()->make(true);
@@ -44,6 +46,36 @@ class UserController extends BaseController
         $user = DB::table('users')->get();
         return response()->json($user);
     }
+
+    public function getHelpdeskRequesters(Request $request)
+    {
+        $user = auth()->user() ?? $request->user();
+        if (!$user) {
+            return response()->json([], 401);
+        }
+        $agencyId = $user->agent_id ?? Agent::where('user_id', $user->id)->value('id');
+        // If user belongs to an agency and is a Primary User
+        if ($agencyId && $user->is_primary) {
+            $agencyUserIds = User::where('agent_id', $agencyId)->pluck('id')->toArray();
+            $ownerId = Agent::where('id', $agencyId)->value('user_id');
+
+            if ($ownerId) {
+                $agencyUserIds[] = (int) $ownerId;
+            }
+            $users = DB::table('users')
+                ->whereIn('id', array_unique(array_filter($agencyUserIds)))
+                ->select('id', 'name', 'email')
+                ->get();
+        } else {
+            // Non-primary user: Return only the logged-in user
+            $users = DB::table('users')
+                ->where('id', $user->id)
+                ->select('id', 'name', 'email')
+                ->get();
+        }
+        return response()->json($users);
+    }
+
 
     /**
      * Show the form for creating a new resource.
@@ -61,7 +93,8 @@ class UserController extends BaseController
         // dd($request->all());
 
         $auth      = User::where('email', $request->useEmail)->first();
-        $validator = validator($request->all(),
+        $validator = validator(
+            $request->all(),
             ['name' => 'required'],
             ['phone' => 'required'],
             ['email' => 'required'],
@@ -98,7 +131,6 @@ class UserController extends BaseController
 
             $request_image->move($image_path, $image_name);
             $user->img_path = '/uploads/profile_image/' . $image_name;
-
         } else {
             $profilePicturePath = null;
         }
@@ -111,7 +143,6 @@ class UserController extends BaseController
         // $user->agent_id = $auth->agent_id;
         $user->save();
         return response()->json(['message' => 'Successfully User Saved.', 'types' => 's']);
-
     }
     public function agntUserstore(Request $request)
     {
@@ -177,7 +208,6 @@ class UserController extends BaseController
 
             $request_image->move($image_path, $image_name);
             $user->img_path = '/uploads/profile_image/' . $image_name;
-
         } else {
             $profilePicturePath = null;
         }
@@ -190,7 +220,6 @@ class UserController extends BaseController
         // $user->agent_id = $auth->agent_id;
         $user->save();
         return response()->json(['message' => 'Successfully User Saved.', 'types' => 's']);
-
     }
 
     /**
@@ -211,7 +240,7 @@ class UserController extends BaseController
         $data = User::where('id', $request->id)->where('agent_id', auth()->user()->agent_id)->first();
         //dd($data);
 
-        if(!$data){
+        if (!$data) {
             return response()->json(['message' => 'User not found.', 'types' => 'e'], 404);
         }
 
@@ -271,7 +300,6 @@ class UserController extends BaseController
 
             $request_image->move($image_path, $image_name);
             $user->img_path = '/uploads/profile_image/' . $image_name;
-
         } else {
             $profilePicturePath = null;
         }
@@ -283,7 +311,6 @@ class UserController extends BaseController
 
         $user->save();
         return response()->json(['message' => 'Successfully User Upadete.', 'types' => 's']);
-
     }
 
     public function statusUpdate(Request $request)
@@ -297,12 +324,10 @@ class UserController extends BaseController
             $user->save();
             $success = '';
             return $this->SuccessResponse($success, 'Successfully User status updated.');
-
         } else {
             $error = 'Id can not be null.';
             return $this->ErrorResponse($error);
         }
-
     }
 
     public function changePassword(Request $request)
@@ -378,11 +403,9 @@ class UserController extends BaseController
             $user->delete();
             $success = '';
             return $this->SuccessResponse($success, 'Successfully User Deleted.');
-
         } else {
             $error = 'Id can not be null.';
             return $this->ErrorResponse($error);
-
         }
     }
 }
