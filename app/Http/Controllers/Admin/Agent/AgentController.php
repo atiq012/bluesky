@@ -401,7 +401,15 @@ class AgentController extends BaseController
             }
             $agent->postal_code        = $nullIfEmpty($request->postalCode);
             $agent->ca_number          = $nullIfEmpty($request->cacNumber);
-            $agent->iata_number        = $nullIfEmpty($request->iataNumber);
+            if($request->agencyType == 'Corporate'){
+                $agent->agency_type = 'Corporate';
+            }else if($request->agencyType == 'Non-IATA'){
+                $agent->agency_type = 'Non-IATA';
+
+            }else{
+                $agent->agency_type = 'IATA';
+                $agent->iata_number        = $nullIfEmpty($request->iataNumber);
+            }
             $tradeLicence              = trim((string) $request->tradeLicense);
             $agent->trade_licence      = $tradeLicence; //!== '' ? $tradeLicence : ('REG-' . $agentCode);
             $agent->hajj_agency_number = $nullIfEmpty($request->hajjNumber);
