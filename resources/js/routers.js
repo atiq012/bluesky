@@ -124,6 +124,8 @@ const viewOfferPriceDetailReadOnly = () => import('./components/admin/group/view
 const groupPAXUpload = () => import('./components/admin/group/paxUpload.vue');
 const allGroupUploadedPAX = () => import('./components/admin/group/allUploadedPAX.vue');
 
+const b2bGroupPaymentList = () => import('./components/admin/group/payment/index.vue');
+
 const routes = [
     { path: '/', component: Login, name: 'Login', meta: { guest: true } },
     { path: '/sendResetLinkEmail', component: sendResetLinkEmail, name: 'sendResetLinkEmail', meta: { guest: true } },
@@ -243,6 +245,9 @@ const routes = [
     { path: '/view-offer-price-of-group-request/:id', component: viewOfferPriceDetailReadOnly, name: 'viewOfferPrice', meta: { auth: true } },
     { path: '/group-pax-upload/:id', component: groupPAXUpload, name: 'groupPAXUpload', meta: { auth: true } },
     { path: '/all-group-uploaded-pax/:id', component: allGroupUploadedPAX, name: 'allGroupUploadedPAX', meta: { auth: true } },
+
+    //group payment
+    { path: '/all-b2b-group-payment-list', component: b2bGroupPaymentList, name: 'b2bGroupPaymentList', meta: { auth: true } },
 
 ]
 

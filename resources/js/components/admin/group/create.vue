@@ -13,6 +13,21 @@ const authStore = useAuthStore();
 const router = useRouter();
 const datePickerOptions = ref({});
 
+// ---- Date restrictions: no past dates; return date can't precede departure ----
+const todayStart = computed(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+});
+
+const minReturnDate = computed(() => {
+    if (form.value.departureDate) {
+        const d = moment(form.value.departureDate, 'DD-MMM-YYYY HH:mm').toDate();
+        if (!Number.isNaN(d.getTime())) return d;
+    }
+    return todayStart.value;
+});
+
 // ---- Trip type (One Way / Round Way / Multi City) ----
 const tripType = ref('oneway');
 
@@ -368,7 +383,7 @@ async function submitForm() {
                                     </div>
                                     <div class="col-md-4" :class="{ 'has-error': errors.departureDate }">
                                         <label class="field-label">Departure Date <span class="required-star">*</span></label>
-                                        <AppDatePicker v-model="form.departureDate" :options="datePickerOptions" :enableTimePicker="true"  :inputClass="`form-control form-control-md`"/>
+                                        <AppDatePicker v-model="form.departureDate" :options="datePickerOptions" :enableTimePicker="true" :minDate="todayStart"  :inputClass="`form-control form-control-md`"/>
                                         <span v-if="errors.departureDate" class="error-text">{{ errors.departureDate }}</span>
                                     </div>
                                 </div>
@@ -398,7 +413,7 @@ async function submitForm() {
                                         </div>
                                         <div class="col-md-4" :class="{ 'has-error': errors.returnDate }">
                                             <label class="field-label">Return Date <span class="required-star">*</span></label>
-                                            <AppDatePicker v-model="form.returnDate" :options="datePickerOptions" :enableTimePicker="true"  :inputClass="`form-control form-control-md`"/>
+                                            <AppDatePicker v-model="form.returnDate" :options="datePickerOptions" :enableTimePicker="true" :minDate="minReturnDate"  :inputClass="`form-control form-control-md`"/>
                                             <span v-if="errors.returnDate" class="error-text">{{ errors.returnDate }}</span>
                                         </div>
                                     </div>
@@ -481,7 +496,7 @@ async function submitForm() {
                                         </div>
                                         <div class="col-md-4" :class="{ 'has-error': errors.multiCityFlights?.[index]?.departureDate }">
                                             <label class="field-label">Departure Date <span class="required-star">*</span></label>
-                                            <AppDatePicker v-model="flight.departureDate" :options="datePickerOptions" :enableTimePicker="true"  :inputClass="`form-control form-control-md`"/>
+                                            <AppDatePicker v-model="flight.departureDate" :options="datePickerOptions" :enableTimePicker="true" :minDate="todayStart"  :inputClass="`form-control form-control-md`"/>
                                             <span v-if="errors.multiCityFlights?.[index]?.departureDate" class="error-text">{{ errors.multiCityFlights[index].departureDate }}</span>
                                         </div>
                                     </div>

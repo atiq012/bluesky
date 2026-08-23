@@ -26,6 +26,7 @@ use App\Http\Controllers\Admin\Deposit\DepositController;
 use App\Http\Controllers\Admin\Designation\DesignationController;
 use App\Http\Controllers\Admin\Group\GroupController;
 use App\Http\Controllers\Admin\Group\GroupPAXController;
+use App\Http\Controllers\Admin\Group\GroupPaymentController;
 use App\Http\Controllers\Admin\Group\OfferPriceController;
 use App\Http\Controllers\Admin\IssuedBankMFS\IssuedBankMFSController;
 use App\Http\Controllers\Admin\OfficeLocation\LocationController;
@@ -195,6 +196,8 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('edit-group-request/data', [GroupController::class, 'edit'])->name('group.edit');
     Route::post('CancelGroup', [GroupController::class, 'destroy'])->name('group.destroy');
     Route::post('DeclineGroup', [GroupController::class, 'DeclineGroup'])->name('group.decline');
+
+    Route::get('get-group-payments', [GroupPaymentController::class, 'index'])->name('groupPayment.index');
 
     //group pax upload
     Route::post('group-pax-upload/store', [GroupPAXController::class, 'store'])->name('groupPAX.store');
