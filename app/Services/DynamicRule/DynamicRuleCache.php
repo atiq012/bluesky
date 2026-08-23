@@ -6,6 +6,7 @@ use App\Models\DynamicRule\DynamicRule;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class DynamicRuleCache
 {
@@ -84,6 +85,10 @@ class DynamicRuleCache
     // Changes when any active rule is saved, deleted, or status toggled — safety net if version bump is missed.
     public function activeRulesFreshnessStamp(): string
     {
+        if (! $this->dynamicRulesTableExists()) {
+            return '0:0';
+        }
+
         $rules = DynamicRule::query()
             ->where('status', true)
             ->whereNull('deleted_at')
@@ -100,6 +105,10 @@ class DynamicRuleCache
 
     private function loadActiveRulesFromDatabase(): array
     {
+        if (! $this->dynamicRulesTableExists()) {
+            return [];
+        }
+
         return DynamicRule::query()
             ->where('status', true)
             ->whereNull('deleted_at')
@@ -107,6 +116,17 @@ class DynamicRuleCache
             ->get()
             ->map(fn(DynamicRule $rule) => $this->normalizeRule($rule))
             ->all();
+    }
+
+    // Fare-rule-engine plan §12.2 (blueskyb2b safe-mode) — once BlueSky's drop migration runs,
+    // `dynamic_rules` is gone from the shared MySQL and every query against it would throw
+    // (SQLSTATE 42S02) on every search and every 10s cache-stamp poll. This guard is inert today
+    // (the table exists); it only starts doing anything after that drop. b2b never edits rules,
+    // so there is nothing to keep in sync here — degrading to "no active rules" is correct, not
+    // just safe.
+    private function dynamicRulesTableExists(): bool
+    {
+        return Schema::hasTable('dynamic_rules');
     }
 
     private function bootstrapVersion(): int

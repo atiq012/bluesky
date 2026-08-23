@@ -4,6 +4,7 @@ namespace App\Services\SearchV2;
 
 use Exception;
 use App\Models\BookingAttempt;
+use App\Services\FareRule\FareRulePromoRedemptionService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -13,6 +14,7 @@ class TpV2VoidService
         private readonly TravelportTokenService $tokenService,
         private readonly BookingSessionLogger $sessionLogger,
         private readonly BookingActivityLogger $activityLogger,
+        private readonly FareRulePromoRedemptionService $promoRedemption,
     ) {}
 
     public function void(BookingAttempt $attempt, array $ticketNumbers, int|string|null $userId = null): array
@@ -58,6 +60,9 @@ class TpV2VoidService
                 'voided_at'  => $now,
                 'updated_by' => $userId,
             ]);
+
+            // §7.6 — void releases any promo redemption exactly like cancel.
+            $this->promoRedemption->release($attempt->fresh());
 
             $this->activityLogger->log(
                 $attempt->fresh(),

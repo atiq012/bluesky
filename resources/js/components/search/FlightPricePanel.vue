@@ -7,8 +7,14 @@ import { useBookingStore } from '../../stores/bookingStore'
 import { useTpV2Workbench } from '../../composables/useTpV2Workbench'
 import { buildSelectionJson } from '../../utils/bookingSelectionJson'
 import { completePriceAttempt } from '../../utils/bookingAttemptSession'
-import { formatFareAmount } from '../../utils/dynamicRulePricingDisplay'
+import {
+    brandDynamicPricing,
+    formatFareAmount,
+} from '../../utils/dynamicRulePricingDisplay'
+import { formatTicketingDeadline } from '../../utils/dateUtils'
 import LoadingSpinner from '../common/LoadingSpinner.vue'
+import SearchWingsBuildLoader from './SearchWingsBuildLoader.vue'
+import AgencyPayableBreakdownModal from '../common/AgencyPayableBreakdownModal.vue'
 
 // Scroll-reveal: fade+slide each section in as it enters the panel's scroll viewport (one-shot)
 const prefersReducedMotion = typeof window !== 'undefined'
@@ -48,6 +54,8 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
+const payableBreakdownOpen = ref(false)
+
 const { isInitiating, error: workbenchError, initiateAndNavigate } = useTpV2Workbench()
 const searchStore = useSearchStore()
 const bookingStore = useBookingStore()
@@ -81,7 +89,22 @@ const fareRulesError   = ref(null)
 const fareRulesSegments = ref([])
 const fareInfoTab = ref('breakdown')
 
-const dynamicPricing = computed(() => priceData.value?.dynamic_pricing ?? null)
+// Prefer fare_pricing (new engine) → fall back to dynamic_pricing (legacy)
+const dynamicPricing = computed(() => brandDynamicPricing(priceData.value))
+
+const canOpenPayableBreakdown = computed(() => {
+    const breakdown = dynamicPricing.value?.pricing_breakdown
+    return Array.isArray(breakdown) && breakdown.length > 0
+})
+
+function openPayableBreakdown() {
+    if (!canOpenPayableBreakdown.value) return
+    payableBreakdownOpen.value = true
+}
+
+function closePayableBreakdown() {
+    payableBreakdownOpen.value = false
+}
 
 watch(
     [() => props.visible, () => props.selectedBrand],
@@ -115,6 +138,8 @@ function reset() {
     fareRulesError.value = null
     fareRulesSegments.value = []
     fareInfoTab.value = 'breakdown'
+    payableExpanded.value = false
+    payableBreakdownOpen.value = false
 }
 
 async function finishPriceAttempt() {
@@ -319,13 +344,15 @@ function formatRuleAmount(amount) {
 
 function paxTone(type) {
     if (type === 'Child') return 'child'
-    if (type === 'Infant') return 'infant'
+    if (type === 'Kids') return 'kids'
+    if (String(type).startsWith('Infant')) return 'infant'
     return 'adult'
 }
 
 function paxIcon(type) {
     if (type === 'Child') return 'fa-solid fa-child'
-    if (type === 'Infant') return 'fa-solid fa-baby'
+    if (type === 'Kids') return 'fa-solid fa-child-reaching'
+    if (String(type).startsWith('Infant')) return 'fa-solid fa-baby'
     return 'fa-solid fa-person'
 }
 
@@ -378,10 +405,8 @@ function formatTime(date, time) {
 
 function formatDeadline(iso) {
     if (!iso) return null
-    return new Date(iso).toLocaleString('en-US', {
-        year: 'numeric', month: 'short', day: 'numeric',
-        hour: '2-digit', minute: '2-digit', hour12: true,
-    })
+    // Pinned to agency time — the browser's own timezone must not change the deadline shown
+    return formatTicketingDeadline(iso, 'MMM D, YYYY, hh:mm A') || null
 }
 
 function formatDuration(iso) {
@@ -403,16 +428,6 @@ function routePoint(product, side) {
     }
 
     return inbound ? dep : arr
-}
-
-const paxCounts = computed(() => ({
-    Adult:  Number(props.form?.ADT ?? 1),
-    Child:  Number(props.form?.CNN ?? 0),
-    Infant: Number(props.form?.INF ?? 0),
-}))
-
-function paxCount(type) {
-    return paxCounts.value[type] ?? 0
 }
 
 const inclusionIcon = (inc) => {
@@ -550,6 +565,7 @@ const headerTripMeta = computed(() => {
         + Number(props.form?.CNN ?? 0)
         + Number(props.form?.KID ?? 0)
         + Number(props.form?.INF ?? 0)
+        + Number(props.form?.INS ?? 0)
     const traveler = `${pax || 1} Traveler${(pax || 1) === 1 ? '' : 's'}`
     return [trip, datePart, traveler].filter(Boolean).join(' . ')
 })
@@ -568,7 +584,7 @@ function onHeaderLogoError(e) {
 
         <!-- Panel -->
         <Transition name="fp-slide">
-            <div v-if="visible" class="fp-panel" role="dialog" aria-modal="true">
+            <div v-if="visible" class="fp-panel" :class="{ 'fp-panel--loading': loading }" role="dialog" aria-modal="true">
 
                 <!-- Header: airline logo + route / trip meta -->
                 <div class="fp-header">
@@ -592,14 +608,10 @@ function onHeaderLogoError(e) {
                 <!-- Body -->
                 <div class="fp-body">
 
-                    <!-- Skeleton -->
+                    <!-- Loading: same wings-build animation as the search page -->
                     <template v-if="loading">
-                        <div class="fp-skeleton-wrap">
-                            <div class="fp-sk-block" style="height:80px;border-radius:10px;"></div>
-                            <div class="fp-sk-block mt-3" style="height:160px;border-radius:10px;"></div>
-                            <div class="fp-sk-block mt-3" style="height:130px;border-radius:10px;"></div>
-                            <div class="fp-sk-block mt-3" style="height:110px;border-radius:10px;"></div>
-                            <div class="fp-sk-block mt-3" style="height:90px;border-radius:10px;"></div>
+                        <div class="fp-loading-wrap">
+                            <SearchWingsBuildLoader :size="220" />
                         </div>
                     </template>
 
@@ -784,8 +796,8 @@ function onHeaderLogoError(e) {
                             <!-- Tab: Fare Breakdown -->
                             <div v-show="fareInfoTab === 'breakdown'" class="fp-fare-tab-panel" role="tabpanel">
                                 <div
-                                    v-for="bd in priceData.price_breakdown"
-                                    :key="bd.passenger_type_code"
+                                    v-for="(bd, bdIndex) in priceData.price_breakdown"
+                                    :key="`${bd.passenger_type_code}-${bdIndex}`"
                                     class="fp-price-pax-block"
                                     :class="`fp-price-pax-block--${paxTone(bd.type)}`"
                                 >
@@ -794,9 +806,9 @@ function onHeaderLogoError(e) {
                                             <i :class="paxIcon(bd.type)"></i>
                                         </span>
                                         <span class="fp-pax-type">{{ bd.type }}</span>
-                                        <span class="fp-pax-qty">× {{ paxCount(bd.type) }}</span>
+                                        <span class="fp-pax-qty">× {{ bd.quantity }}</span>
                                         <span class="fp-pax-total ms-auto">
-                                            {{ priceData.currency }} {{ (paxCount(bd.type) * bd.total_price).toLocaleString() }}
+                                            {{ priceData.currency }} {{ (bd.quantity * bd.total_price).toLocaleString() }}
                                         </span>
                                     </div>
 
@@ -1076,7 +1088,14 @@ function onHeaderLogoError(e) {
                         </button>
                         <div class="fp-footer-payable-collapse" :class="{ 'fp-footer-payable-collapse--open': payableExpanded }">
                             <div class="fp-footer-payable-inner">
-                                <div class="fp-footer-price-row fp-footer-price-row--gross">
+                                <button
+                                    type="button"
+                                    class="fp-footer-price-row fp-footer-price-row--gross fp-footer-price-row--as-btn"
+                                    :class="{ 'fp-footer-price-row--payable-click': canOpenPayableBreakdown }"
+                                    :title="canOpenPayableBreakdown ? 'View payable breakdown' : undefined"
+                                    :disabled="!canOpenPayableBreakdown"
+                                    @click="openPayableBreakdown"
+                                >
                                     <div class="fp-footer-price-meta">
                                         <span class="fp-footer-ico fp-footer-ico--gross" aria-hidden="true">
                                             <i class="fa-solid fa-wallet"></i>
@@ -1085,7 +1104,12 @@ function onHeaderLogoError(e) {
                                     </div>
                                     <span class="fp-footer-currency">{{ priceData.currency }}</span>
                                     <span class="fp-footer-amount-gross">{{ formatFareAmount(agencyTotalPayable) }}</span>
-                                </div>
+                                    <i
+                                        v-if="canOpenPayableBreakdown"
+                                        class="fa-solid fa-circle-info fp-footer-payable-info"
+                                        aria-hidden="true"
+                                    ></i>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -1134,6 +1158,14 @@ function onHeaderLogoError(e) {
             </div>
         </Transition>
     </Teleport>
+
+    <AgencyPayableBreakdownModal
+        :is-open="payableBreakdownOpen"
+        :pricing="dynamicPricing"
+        :currency="priceData?.currency ?? 'BDT'"
+        :gross-payment="footerGrossFare"
+        @close="closePayableBreakdown"
+    />
 </template>
 
 <style scoped>
@@ -1163,6 +1195,17 @@ function onHeaderLogoError(e) {
     background: var(--bs-body-bg, #fff);
     box-shadow: -6px 0 40px rgba(0,0,0,0.18);
     overflow: hidden;
+}
+
+/* while pricing loads, let the dimmed search page behind show through instead of a flat page */
+.fp-panel--loading {
+    background: rgba(255, 255, 255, 0.435);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+html[data-bs-theme="dark"] .fp-panel--loading {
+    background: rgba(15, 23, 42, 0.55);
 }
 
 /* ── Header ──────────────────────────────── */
@@ -1249,6 +1292,7 @@ html[data-bs-theme="dark"] .fp-close-btn:hover {
 
 /* ── Body ────────────────────────────────── */
 .fp-body {
+    position: relative;
     flex: 1;
     overflow-y: auto;
     padding: 16px;
@@ -1257,14 +1301,15 @@ html[data-bs-theme="dark"] .fp-close-btn:hover {
     gap: 0;
 }
 
-/* ── Skeleton ────────────────────────────── */
-.fp-skeleton-wrap { display: flex; flex-direction: column; }
-.fp-sk-block {
-    background: linear-gradient(90deg, var(--bs-secondary-bg, #e8e8e8) 25%, var(--bs-tertiary-bg, #f5f5f5) 50%, var(--bs-secondary-bg, #e8e8e8) 75%);
-    background-size: 200% 100%;
-    animation: fp-shimmer 1.4s infinite;
+/* ── Loading ─────────────────────────────── */
+.fp-loading-wrap {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
-@keyframes fp-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
 
 /* ── Error ───────────────────────────────── */
 .fp-error-box {
@@ -1624,6 +1669,7 @@ html[data-bs-theme="dark"] .fp-price-pax-block {
 }
 .fp-pax-ico--adult { background: rgba(121, 68, 235, 0.14); color: #7944eb; }
 .fp-pax-ico--child { background: rgba(5, 150, 105, 0.14); color: #059669; }
+.fp-pax-ico--kids { background: rgba(37, 99, 235, 0.14); color: #2563eb; }
 .fp-pax-ico--infant { background: rgba(217, 119, 6, 0.14); color: #d97706; }
 .fp-pax-type  { color: var(--bs-body-color); }
 .fp-pax-qty   { color: var(--bs-secondary-color, #6b7280); font-size: 12px; }
@@ -1641,6 +1687,7 @@ html[data-bs-theme="dark"] .fp-pax-row--base { background: rgba(45, 212, 191, 0.
 html[data-bs-theme="dark"] .fp-pax-row--tax { background: rgba(251, 146, 60, 0.14); color: #fdba74; }
 html[data-bs-theme="dark"] .fp-pax-ico--adult { background: rgba(121, 68, 235, 0.28); color: #c4b5fd; }
 html[data-bs-theme="dark"] .fp-pax-ico--child { background: rgba(16, 185, 129, 0.22); color: #6ee7b7; }
+html[data-bs-theme="dark"] .fp-pax-ico--kids { background: rgba(59, 130, 246, 0.24); color: #93c5fd; }
 html[data-bs-theme="dark"] .fp-pax-ico--infant { background: rgba(245, 158, 11, 0.22); color: #fcd34d; }
 
 /* ── Fare Rules dossier ──────────────────── */
@@ -2253,6 +2300,47 @@ html[data-bs-theme="dark"] .fp-footer-row-chevron { color: #c4b5fd; }
     .fp-footer-payable-collapse { transition: none; }
 }
 html[data-bs-theme="dark"] .fp-footer-amount-gross { color: var(--bs-body-color, #dee2e6); }
+
+/* Total Payable → AgencyPayableBreakdownModal (same pattern as branded blue mini) */
+.fp-footer-price-row--as-btn {
+    width: 100%;
+    box-sizing: border-box;
+    border: none;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    text-align: left;
+    font-family: inherit;
+    color: inherit;
+    cursor: default;
+}
+.fp-footer-price-row--payable-click {
+    cursor: pointer;
+    border-radius: 8px;
+}
+.fp-footer-price-row--payable-click:hover {
+    background: rgba(21, 101, 192, 0.06);
+}
+.fp-footer-price-row--payable-click:focus-visible {
+    outline: 2px solid #1565c0;
+    outline-offset: 2px;
+}
+.fp-footer-payable-info {
+    justify-self: center;
+    font-size: 11px;
+    color: #1565c0;
+    opacity: 0.8;
+}
+.fp-footer-price-row--payable-click .fp-footer-amount-gross {
+    color: #1565c0;
+}
+html[data-bs-theme="dark"] .fp-footer-price-row--payable-click:hover {
+    background: rgba(147, 197, 253, 0.1);
+}
+html[data-bs-theme="dark"] .fp-footer-payable-info,
+html[data-bs-theme="dark"] .fp-footer-price-row--payable-click .fp-footer-amount-gross {
+    color: #93c5fd;
+}
 
 /* Full-height narrow CTA — flush right edge (red-box layout) */
 .fp-book-btn {

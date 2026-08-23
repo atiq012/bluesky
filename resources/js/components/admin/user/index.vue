@@ -1,7 +1,7 @@
 <script setup>
 import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
 
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import axiosInstance from '../../../axiosInstance';
 import { runAction } from '../../../utils/runAction';
@@ -25,7 +25,66 @@ const statusForm = reactive({
     useridStatus: '',
 });
 
-const planePlaceholder = new URL('../../../../../public/theme/appimages/Plane_origin.svg', import.meta.url).href;
+const statusOptions = [
+    { value: '', label: '== Select ==' },
+    { value: '1', label: 'Active' },
+    { value: '2', label: 'On Hold' },
+    { value: '3', label: 'Locked' },
+    { value: '4', label: 'Deactivated' },
+];
+const statusMenuOpen = ref(false);
+const statusTriggerRef = ref(null);
+const statusPanelStyle = ref({});
+const statusSelectLabel = computed(() => statusOptions.find((o) => o.value === statusForm.status)?.label || '== Select ==');
+
+function toggleStatusMenu() {
+    if (!statusMenuOpen.value) {
+        const r = statusTriggerRef.value?.getBoundingClientRect();
+        if (r) {
+            statusPanelStyle.value = { top: `${r.bottom + 4}px`, left: `${r.left}px`, width: `${r.width}px` };
+        }
+    }
+    statusMenuOpen.value = !statusMenuOpen.value;
+}
+
+function selectStatusOption(value) {
+    statusForm.status = value;
+    statusMenuOpen.value = false;
+}
+
+function handleStatusOutsideClick(e) {
+    if (!statusMenuOpen.value) return;
+    if (statusTriggerRef.value && !statusTriggerRef.value.contains(e.target) && !e.target.closest('.status-select-panel')) {
+        statusMenuOpen.value = false;
+    }
+}
+
+const resetPasswordModalOpen = ref(false);
+const resetPasswordSubmitting = ref(false);
+const resetPasswordTarget = ref(null);
+const showNewPassword = ref(false);
+const showConfirmPassword = ref(false);
+
+const resetPasswordForm = reactive({
+    password: '',
+    password_confirmation: '',
+});
+
+const passwordRules = computed(() => ({
+    case: /^(?=.*[a-z])(?=.*[A-Z]).+$/.test(resetPasswordForm.password),
+    special: /^(?=.*[-+_!@#$%^&*.,?]).+$/.test(resetPasswordForm.password),
+    number: /^(?=.*[0-9]).+$/.test(resetPasswordForm.password),
+    length: resetPasswordForm.password.length >= 8,
+}));
+
+const passwordIsStrong = computed(() => Object.values(passwordRules.value).every(Boolean));
+const passwordsMatch = computed(() => (
+    resetPasswordForm.password.length > 0
+    && resetPasswordForm.password === resetPasswordForm.password_confirmation
+));
+const canSubmitResetPassword = computed(() => passwordIsStrong.value && passwordsMatch.value);
+
+const avatarPlaceholder = new URL('../../../../../public/theme/appimages/Admin.svg', import.meta.url).href;
 const apiBaseUrl = axiosInstance.defaults.baseURL || '';
 const apiOrigin = apiBaseUrl ? new URL(apiBaseUrl, window.location.origin).origin : window.location.origin;
 
@@ -67,6 +126,7 @@ function normalizeRows(data) {
 }
 
 function resolveImageUrl(path) {
+    //console.log('resolveImageUrl called with path:', path);
     if (!path) return '';
     const cleanPath = String(path).trim();
     if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) return cleanPath;
@@ -93,6 +153,7 @@ async function loadExternal(isRefresh = false) {
     try {
         const response = await axiosInstance.get('getAgentExternalUsers');
         externalRows.value = normalizeRows(response.data?.data);
+        // console.log('External Users:', externalRows.value);
     } catch (error) {
         console.log(error);
     } finally {
@@ -118,6 +179,33 @@ async function updateStatus() {
         statusModalOpen.value = false;
         Notification.showToast('s', response.data.message);
     }, { setLoading: (val) => { statusSubmitting.value = val; } });
+}
+
+function onResetPassword(row) {
+    resetPasswordTarget.value = row;
+    resetPasswordForm.password = '';
+    resetPasswordForm.password_confirmation = '';
+    showNewPassword.value = false;
+    showConfirmPassword.value = false;
+    resetPasswordModalOpen.value = true;
+}
+
+function closeResetPasswordModal() {
+    resetPasswordModalOpen.value = false;
+}
+
+async function submitResetPassword() {
+    if (!resetPasswordTarget.value?.id || !canSubmitResetPassword.value) return;
+
+    await runAction(async () => {
+        const response = await axiosInstance.post('/user-reset-password', {
+            id: resetPasswordTarget.value.id,
+            password: resetPasswordForm.password,
+            password_confirmation: resetPasswordForm.password_confirmation,
+        });
+        resetPasswordModalOpen.value = false;
+        Notification.showToast('s', response.data.message);
+    }, { setLoading: (val) => { resetPasswordSubmitting.value = val; } });
 }
 
 async function onEdit(row) {
@@ -161,6 +249,11 @@ async function confirmDelete() {
 
 onMounted(() => {
     loadExternal();
+    document.addEventListener('click', handleStatusOutsideClick);
+});
+
+onUnmounted(() => {
+    document.removeEventListener('click', handleStatusOutsideClick);
 });
 </script>
 
@@ -244,8 +337,9 @@ onMounted(() => {
 
                         <template #staff_info="{ value: row }">
                             <div class="user-staff-info">
-                                <img :src="resolveImageUrl(row?.img) || planePlaceholder" alt=""
-                                    class="user-staff-info__avatar">
+                                <img :src="resolveImageUrl(row?.img) || avatarPlaceholder" alt=""
+                                    class="user-staff-info__avatar"
+                                    @error="(e) => { e.target.onerror = null; e.target.src = avatarPlaceholder; }">
                                 <div class="user-staff-info__body">
                                     <span class="user-staff-info__name">{{ displayValue(row?.name) }}</span>
                                     <span class="user-staff-info__emp">{{ displayValue(row?.emp_id) }}</span>
@@ -288,9 +382,9 @@ onMounted(() => {
 
                         <template #action="{ value: row }">
                             <ActionButtons :item="row" :show-edit="true" :show-delete="true" :show-status-modal="true"
-                                :show-history="true" status-modal-label="Status" :loading-item-id="loadingItemId"
+                                :show-reset-password="true" :show-history="true" status-modal-label="Status" :loading-item-id="loadingItemId"
                                 :loading-action="loadingAction" @edit="onEdit" @showStatusModal="onShowStatusModal"
-                                @history="onHistory" @delete="onDelete" />
+                                @reset-password="onResetPassword" @history="onHistory" @delete="onDelete" />
                         </template>
                     </DataTable>
                 </div>
@@ -299,18 +393,42 @@ onMounted(() => {
     </div>
 
     <AppModal :is-open="statusModalOpen" title="Change Status" size="sm" @close="statusModalOpen = false">
-        <div class="modal-body">
-            <div class="card">
-                <div class="card-body">
-                    <label for="user-status-select" class="form-label">Status</label>
-                    <select id="user-status-select" v-model="statusForm.status" class="form-select form-select-sm">
-                        <option value="">== Select ==</option>
-                        <option value="1">Active</option>
-                        <option value="2">On Hold</option>
-                        <option value="3">Locked</option>
-                        <option value="4">Deactivated</option>
-                    </select>
+        <div class="modal-body p-4">
+            <div class="status-field-group">
+                <label class="cp-label">Status</label>
+                <div
+                    ref="statusTriggerRef"
+                    class="status-select-wrap"
+                    :class="{ 'status-select-wrap--open': statusMenuOpen }"
+                    tabindex="0"
+                    role="button"
+                    aria-haspopup="listbox"
+                    :aria-expanded="statusMenuOpen"
+                    @click="toggleStatusMenu"
+                    @keydown.enter.prevent="toggleStatusMenu"
+                    @keydown.space.prevent="toggleStatusMenu"
+                    @keydown.esc="statusMenuOpen = false"
+                >
+                    <i class="fa-solid fa-circle-dot status-select-icon" aria-hidden="true" />
+                    <span class="status-select-value">{{ statusSelectLabel }}</span>
+                    <i class="fa-solid fa-chevron-down status-select-caret" :class="{ 'status-select-caret--open': statusMenuOpen }" aria-hidden="true" />
                 </div>
+                <Teleport to="body">
+                    <div v-if="statusMenuOpen" class="status-select-panel" :style="statusPanelStyle" role="listbox">
+                        <button
+                            v-for="opt in statusOptions"
+                            :key="opt.value"
+                            type="button"
+                            class="status-select-option"
+                            :class="{ 'status-select-option--active': opt.value === statusForm.status }"
+                            role="option"
+                            :aria-selected="opt.value === statusForm.status"
+                            @click="selectStatusOption(opt.value)"
+                        >
+                            {{ opt.label }}
+                        </button>
+                    </div>
+                </Teleport>
             </div>
         </div>
         <div class="modal-footer">
@@ -326,6 +444,104 @@ onMounted(() => {
     <DeleteConfirmModal :is-open="deleteModalOpen" title="Delete User" :item-name="deleteTarget?.name || ''"
         message="Want to delete this user?" :loading="deleteLoading" @close="deleteModalOpen = false"
         @confirm="confirmDelete" />
+
+    <AppModal :is-open="resetPasswordModalOpen" :show-header="false" size="sm" max-width="440px" @close="closeResetPasswordModal">
+        <form class="modal-body p-4" @submit.prevent="submitResetPassword">
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <span class="reset-pass-icon d-flex align-items-center justify-content-center rounded-circle flex-shrink-0">
+                    <i class="fa-solid fa-key" aria-hidden="true"></i>
+                </span>
+                <div class="min-w-0">
+                    <h5 class="modal-title mb-0 fw-semibold">Change Password</h5>
+                    <p class="text-muted small mb-0 text-truncate">{{ resetPasswordTarget?.name || 'User' }}</p>
+                </div>
+            </div>
+
+            <div class="cp-field-group">
+                <label for="reset-new-password" class="cp-label">New Password</label>
+                <div class="cp-input-wrap">
+                    <i class="bx bx-lock-alt cp-icon"></i>
+                    <input
+                        id="reset-new-password"
+                        v-model="resetPasswordForm.password"
+                        :type="showNewPassword ? 'text' : 'password'"
+                        class="cp-input"
+                        placeholder="Enter new password"
+                        autocomplete="new-password"
+                    >
+                    <i
+                        class="bx cp-eye"
+                        :class="showNewPassword ? 'bx-show' : 'bx-hide'"
+                        role="button"
+                        tabindex="0"
+                        :aria-label="showNewPassword ? 'Hide password' : 'Show password'"
+                        @click="showNewPassword = !showNewPassword"
+                        @keydown.enter="showNewPassword = !showNewPassword"
+                    ></i>
+                </div>
+            </div>
+
+            <div class="cp-field-group">
+                <label for="reset-confirm-password" class="cp-label">Confirm Password</label>
+                <div class="cp-input-wrap">
+                    <i class="bx bx-lock-alt cp-icon"></i>
+                    <input
+                        id="reset-confirm-password"
+                        v-model="resetPasswordForm.password_confirmation"
+                        :type="showConfirmPassword ? 'text' : 'password'"
+                        class="cp-input"
+                        placeholder="Re-enter new password"
+                        autocomplete="new-password"
+                    >
+                    <i
+                        class="bx cp-eye"
+                        :class="showConfirmPassword ? 'bx-show' : 'bx-hide'"
+                        role="button"
+                        tabindex="0"
+                        :aria-label="showConfirmPassword ? 'Hide password' : 'Show password'"
+                        @click="showConfirmPassword = !showConfirmPassword"
+                        @keydown.enter="showConfirmPassword = !showConfirmPassword"
+                    ></i>
+                </div>
+                <span v-if="resetPasswordForm.password_confirmation.length > 0" class="reset-pass-match" :class="passwordsMatch ? 'reset-pass-match--ok' : 'reset-pass-match--bad'">
+                    <i :class="passwordsMatch ? 'fa-solid fa-circle-check' : 'fa-solid fa-circle-xmark'" aria-hidden="true"></i>
+                    {{ passwordsMatch ? 'Passwords match' : 'Passwords do not match' }}
+                </span>
+            </div>
+
+            <div class="reset-pass-rules mb-4">
+                <div class="reset-pass-rule" :class="{ 'reset-pass-rule--ok': passwordRules.case }">
+                    <i :class="passwordRules.case ? 'fa-solid fa-check-double' : 'fa-solid fa-circle'" aria-hidden="true"></i>
+                    <span>Uppercase and lowercase letter (A-z)</span>
+                </div>
+                <div class="reset-pass-rule" :class="{ 'reset-pass-rule--ok': passwordRules.special }">
+                    <i :class="passwordRules.special ? 'fa-solid fa-check-double' : 'fa-solid fa-circle'" aria-hidden="true"></i>
+                    <span>Special character (!, @, #, %)</span>
+                </div>
+                <div class="reset-pass-rule" :class="{ 'reset-pass-rule--ok': passwordRules.number }">
+                    <i :class="passwordRules.number ? 'fa-solid fa-check-double' : 'fa-solid fa-circle'" aria-hidden="true"></i>
+                    <span>At least one number</span>
+                </div>
+                <div class="reset-pass-rule" :class="{ 'reset-pass-rule--ok': passwordRules.length }">
+                    <i :class="passwordRules.length ? 'fa-solid fa-check-double' : 'fa-solid fa-circle'" aria-hidden="true"></i>
+                    <span>Minimum 8 characters</span>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <AppButton variant="cancel" :block="true" @click="closeResetPasswordModal" />
+                <AppButton
+                    type="submit"
+                    variant="update"
+                    label="Reset Password"
+                    loading-text="Resetting..."
+                    :loading="resetPasswordSubmitting"
+                    :disabled="!canSubmitResetPassword"
+                    :block="true"
+                />
+            </div>
+        </form>
+    </AppModal>
 </template>
 
 <style scoped>
@@ -463,6 +679,233 @@ onMounted(() => {
     background: #f1f5f9;
     color: #64748b;
 }
+
+.reset-pass-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    font-size: 1rem;
+    background: #fae8ff;
+    color: #c026d3;
+}
+
+.reset-pass-match {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.reset-pass-match--ok { color: #059669; }
+.reset-pass-match--bad { color: #dc2626; }
+
+.reset-pass-rules {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: 0.5rem;
+    background: #f8fafc;
+}
+
+.reset-pass-rule {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.reset-pass-rule i {
+    font-size: 0.6rem;
+    width: 0.9rem;
+    text-align: center;
+    color: #94a3b8;
+    transition: color 0.15s ease;
+}
+
+.reset-pass-rule--ok {
+    color: #059669;
+}
+
+.reset-pass-rule--ok i {
+    color: #15a93a;
+}
+
+.cp-field-group {
+    margin-bottom: 1rem;
+}
+
+.cp-label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.35rem;
+}
+
+.cp-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 11px 14px;
+    transition: border-color .15s, box-shadow .15s;
+}
+
+.cp-input-wrap:focus-within {
+    border-color: #93b4f7;
+    box-shadow: 0 0 0 3px rgba(74, 124, 246, .12);
+}
+
+.cp-icon {
+    font-size: 1.05rem;
+    flex-shrink: 0;
+    color: #9ca3af;
+}
+
+.cp-input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    font-size: .9rem;
+    color: #1f2937;
+    background: transparent;
+}
+
+.cp-input::placeholder {
+    color: #9ca3af;
+}
+
+.cp-eye {
+    font-size: 1.05rem;
+    color: #9ca3af;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.cp-eye:hover {
+    color: #6b7280;
+}
+
+.status-field-group {
+    margin-bottom: 0.25rem;
+}
+
+.status-select-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 11px 14px;
+    background: #fff;
+    cursor: pointer;
+    transition: border-color .15s, box-shadow .15s;
+}
+
+.status-select-wrap:hover {
+    border-color: #cbd5e1;
+}
+
+.status-select-wrap:focus-within,
+.status-select-wrap--open {
+    border-color: #93b4f7;
+    box-shadow: 0 0 0 3px rgba(74, 124, 246, .12);
+    outline: none;
+}
+
+.status-select-icon {
+    font-size: 1rem;
+    flex-shrink: 0;
+    color: #027de2;
+}
+
+.status-select-value {
+    flex: 1;
+    min-width: 0;
+    font-size: .9rem;
+    color: #1f2937;
+}
+
+.status-select-caret {
+    font-size: 0.7rem;
+    color: #9ca3af;
+    flex-shrink: 0;
+    transition: transform .15s ease;
+}
+
+.status-select-caret--open {
+    transform: rotate(180deg);
+}
+</style>
+
+<style>
+.status-select-panel {
+    position: fixed;
+    z-index: 1070;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.15);
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: min(240px, 60vh);
+    overflow-y: auto;
+}
+
+.status-select-option {
+    appearance: none;
+    border: none;
+    background: transparent;
+    text-align: left;
+    font-size: .9rem;
+    color: #1f2937;
+    padding: 0.5rem 0.75rem;
+    border-radius: 7px;
+    cursor: pointer;
+}
+
+.status-select-option:hover,
+.status-select-option:focus-visible {
+    background: #f1f5f9;
+    outline: none;
+}
+
+.status-select-option--active {
+    background: #027de2;
+    color: #fff;
+    font-weight: 600;
+}
+
+.status-select-option--active:hover {
+    background: #027de2;
+}
+
+[data-bs-theme="dark"] .status-select-panel {
+    background: #2b3035;
+    border-color: #495057;
+}
+
+[data-bs-theme="dark"] .status-select-option {
+    color: #dee2e6;
+}
+
+[data-bs-theme="dark"] .status-select-option:hover,
+[data-bs-theme="dark"] .status-select-option:focus-visible {
+    background: #343a40;
+}
+
+[data-bs-theme="dark"] .status-select-option--active {
+    background: #027de2;
+    color: #fff;
+}
 </style>
 
 <style>
@@ -493,6 +936,61 @@ onMounted(() => {
 
 [data-bs-theme=dark] .user-staff-info__meta {
     color: #adb5bd;
+}
+
+[data-bs-theme=dark] .reset-pass-rules {
+    background: #212529;
+}
+
+[data-bs-theme=dark] .reset-pass-rule {
+    color: #adb5bd;
+}
+
+[data-bs-theme=dark] .reset-pass-rule i {
+    color: #6c757d;
+}
+
+[data-bs-theme=dark] .cp-label {
+    color: #dee2e6;
+}
+
+[data-bs-theme=dark] .cp-input-wrap {
+    border-color: #495057;
+}
+
+[data-bs-theme=dark] .cp-input-wrap:focus-within {
+    border-color: #93b4f7;
+}
+
+[data-bs-theme=dark] .cp-input {
+    color: #e9ecef;
+}
+
+[data-bs-theme=dark] .cp-icon,
+[data-bs-theme=dark] .cp-eye {
+    color: #adb5bd;
+}
+
+[data-bs-theme=dark] .cp-eye:hover {
+    color: #dee2e6;
+}
+
+[data-bs-theme=dark] .status-select-wrap {
+    background: #212529;
+    border-color: #495057;
+}
+
+[data-bs-theme=dark] .status-select-wrap:focus-within,
+[data-bs-theme=dark] .status-select-wrap--open {
+    border-color: #93b4f7;
+}
+
+[data-bs-theme=dark] .status-select-value {
+    color: #e9ecef;
+}
+
+[data-bs-theme=dark] .status-select-caret {
+    color: #6c757d;
 }
 
 [data-bs-theme=light] body .info-agency {

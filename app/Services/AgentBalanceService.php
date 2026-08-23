@@ -6,6 +6,7 @@ use App\Models\Agent\Agent;
 use App\Models\Agent\AgentBalanceLedger;
 use App\Models\BookingAttempt;
 use App\Models\Deposit\Deposit;
+use App\Models\User;
 use Exception;
 use Illuminate\Support\Facades\DB;
 
@@ -22,6 +23,7 @@ class AgentBalanceService
         $agent = Agent::findOrFail($agentId);
         $net = (float) ($agent->net_balance ?? 0);
         $credit = (float) ($agent->credit_balance ?? 0);
+        $reserved = (float) ($agent->reserved_balance ?? 0);
 
         $creditTakenTotal = (float) AgentBalanceLedger::query()
             ->where('agent_id', $agentId)
@@ -36,21 +38,26 @@ class AgentBalanceService
         return [
             'net_balance' => $net,
             'credit_balance' => $credit,
+            'reserved_balance' => $reserved,
+            'available_balance' => $net - $reserved,
             'cash_portion' => $net - $credit,
             'credit_taken_total' => $creditTakenTotal,
             'cash_deposited_total' => $cashDepositedTotal,
         ];
     }
 
+    // Money held for a booking that is mid-issuance is already spoken for, so it is not
+    // spendable even though it is still sitting in net_balance
+    public function availableBalance(Agent $agent): float
+    {
+        return (float) ($agent->net_balance ?? 0) - (float) ($agent->reserved_balance ?? 0);
+    }
+
     public function assertSufficientBalance(Agent $agent, float $amount): void
     {
-        $available = (float) ($agent->net_balance ?? 0);
+        $available = $this->availableBalance($agent);
         if ($amount > $available) {
-            throw new Exception(sprintf(
-                'Insufficient balance. Available: ৳%s, Required: ৳%s',
-                number_format($available, 2, '.', ','),
-                number_format($amount, 2, '.', ',')
-            ));
+            throw $this->insufficientBalance($available, $amount);
         }
     }
 
@@ -97,6 +104,134 @@ class AgentBalanceService
             ],
             'user_id' => $userId,
         ]);
+    }
+
+    // Called before the GDS is touched. The balance check and the hold are one atomic statement,
+    // so a second request in another browser sees the reduced availability instead of the stale
+    // pre-booking figure — the window that let two tickets share one balance.
+    public function reserveForBooking(Agent $agent, float $amount, BookingAttempt $attempt, ?int $userId = null): void
+    {
+        if ($amount <= 0) {
+            throw new Exception('Booking amount could not be determined.');
+        }
+
+        // A hold already standing on this attempt is an earlier run that crashed, or a retry —
+        // reuse it rather than stacking a second hold on top
+        if ($attempt->balance_reserved_at !== null) {
+            return;
+        }
+
+        $held = $this->money($amount);
+
+        $affected = Agent::query()
+            ->whereKey($agent->id)
+            ->whereRaw('(COALESCE(net_balance, 0) - COALESCE(reserved_balance, 0)) >= ?', [$amount])
+            ->update(['reserved_balance' => DB::raw("COALESCE(reserved_balance, 0) + {$held}")]);
+
+        if ($affected !== 1) {
+            $agent->refresh();
+            throw $this->insufficientBalance($this->availableBalance($agent), $amount);
+        }
+
+        $attempt->forceFill([
+            'reserved_amount'     => $amount,
+            'balance_reserved_at' => now(),
+        ])->save();
+
+        $agent->refresh();
+    }
+
+    // Ticketing failed, or returned documents that were already issued — the held funds were
+    // never spent, so hand them back. Safe to call when nothing is held.
+    public function releaseReservation(Agent $agent, BookingAttempt $attempt, ?int $userId = null): void
+    {
+        if ($attempt->balance_reserved_at === null) {
+            return;
+        }
+
+        $amount = (float) ($attempt->reserved_amount ?? 0);
+        $held   = $this->money($amount);
+
+        DB::transaction(function () use ($agent, $attempt, $held) {
+            Agent::query()
+                ->whereKey($agent->id)
+                ->update([
+                    'reserved_balance' => DB::raw("GREATEST(COALESCE(reserved_balance, 0) - {$held}, 0)"),
+                ]);
+
+            $attempt->forceFill([
+                'reserved_amount'     => null,
+                'balance_reserved_at' => null,
+            ])->save();
+        });
+
+        $agent->refresh();
+    }
+
+    // Tickets are issued: turn the hold into a real debit. net_balance and reserved_balance move
+    // together in one statement so the agent never sees the money counted twice or not at all.
+    public function settleReservation(Agent $agent, BookingAttempt $attempt, ?int $userId = null): void
+    {
+        $amount = (float) ($attempt->reserved_amount ?? 0);
+
+        // No hold — an attempt from before reservations existed, or one issued through a path
+        // that skipped the reserve. Fall back to a locked debit so the ticket is still paid for.
+        if ($attempt->balance_reserved_at === null || $amount <= 0) {
+            $this->debitForBooking($agent, $this->resolveBookingAmount($attempt), $attempt, $userId);
+
+            return;
+        }
+
+        if ($this->hasBookingDebit($attempt->id)) {
+            $this->releaseReservation($agent, $attempt, $userId);
+
+            return;
+        }
+
+        $held = $this->money($amount);
+
+        DB::transaction(function () use ($agent, $attempt, $amount, $held, $userId) {
+            $locked = Agent::where('id', $agent->id)->lockForUpdate()->firstOrFail();
+
+            $netBefore    = (float) ($locked->net_balance ?? 0);
+            $creditBefore = (float) ($locked->credit_balance ?? 0);
+
+            Agent::query()
+                ->whereKey($agent->id)
+                ->update([
+                    'net_balance'      => DB::raw("net_balance - {$held}"),
+                    'reserved_balance' => DB::raw("GREATEST(COALESCE(reserved_balance, 0) - {$held}, 0)"),
+                ]);
+
+            $locked->refresh();
+
+            $pnr = $attempt->gds_pnr ?? $attempt->airline_pnr ?? '';
+
+            $this->writeLedger($locked, [
+                'event_type' => self::EVENT_BOOKING_DEBIT,
+                'amount' => $amount,
+                'direction' => 'out',
+                'net_before' => $netBefore,
+                'credit_before' => $creditBefore,
+                'net_after' => (float) $locked->net_balance,
+                'credit_after' => $creditBefore,
+                'reference_type' => 'booking_attempt',
+                'reference_id' => $attempt->id,
+                'description' => $pnr ? "Ticket booking (PNR: {$pnr})" : 'Ticket booking',
+                'metadata' => [
+                    'booking_attempt_id' => $attempt->id,
+                    'gds_pnr' => $attempt->gds_pnr,
+                ],
+                'user_id' => $userId,
+            ]);
+
+            $attempt->forceFill([
+                'reserved_amount'     => null,
+                'balance_reserved_at' => null,
+            ])->save();
+        });
+
+        $agent->refresh();
     }
 
     public function debitForBooking(Agent $agent, float $amount, BookingAttempt $attempt, ?int $userId): void
@@ -211,6 +346,15 @@ class AgentBalanceService
             return null;
         }
 
+        // Sub-users hang off their agency through users.agent_id. agents.user_id is legacy and
+        // only points at whichever user happened to be created with the agency, so resolving by
+        // it leaves every other sub-user of the same agency without a wallet.
+        $agentId = User::whereKey($userId)->value('agent_id');
+
+        if ($agentId) {
+            return Agent::find($agentId);
+        }
+
         return Agent::where('user_id', $userId)->first();
     }
 
@@ -221,6 +365,22 @@ class AgentBalanceService
             ->where('reference_id', $bookingAttemptId)
             ->where('event_type', self::EVENT_BOOKING_DEBIT)
             ->exists();
+    }
+
+    private function insufficientBalance(float $available, float $amount): Exception
+    {
+        return new Exception(sprintf(
+            'Insufficient balance. Available: ৳%s, Required: ৳%s',
+            number_format($available, 2, '.', ','),
+            number_format($amount, 2, '.', ',')
+        ));
+    }
+
+    // Amounts go into the SQL expression as a fixed-scale literal: the value is already a float
+    // cast, and formatting it keeps the arithmetic at the column's own precision
+    private function money(float $amount): string
+    {
+        return number_format($amount, 2, '.', '');
     }
 
     private function isCreditRequest(?string $type): bool

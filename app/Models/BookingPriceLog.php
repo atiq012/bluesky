@@ -35,6 +35,7 @@ class BookingPriceLog extends Model
         'cnn',
         'kid',
         'inf',
+        'ins',
         'cabin_class',
         'price_payload',
         'total_price',

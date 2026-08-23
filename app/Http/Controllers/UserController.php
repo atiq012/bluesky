@@ -2,12 +2,16 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\BaseController;
+use App\Models\Department\Department;
+use App\Models\Designation\Designation;
 use App\Models\User;
 use DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password as Pass;
 use Yajra\DataTables\DataTables;
+
 
 class UserController extends BaseController
 {
@@ -114,27 +118,48 @@ class UserController extends BaseController
         // dd($request->all());
 
         $auth      = User::where('email', $request->useEmail)->first();
-        $validator = validator($request->all(),
-            ['name' => 'required'],
-            ['phone' => 'required'],
-            ['email' => 'required'],
-            ['staff_id' => 'required'],
-            ['dept_name' => 'required'],
-            // ['desg' => 'required'],
-            // ['off_loct' => 'required'],
-            // ['report_to' => 'required'],
-            // ['role_id' => 'required'],
-        );
+        $validator = validator($request->all(), [
+            'name' => 'required',
+            'phone' => 'required',
+            'email' => 'required',
+            'staff_id' => 'required',
+            'dept_name' => 'required',
+            // 'desg' => 'required',
+            // 'off_loct' => 'required',
+            // 'report_to' => 'required',
+            // 'role_id' => 'required',
+        ]);
         if ($validator->fails()) {
             return response()->json(['message' => $validator->errors()->all(), 'types' => 'e']);
         }
+        $department = Department::where('name', trim($request->dept_name))->first();
+        if (! $department) {
+            $department            = new Department;
+            $department->name      = trim($request->dept_name);
+            $department->status    = 1;
+            $department->created_by = $auth->id;
+            $department->save();
+        }
+
+        $designation = null;
+        if ($request->desg_id) {
+            $designation = Designation::where('name', trim($request->desg_id))->first();
+            if (! $designation) {
+                $designation             = new Designation;
+                $designation->name       = trim($request->desg_id);
+                $designation->status     = 1;
+                $designation->created_by = $auth->id;
+                $designation->save();
+            }
+        }
+
         $user                 = new User;
         $user->name           = $request->name;
         $user->email          = $request->email;
         $user->emp_id         = $request->staff_id;
         $user->phone          = $request->phone;
-        $user->dept_id        = $request->deptment_id;
-        $user->designation_id = $request->desg_id;
+        $user->dept_id        = $department->id;
+        $user->designation_id = $designation ? $designation->id : null;
         // $user->office_loc_id = $request->off_loct;
         // $user->report_to = $request->report_to;
         // $user->user_role = $request->role_id;
@@ -181,8 +206,35 @@ class UserController extends BaseController
      */
     public function edit(Request $request)
     {
-        $data = User::find($request->id);
+        //dd($request->all());
+        //$data = User::find($request->id);
+        $data = User::where('id', $request->id)->where('agent_id', auth()->user()->agent_id)->first();
+        //dd($data);
+
+        if(!$data){
+            return response()->json(['message' => 'User not found.', 'types' => 'e'], 404);
+        }
+
+        if ($data->img_path && File::exists(public_path($data->img_path))) {
+            $data->profile_file_size = File::size(public_path($data->img_path));
+        } else {
+            $data->profile_file_size = 0;
+        }
+
         return response()->json($data);
+        //dd($request->all());
+
+        // $user = User::find($request->id);
+        // if (! $user) {
+        //     return response()->json(['message' => 'User not found.', 'types' => 'e'], 404);
+        // }
+
+        // if ($user->img_path && File::exists(public_path($user->img_path))) {
+        //     $user->profile_file_size = File::size(public_path($user->img_path));
+        // } else {
+        //     $user->profile_file_size = 0;
+        // }
+        // return response()->json([$user]);
     }
 
     /**
@@ -193,7 +245,10 @@ class UserController extends BaseController
         // dd($request->all());
         $auth = User::where('email', $request->useEmail)->first();
 
-        $user                 = User::where('id', $request->user_id)->first();
+        $user = User::where('id', $request->user_id)->where('agent_id', auth()->user()->agent_id)->first();
+        if (! $user) {
+            return response()->json(['message' => 'User not found.', 'types' => 'e'], 404);
+        }
         $user->name           = $request->name ? $request->name : $user->name;
         $user->phone          = $request->phone ? $request->phone : $user->phone;
         $user->email          = $request->email ? $request->email : $user->email;
@@ -234,7 +289,10 @@ class UserController extends BaseController
     public function statusUpdate(Request $request)
     {
         if ($id = $request->useridStatus) {
-            $user         = User::where('id', $id)->first();
+            $user = User::where('id', $id)->where('agent_id', auth()->user()->agent_id)->first();
+            if (! $user) {
+                return $this->ErrorResponse('User not found.');
+            }
             $user->status = $request->status;
             $user->save();
             $success = '';
@@ -278,6 +336,26 @@ class UserController extends BaseController
         ]);
     }
 
+    public function resetUserPassword(Request $request)
+    {
+        $request->validate([
+            'id' => ['required', 'exists:users,id'],
+            'password' => ['required', 'confirmed', Pass::min(8)->mixedCase()->numbers()->symbols()],
+        ]);
+
+        $user = User::where('id', $request->id)->where('agent_id', auth()->user()->agent_id)->first();
+        if (! $user) {
+            return $this->ErrorResponse('User not found.');
+        }
+        $user->password = Hash::make($request->password);
+        $user->password_updated_at = now();
+        $user->login_attamp = 0;
+        $user->save();
+
+        $success = '';
+        return $this->SuccessResponse($success, 'Password reset successfully.');
+    }
+
     /**
      * Remove the specified resource from storage.
      */
@@ -285,7 +363,11 @@ class UserController extends BaseController
     {
         if ($request->id) {
 
-            $user = User::where('id', $request->id)->first();
+            $user = User::where('id', $request->id)->where('agent_id', auth()->user()->agent_id)->first();
+            if (! $user) {
+                $error = 'User not found.';
+                return $this->ErrorResponse($error);
+            }
             if ($user->img_path) {
                 if ($user->img_path) {
 

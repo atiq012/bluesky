@@ -26,6 +26,17 @@ export function sanitizeNumericString(value, maxDecimals = 2) {
     return `${whole}.${frac.slice(0, maxDecimals)}`;
 }
 
+// Display amounts: comma-separated, drop .00 when whole number
+export function formatDisplayAmount(value) {
+    const n = Number(value ?? 0);
+    if (!Number.isFinite(n)) return '0';
+    const hasFraction = Math.abs(n % 1) > 0.00001;
+    return n.toLocaleString('en-US', {
+        minimumFractionDigits: hasFraction ? 2 : 0,
+        maximumFractionDigits: hasFraction ? 2 : 0,
+    });
+}
+
 export function formatNumberWithCommas(value, maxDecimals = 2) {
     const raw = sanitizeNumericString(value, maxDecimals);
     if (raw === '') return '';

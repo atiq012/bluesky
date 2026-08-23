@@ -59,6 +59,8 @@ export const useAuthStore = defineStore(
             clearInterval(intervalId);
             token.value = "";
             name.value = "";
+            agent_name.value = "";
+            sInfo.value = [];
             abc_timer.value = 0;
             ExpireInSec.value = 0;
             getRequire_2fa.value = 1;
@@ -90,13 +92,7 @@ export const useAuthStore = defineStore(
                 }
 
                 if (ProvideTimeSecends < 0) {
-                    token.value = "";
-                    name.value = "";
-                    abc_timer.value = 0;
-                    ExpireInSec.value = 0;
-                    showExpireWarrning.value = false;
-                    isLogged.value = false;
-                    clearInterval(intervalId);
+                    logout();
                 }
             }, 1000);
         }

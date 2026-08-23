@@ -13,12 +13,12 @@ return new class extends Migration
     {
         Schema::create('payment_accounts', function (Blueprint $table) {
             $table->id();
-            $table->string('acc_type',7)->nullable();
+            $table->string('acc_type',20)->nullable();
             $table->string('bank_name',30)->nullable();
             $table->string('acc_name',50)->nullable();
             $table->string('acc_no',25)->nullable();
             $table->string('branch',20)->nullable();
-            $table->string('routing_no',15)->unique()->nullable();
+            $table->string('routing_no',15)->nullable();
             $table->decimal('service_charge',4,2)->nullable();
             $table->boolean('status')->default(1);
             $table->unsignedBigInteger('created_by')->nullable();

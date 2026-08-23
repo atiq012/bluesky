@@ -8,7 +8,10 @@ use App\Http\Controllers\Admin\API\APIController;
 use App\Http\Controllers\Admin\API\BookingActivityLogController;
 use App\Http\Controllers\Admin\API\BookingAttemptAdminController;
 use App\Http\Controllers\Admin\API\BookingAttemptController;
+use App\Http\Controllers\Admin\Company\CompanyController;
 use App\Http\Controllers\Admin\API\DynamicRuleCacheController;
+use App\Http\Controllers\Admin\API\FareRuleCacheController;
+use App\Http\Controllers\Admin\Policy\PolicyController;
 use App\Http\Controllers\Admin\API\PriceV2Controller;
 use App\Http\Controllers\Admin\API\ReservationPaxController;
 use App\Http\Controllers\Admin\API\SearchV2Controller;
@@ -35,10 +38,14 @@ use App\Http\Controllers\Admin\Role\RolePermissionController;
 use App\Http\Controllers\Admin\Traveler\TravelerController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\Dashboard\DashboardController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\HelpDesk\RequestController;
+use App\Http\Controllers\Admin\HelpDesk\CategoryController;
+use App\Http\Controllers\Admin\HelpDesk\RequestDetailsController;
 
 Route::post('login', [AuthController::class, 'login'])->name('login');
 Route::post('register', [AuthController::class, 'register'])->name('register');
@@ -165,6 +172,7 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('/user-details/update', [UserController::class, 'update'])->name('user.update');
     Route::post('/deleteUser', [UserController::class, 'destroy'])->name('user.deleteUser');
     Route::post('/user-status/update', [UserController::class, 'statusUpdate'])->name('user.statusUpdate');
+    Route::post('/user-reset-password', [UserController::class, 'resetUserPassword'])->name('user.resetPassword');
 
     //agets wise extrenal users
     Route::get('getAgentExternalUsers', [UserController::class, 'getAgentExternalUsers'])->name('user.getAgentExternalUsers');
@@ -178,6 +186,8 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('/deleteTraveler', [TravelerController::class, 'destroy'])->name('traveler.destroy');
     Route::post('/traveler/data/update', [TravelerController::class, 'update'])->name('traveler.update');
     Route::post('get-travelers-data-by-search', [TravelerController::class, 'search'])->name('traveler.search');
+    Route::get('fetchTraveler', [TravelerController::class, 'fetchTravelerById'])->name('traveler.fetchById');
+
 
     // deposit section
     Route::get('getDeposit', [DepositController::class, 'index'])->name('deposit.getDeposit');
@@ -225,9 +235,14 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('/flight-search-logs', [SearchV2Controller::class, 'getFlightSearchLogs'])->name('search.v2.logs');
     Route::post('/flight-search-log/view', [SearchV2Controller::class, 'viewFlightSearchLog'])->name('search.v2.logs.view');
     Route::get('dynamic-rules/cache-stamp', [DynamicRuleCacheController::class, 'cacheStamp'])->name('dynamicRules.cacheStamp');
+    Route::get('fare-rules/cache-stamp', [FareRuleCacheController::class, 'cacheStamp'])->name('fareRules.cacheStamp');
     Route::get('/v2/fare-rules', [TravelportFareRulesController::class, 'index'])->name('fareRules.index');
     Route::get('/v2/fare-rules/saved', [TravelportFareRulesController::class, 'saved'])->name('fareRules.saved');
     Route::get('/v2/fare-rules/download', [TravelportFareRulesController::class, 'download'])->name('fareRules.download');
+
+    // Receipt letterhead / ticket terms — read-only, b2b never authors companies or policy points
+    Route::get('getActiveCompany', [CompanyController::class, 'active'])->name('settings.companies.active');
+    Route::post('/editPolicy', [PolicyController::class, 'edit'])->name('settings.policy.edit');
 
     // Price V2
     Route::post('/v2/price', [PriceV2Controller::class, 'price'])->name('price.v2');
@@ -263,8 +278,28 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('/v2/booking/price-logs/{id}/response-download', [BookingAttemptAdminController::class, 'downloadPriceLogResponse'])->name('booking.v2.price-logs.response-download');
     Route::get('/v2/booking/sessions/{id}/request-download', [BookingAttemptAdminController::class, 'downloadSessionRequest'])->name('booking.v2.sessions.request-download');
     Route::get('/v2/booking/sessions/{id}/response-download', [BookingAttemptAdminController::class, 'downloadSessionResponse'])->name('booking.v2.sessions.response-download');
+
+    //Helpdesk
+    Route::get('getAllRequests', [RequestController::class, 'index'])->name('request.getAllRequests');
+    Route::post('/request/save', [RequestController::class, 'store'])->name('request.store');
+    Route::post('/request/update', [RequestController::class, 'update'])->name('request.update');
+    Route::post('/editRequest', [RequestController::class, 'edit'])->name('request.editRequest');
+    Route::post('/assignRequest', [RequestController::class, 'assignRequest'])->name('request.assignRequest');
+    Route::post('/statusChange', [RequestController::class, 'statusChange'])->name('request.statusChange');
+
+    Route::get('categories', [CategoryController::class, 'categoriesList']);
+    Route::get('subcategories', [CategoryController::class, 'subcategoriesList']);
+    Route::get('getCategories', [CategoryController::class, 'index']);
+
+    Route::post('/addRequestNote', [RequestDetailsController::class, 'store'])->name('requestDetails.store');
+    Route::get('/getRequestDetails/{id}', [RequestDetailsController::class, 'getRequestDetails'])->name('requestDetails.getRequestDetails');
+
+
+    //dashboard stats
+    Route::get('/dashboard', [DashboardController::class, 'getDashboardStats']);
 });
 Route::get('airports', [AreaController::class, 'airports']);
+Route::get('districts', [AreaController::class, 'districts']);
 
 Route::post('/agent/registration', [AgentController::class, 'registration']);
 

@@ -4,6 +4,10 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 const props = defineProps({
     modelValue: { type: Array, default: () => [] },
     maxFiles:   { type: Number, default: 1 },
+    previewSize: {
+        type: String,
+        default: "thumb" // thumb | large
+    }
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -193,7 +197,11 @@ onUnmounted(() => {
                 <template v-else>
                     <i class="bx bx-cloud-upload"></i>
                     <span>Drop or <u>click to upload</u></span>
-                    <small>Max {{ maxFiles }} image{{ maxFiles > 1 ? 's' : '' }} · 1 MB each <span class="text-purple">(auto-compressed if larger)</span></small>
+                    <small>Max {{ maxFiles }} image{{ maxFiles > 1 ? 's' : '' }} · 1 MB each</small>
+                    <small class="align-items-center justify-content-center gap-1">
+                        <i class="bx bx-info-circle text-purple" style="font-size: 1em;"></i>
+                        <span class="text-purple">auto-compressed if larger</span>
+                    </small>
                 </template>
             </div>
         </div>
@@ -208,6 +216,9 @@ onUnmounted(() => {
                 v-for="(item, i) in modelValue"
                 :key="i"
                 class="img-uploader__preview"
+                :class="{
+                    'img-uploader__preview--large': previewSize === 'large'
+                }"
                 title="Click to view"
                 @click="openLightbox(i)"
             >
@@ -323,8 +334,18 @@ onUnmounted(() => {
     flex-shrink: 0;
     cursor: zoom-in;
 }
+.img-uploader__preview--large {
+    width: 100%;
+    max-width: 260px;
+    height: 220px;
+    margin: 0 auto;
+}
 .img-uploader__preview img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 
+.img-uploader__preview--large img {
+    object-fit: cover;
+    background: #f8f9fa;
+}
 .img-uploader__remove {
     position: absolute; top: 2px; right: 2px;
     background: rgba(0,0,0,.55); border: none; border-radius: 50%;

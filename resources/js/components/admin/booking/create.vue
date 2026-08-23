@@ -10,18 +10,22 @@ import Select2 from '../../common/Select2.vue';
 import AppDatePicker from '../../common/AppDatePicker.vue';
 import DobWithAge from '../../common/DobWithAge.vue';
 import ImageUploader from '../../common/ImageUploader.vue';
-import { formatDate } from '../../../utils/dateUtils';
+import SearchInput from '../../common/SearchInput.vue';
+import LoadingSpinner from '../../common/LoadingSpinner.vue';
 import { useTpV2AddTraveler } from '../../../composables/useTpV2AddTraveler';
 import { useTpV2Ancillary } from '../../../composables/useTpV2Ancillary';
 import { useTpV2PreCommit } from '../../../composables/useTpV2PreCommit';
 import { useTpV2BookingReview } from '../../../composables/useTpV2BookingReview';
 import BookingReviewConfirm from './BookingReviewConfirm.vue';
-import BookingPnrStep from './BookingPnrStep.vue';
-import BookingReceiptModal from './BookingReceiptModal.vue';
+import BookingFareSidebar from './BookingFareSidebar.vue';
+import BookingTripSidebar from './BookingTripSidebar.vue';
+import BookingConfirmModal from './BookingConfirmModal.vue';
 import { buildReceiptFromCommit } from '../../../utils/buildReceiptFromCommit';
+import { useAuthStore } from '../../../stores/authStore';
 
 const router = useRouter();
 const bookingStore = useBookingStore();
+const authStore = useAuthStore();
 const { submitTravelers, syncTravelerPreferences, isSubmitting: isSubmittingTravelers, error: travelerSubmitError } = useTpV2AddTraveler();
 const { shopAncillaries, bookAncillary, isAncillaryBooked, isShoppingAncillaries, isBookingAncillary, shopError, bookError } = useTpV2Ancillary();
 const {
@@ -50,49 +54,13 @@ const {
 
 // File state kept local — File objects cannot be serialized to sessionStorage
 const travelerFiles = ref([])
-
-// --- Top bar computed ---
-const routeFrom = computed(() => bookingStore.form?.from ?? '---')
-const routeTo   = computed(() => bookingStore.form?.to   ?? '---')
-const tripType  = computed(() => bookingStore.form?.Way === 2 ? 'Round Way' : 'One Way')
-const cabin     = computed(() => bookingStore.form?.cabin_class ?? 'Economy')
-const depDate   = computed(() => formatDate(bookingStore.form?.dep_date))
-const retDate   = computed(() => formatDate(bookingStore.form?.arrival_date))
-const totalPax  = computed(() => {
-    const f = bookingStore.form
-    if (!f) return 0
-    return Number(f.ADT ?? 0) + Number(f.CNN ?? 0) + Number(f.INF ?? 0)
-})
-const isRoundTrip = computed(() => bookingStore.form?.Way === 2)
-const routeHeadline = computed(() => {
-    const from = routeFrom.value
-    const to = routeTo.value
-    return isRoundTrip.value ? `${from} ↔ ${to}` : `${from} → ${to}`
-})
-const paxDetailLabel = computed(() => {
-    const f = bookingStore.form
-    if (!f) return ''
-    const parts = []
-    const adt = Number(f.ADT ?? 0)
-    const cnn = Number(f.CNN ?? 0)
-    const inf = Number(f.INF ?? 0)
-    if (adt) parts.push(`${adt} Adult${adt > 1 ? 's' : ''}`)
-    if (cnn) parts.push(`${cnn} Child${cnn > 1 ? 'ren' : ''}`)
-    if (inf) parts.push(`${inf} Infant${inf > 1 ? 's' : ''}`)
-    return parts.join(' · ')
-})
-const dateRangeLabel = computed(() => {
-    if (!depDate.value) return ''
-    if (retDate.value && isRoundTrip.value) return `${depDate.value} – ${retDate.value}`
-    return depDate.value
-})
+const existingTravelerQuery = reactive({})
 
 const WIZARD_STEPS = [
     { id: 'travelers', label: 'Travelers', hint: 'Passenger details', icon: 'fa-user-group' },
     { id: 'addons', label: 'Add-ons', hint: 'Optional extras', icon: 'fa-suitcase-rolling' },
     { id: 'ssr', label: 'SSR', hint: 'Special requests', icon: 'fa-wheelchair' },
     { id: 'review', label: 'Review & confirm', hint: 'Verify and book', icon: 'fa-clipboard-check' },
-    { id: 'pnr', label: 'PNR', hint: 'Record locator', icon: 'fa-ticket' },
 ]
 
 const LEGACY_STEP_MAP = {
@@ -102,7 +70,7 @@ const LEGACY_STEP_MAP = {
     couponOffers: 'ssr',
     agency: 'ssr',
     reviewConfirm: 'review',
-    reviewPayment: 'pnr',
+    reviewPayment: 'review',
 }
 
 function normalizeStepId(step) {
@@ -117,9 +85,10 @@ const activeStep = computed({
 
 const currentStepIndex = computed(() => WIZARD_STEPS.findIndex(s => s.id === activeStep.value))
 
-const isReviewStep = computed(() => activeStep.value === 'review' || activeStep.value === 'pnr')
+const visibleWizardSteps = computed(() => WIZARD_STEPS)
 
 const commitDisplay = computed(() => bookingStore.commitResult ?? {})
+const bookingFullyCommitted = computed(() => !!commitDisplay.value?.pnr && !commitDisplay.value?.commit_pending)
 const ancillaryCoverageSelection = reactive({})
 
 function coverageOptions(item) {
@@ -232,13 +201,14 @@ onMounted(() => {
 onUnmounted(() => {
     clearInterval(timerInterval)
     clearInterval(expiredTimer)
-    clearReceiptModalTimer()
 })
 
-const timerDisplay = computed(() => {
+const timerDigits = computed(() => {
     const m = Math.floor(remainingSeconds.value / 60)
     const s = remainingSeconds.value % 60
-    return `${String(m).padStart(2, '0')} : ${String(s).padStart(2, '0')}`
+    const mm = String(m).padStart(2, '0')
+    const ss = String(s).padStart(2, '0')
+    return [mm[0], mm[1], ss[0], ss[1]]
 })
 
 const timerCritical = computed(() => remainingSeconds.value < 300)
@@ -258,16 +228,15 @@ watch(remainingSeconds, (val) => {
         timerExpiredCountdown.value--
         if (timerExpiredCountdown.value <= 0) {
             clearInterval(expiredTimer)
-            handlePnrNewSearch()
+            handleStartNewSearch()
         }
     }, 1000)
 })
 
 // --- Flight Details Panel ---
 const showFlightDetails = ref(false)
-const showReceiptModal = ref(false)
-const receiptData = ref(null)
-let receiptModalTimer = null
+const showConfirmModal = ref(false)
+const confirmReceipt = ref(null)
 
 // --- Dynamic travelers ---
 const travelers = computed(() => {
@@ -276,10 +245,14 @@ const travelers = computed(() => {
     const list = []
     const adt = Number(f.ADT ?? 1)
     const cnn = Number(f.CNN ?? 0)
+    const kid = Number(f.KID ?? 0)
     const inf = Number(f.INF ?? 0)
-    for (let i = 0; i < adt; i++) list.push({ type: 'Adult',  label: 'Adult',    isPrimary: i === 0, hasAge: false })
-    for (let i = 0; i < cnn; i++) list.push({ type: 'Child',  label: 'Children', isPrimary: false,   hasAge: true  })
-    for (let i = 0; i < inf; i++) list.push({ type: 'Infant', label: 'Infant',   isPrimary: false,   hasAge: true  })
+    const ins = Number(f.INS ?? 0)
+    for (let i = 0; i < adt; i++) list.push({ type: 'Adult',  label: 'Adult',        isPrimary: i === 0, hasAge: false })
+    for (let i = 0; i < cnn; i++) list.push({ type: 'Child',  label: 'Children',     isPrimary: false,   hasAge: true  })
+    for (let i = 0; i < kid; i++) list.push({ type: 'Child',  label: 'Kids',         isPrimary: false,   hasAge: true, ageBand: 'kids' })
+    for (let i = 0; i < inf; i++) list.push({ type: 'Infant', label: 'Infant',       isPrimary: false,   hasAge: true  })
+    for (let i = 0; i < ins; i++) list.push({ type: 'Infant', label: 'Infant (seat)', isPrimary: false,  hasAge: true, seat: true })
     return list
 })
 
@@ -399,16 +372,18 @@ const isTravelerFormValid = computed(() => {
 const devTestData = {
     Adult: [
         { title: 'Mr',   firstName: 'Md',     middleName: 'Shakaouth', lastName: 'Hossain', dob: '01-Jan-1988', gender: 'Male',   passportNo: 'BS456789', expiryDate: '05-Jun-2030', email: 'shakaouth.hossain@galaxybd.com', phone: '01787688855' },
-        { title: 'Mr',   firstName: 'Rafiq',  middleName: '',          lastName: 'Islam',   dob: '20-Mar-1985', gender: 'Male',   passportNo: 'BS456790', expiryDate: '05-Jun-2030', email: '', phone: '' },
-        { title: 'Mr',   firstName: 'Kamal',  middleName: '',          lastName: 'Ahmed',   dob: '10-Jul-1992', gender: 'Male',   passportNo: 'BS456791', expiryDate: '05-Jun-2030', email: '', phone: '' },
+        { title: 'Mr',   firstName: 'Rafiq',  middleName: '',          lastName: 'Islam',   dob: '20-Mar-1985', gender: 'Male',   passportNo: 'BS456790', expiryDate: '05-Jun-2030', email: 'rafiq.islam@galaxybd.com', phone: '01787688856' },
+        { title: 'Mr',   firstName: 'Kamal',  middleName: '',          lastName: 'Ahmed',   dob: '10-Jul-1992', gender: 'Male',   passportNo: 'BS456791', expiryDate: '05-Jun-2030', email: 'kamal.ahmed@galaxybd.com', phone: '01787688857' },
     ],
     Child: [
-        { title: 'Mstr', firstName: 'Shohebur', middleName: '', lastName: 'Rahman', dob: '2015-06-01', gender: 'Male', passportNo: 'BS34534', expiryDate: '2030-06-06', email: '', phone: '01714567899' },
-        { title: 'Ms', firstName: 'Nadia', middleName: '', lastName: 'Akter', dob: '2017-04-15', gender: 'Female', passportNo: 'BS34535', expiryDate: '2030-06-06', email: '', phone: '' },
+        { title: 'Mstr', firstName: 'Shohebur', middleName: '', lastName: 'Rahman', dob: '01-Jun-2015', gender: 'Male', passportNo: 'BS34534', expiryDate: '06-Jun-2030', email: 'shohebur.rahman@galaxybd.com', phone: '01714567899' },
+        { title: 'Ms', firstName: 'Nadia', middleName: '', lastName: 'Akter', dob: '15-Apr-2017', gender: 'Female', passportNo: 'BS34535', expiryDate: '06-Jun-2030', email: 'nadia.akter@galaxybd.com', phone: '01714567900' },
+        { title: 'Mstr', firstName: 'Arif', middleName: '', lastName: 'Karim', dob: '01-Jun-2023', gender: 'Male', passportNo: 'BS34536', expiryDate: '06-Jun-2030', email: 'arif.karim@galaxybd.com', phone: '01714567901' },
+        { title: 'Ms', firstName: 'Maya', middleName: '', lastName: 'Chowdhury', dob: '10-Sep-2022', gender: 'Female', passportNo: 'BS34537', expiryDate: '06-Jun-2030', email: 'maya.chowdhury@galaxybd.com', phone: '01714567902' },
     ],
     Infant: [
-        { title: 'Ms', firstName: 'Shahira', middleName: '', lastName: 'Sadik', dob: '2025-06-01', gender: 'Female', passportNo: 'SB12345', expiryDate: '2030-06-13', email: '', phone: '' },
-        { title: 'Mstr', firstName: 'Rafi', middleName: '', lastName: 'Khan', dob: '2025-08-10', gender: 'Male', passportNo: 'SB12346', expiryDate: '2030-06-13', email: '', phone: '' },
+        { title: 'Ms', firstName: 'Shahira', middleName: '', lastName: 'Sadik', dob: '01-Jun-2025', gender: 'Female', passportNo: 'SB12345', expiryDate: '13-Jun-2030', email: 'shahira.sadik@galaxybd.com', phone: '01714567903' },
+        { title: 'Mstr', firstName: 'Rafi', middleName: '', lastName: 'Khan', dob: '10-Aug-2025', gender: 'Male', passportNo: 'SB12346', expiryDate: '13-Jun-2030', email: 'rafi.khan@galaxybd.com', phone: '01714567904' },
     ],
 }
 
@@ -450,7 +425,6 @@ function setPrimaryContact(ti) {
 
 function isStepUnlocked(stepId) {
     if (stepId === 'travelers') return true
-    if (stepId === 'pnr') return bookingStore.reviewConfirmed
     return paxesSubmitted.value
 }
 
@@ -459,7 +433,6 @@ function isStepCompleted(stepId) {
     if (idx < 0) return false
     if (stepId === 'travelers') return paxesSubmitted.value
     if (stepId === 'review') return bookingStore.reviewConfirmed
-    if (stepId === 'pnr') return !!commitDisplay.value?.pnr && !commitDisplay.value?.commit_pending
     return currentStepIndex.value > idx
 }
 
@@ -477,12 +450,30 @@ function goToStep(stepId, { skipEnter = false } = {}) {
     if (!skipEnter) onEnterStep(normalized)
 }
 
+// Sidebar back button — mirrors each step's previous footer back handler
+function handleSidebarBack() {
+    if (activeStep.value === 'travelers') {
+        router.push({ name: 'searchResult' })
+        return
+    }
+    if (activeStep.value === 'addons') {
+        goToStep('travelers')
+        return
+    }
+    if (activeStep.value === 'ssr') {
+        goToStep('addons')
+        return
+    }
+    if (activeStep.value === 'review') {
+        goToStep('ssr')
+    }
+}
+
 function handleWizardTabClick(stepId) {
     if (stepId === 'review') {
         goToReviewStep()
         return
     }
-    if (stepId === 'pnr' && !bookingStore.reviewConfirmed) return
     goToStep(stepId)
 }
 
@@ -527,20 +518,6 @@ async function handleApplySsr() {
 
 const reviewSnapshotDisplay = computed(() => liveReviewSnapshot.value ?? bookingStore.reviewSnapshot)
 
-const reviewFareLine = computed(() => {
-    const price = reviewSnapshotDisplay.value?.price ?? bookingStore.priceData
-    if (!price) return null
-    const cur = price.currency ?? 'BDT'
-    const fmt = (n) => {
-        const num = Number(n)
-        return Number.isNaN(num) ? '—' : num.toLocaleString(undefined, { maximumFractionDigits: 0 })
-    }
-    return {
-        total: `${cur} ${fmt(price.total_price)}`,
-        meta: `Base ${cur} ${fmt(price.base_fare)} + Tax ${cur} ${fmt(price.total_taxes)}`,
-    }
-})
-
 async function goToReviewStep() {
     if (!paxesSubmitted.value || isReviewLoading.value) return
     try {
@@ -560,57 +537,34 @@ onMounted(() => {
     }
     activeStep.value = restored
     onEnterStep(restored)
-    if (restored === 'pnr' && !bookingStore.reviewConfirmed) {
-        goToStep('review', { skipEnter: true })
-        return
-    }
     if (restored === 'review' && !bookingStore.reviewSnapshot) {
         goToReviewStep()
     }
 })
 
-function clearReceiptModalTimer() {
-    if (receiptModalTimer) {
-        clearTimeout(receiptModalTimer)
-        receiptModalTimer = null
-    }
-}
-
-async function openReceiptModal() {
+async function openConfirmModal() {
     const commit = commitDisplay.value
-    if (!commit?.pnr || commit?.commit_pending || !commit?.travelport_response) return
-
-    receiptData.value = await buildReceiptFromCommit({
-        travelportResponse: commit.travelport_response,
-        snapshot: bookingStore.reviewSnapshot,
-        priceData: bookingStore.priceData,
-        flight: bookingStore.flight,
-        form: bookingStore.form,
-        travelerForms: bookingStore.travelerForms,
-        bookingAttemptId: bookingStore.bookingAttemptId,
-    })
-    showReceiptModal.value = true
-}
-
-function scheduleReceiptModal() {
-    clearReceiptModalTimer()
-    const commit = commitDisplay.value
-    if (!commit?.pnr || commit?.commit_pending) return
-    receiptModalTimer = setTimeout(() => openReceiptModal(), 2000)
-}
-
-function handleReceiptClose() {
-    showReceiptModal.value = false
-    clearReceiptModalTimer()
-    router.push({ name: 'bookingList' })
+    confirmReceipt.value = (commit?.pnr && !commit?.commit_pending && commit?.travelport_response)
+        ? await buildReceiptFromCommit({
+            travelportResponse: commit.travelport_response,
+            snapshot: bookingStore.reviewSnapshot,
+            priceData: bookingStore.priceData,
+            flight: bookingStore.flight,
+            form: bookingStore.form,
+            travelerForms: bookingStore.travelerForms,
+            bookingAttemptId: commit.attempt_ref ?? bookingStore.bookingAttemptId,
+            bookedBy: authStore.name || null,
+            bookedOn: commit.created_at ?? commit.committed_at ?? null,
+        })
+        : null
+    showConfirmModal.value = true
 }
 
 async function handleConfirmBooking() {
     if (isConfirmingBooking.value) return
     try {
         await confirmBooking()
-        goToStep('pnr')
-        scheduleReceiptModal()
+        await openConfirmModal()
     } catch {
         // reviewError
     }
@@ -620,101 +574,107 @@ async function handleRetryCommit() {
     if (isConfirmingBooking.value) return
     try {
         await retryCommit()
-        scheduleReceiptModal()
+        await openConfirmModal()
     } catch {
         // reviewError
     }
 }
 
-function handlePnrDone() {
-    if (commitDisplay.value?.pnr && !commitDisplay.value?.commit_pending) {
-        openReceiptModal()
-        return
-    }
+function handleConfirmModalGoToList() {
+    showConfirmModal.value = false
     router.push({ name: 'bookingList' })
 }
 
-function handlePnrNewSearch() {
+function handleStartNewSearch() {
     bookingStore.clearBookingSession()
     router.push({ name: 'searchResult' })
 }
 
+// Sidebar must stick below the fixed topbar (60px) AND the sticky breadcrumb
+// header — measured live since the header's height varies with content/wrapping.
+const stickyHeaderRef = ref(null)
+const sidebarStickyTop = ref(90)
+function updateSidebarStickyTop() {
+    if (stickyHeaderRef.value) {
+        sidebarStickyTop.value = 60 + stickyHeaderRef.value.offsetHeight + 12
+    }
+}
+onMounted(() => {
+    updateSidebarStickyTop()
+    window.addEventListener('resize', updateSidebarStickyTop)
+})
+onUnmounted(() => {
+    window.removeEventListener('resize', updateSidebarStickyTop)
+})
+
 </script>
 <template>
-    <AppBreadcrumbs
-        title="Flight Management"
-        :back-to="{ name: 'searchResult' }"
-        :breadcrumbs="[
-            { label: 'Dashboard', to: { name: 'Home' } },
-            { label: 'Search', to: { name: 'searchResult' } },
-            { label: 'Traveller Info' },
-        ]"
-    />
-
-    <div class="row">
-        <div class="col-12 col-md-12 com-sm-12">
-            <div class="booking-trip-bar">
-                <div class="booking-trip-bar__main">
-                    <div class="booking-trip-bar__route">{{ routeHeadline }}</div>
-                    <div class="booking-trip-bar__meta">
-                        <span v-if="dateRangeLabel" class="booking-trip-bar__chip">
-                            <i class="fa-regular fa-calendar" /> {{ dateRangeLabel }}
-                        </span>
-                        <span class="booking-trip-bar__chip">
-                            <i class="fa-solid fa-arrows-rotate" /> {{ tripType }}
-                        </span>
-                        <span class="booking-trip-bar__chip">
-                            <i class="fa-solid fa-chair" /> {{ cabin }}
-                        </span>
-                        <span class="booking-trip-bar__chip">
-                            <i class="fa-solid fa-users" /> {{ paxDetailLabel || `${totalPax} Travellers` }}
-                        </span>
-                        <span v-if="contentSource" class="booking-trip-bar__chip booking-trip-bar__chip--source">
-                            {{ contentSource }}
-                        </span>
-                    </div>
-                </div>
-                <div v-if="isReviewStep && reviewFareLine" class="booking-trip-bar__payable">
-                    <span class="booking-trip-bar__payable-label">Total payable</span>
-                    <span class="booking-trip-bar__payable-amount">{{ reviewFareLine.total }}</span>
-                    <span class="booking-trip-bar__payable-meta">{{ reviewFareLine.meta }}</span>
-                </div>
-                <div class="booking-trip-bar__actions">
-                    <div
-                        class="booking-trip-bar__timer"
-                        :class="{ 'booking-trip-bar__timer--critical': timerCritical }"
-                    >
-                        <div class="booking-trip-bar__timer-icon">
-                            <i class="fa-regular fa-clock" />
-                        </div>
-                        <div>
-                            <span class="booking-trip-bar__timer-label">Time remaining</span>
-                            <span class="booking-trip-bar__timer-value">{{ timerDisplay }}</span>
-                        </div>
-                    </div>
+    <div class="booking-sticky-header" ref="stickyHeaderRef">
+        <AppBreadcrumbs
+            title="Flight Management"
+            :back-to="{ name: 'searchResult' }"
+            :breadcrumbs="[
+                { label: 'Dashboard', to: { name: 'Home' } },
+                { label: 'Search', to: { name: 'searchResult' } },
+                { label: 'Booking' },
+            ]"
+        >
+            <template #actions>
+                <div class="booking-header-actions">
                     <button
                         type="button"
-                        class="booking-trip-bar__details"
+                        class="booking-flight-details-btn"
+                        title="Flight Details"
                         @click="showFlightDetails = true"
                     >
                         <i class="fa-solid fa-plane-departure" />
-                        <span>Flight Details</span>
                     </button>
+                    <div
+                        class="compact-timer-block"
+                        :class="{ 'compact-timer-block--critical': timerCritical }"
+                    >
+                        <i class="bx bx-time-five compact-timer-icon"></i>
+                        <div class="compact-timer-digits">
+                            <div class="digit-slot">
+                                <Transition name="digit-slip">
+                                    <span :key="timerDigits[0]" class="digit-val">{{ timerDigits[0] }}</span>
+                                </Transition>
+                            </div>
+                            <div class="digit-slot">
+                                <Transition name="digit-slip">
+                                    <span :key="timerDigits[1]" class="digit-val">{{ timerDigits[1] }}</span>
+                                </Transition>
+                            </div>
+                            <span class="digit-colon">:</span>
+                            <div class="digit-slot">
+                                <Transition name="digit-slip">
+                                    <span :key="timerDigits[2]" class="digit-val">{{ timerDigits[2] }}</span>
+                                </Transition>
+                            </div>
+                            <div class="digit-slot">
+                                <Transition name="digit-slip">
+                                    <span :key="timerDigits[3]" class="digit-val">{{ timerDigits[3] }}</span>
+                                </Transition>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
+            </template>
+        </AppBreadcrumbs>
     </div>
 
     <div class="row position-relative mt-4">
         <div class="col-12 col-md-12 com-sm-12">
+            <div class="booking-page-layout">
+            <div class="booking-page-main">
             <div class="card m-0">
-                <div class="row shadow-none rounded rounded-2 p-3 pb-0">
+                <div class="row shadow-none rounded rounded-2 p-3">
                     <div class="col-12">
                         <div class="row">
                             <div class="col-12">
                                 <nav class="booking-wizard" aria-label="Booking progress">
                                     <button
-                                        v-for="(step, stepIndex) in WIZARD_STEPS"
+                                        v-for="step in visibleWizardSteps"
                                         :key="step.id"
                                         type="button"
                                         class="booking-wizard__step"
@@ -727,43 +687,36 @@ function handlePnrNewSearch() {
                                         :aria-current="activeStep === step.id ? 'step' : undefined"
                                         @click="handleWizardTabClick(step.id)"
                                     >
-                                        <span class="booking-wizard__index">
-                                            <i v-if="isStepCompleted(step.id)" class="fa-solid fa-check" />
-                                            <span v-else>{{ stepIndex + 1 }}</span>
-                                        </span>
-                                        <span class="booking-wizard__text">
-                                            <span class="booking-wizard__label">{{ step.label }}</span>
-                                            <span class="booking-wizard__hint">{{ step.hint }}</span>
-                                        </span>
                                         <i class="fa-solid booking-wizard__icon" :class="step.icon" />
+                                        <span class="booking-wizard__label">{{ step.label }}</span>
                                     </button>
                                 </nav>
                             </div>
 
                             <div class="col-md-12">
                                 <!-- Step 1: Travelers -->
-                                <div v-show="activeStep === 'travelers'" class="card fadeIn booking-step-panel">
-                                    <div class="card-body">
-                                        <div class="d-flex justify-content-end mb-2">
-                                            <button type="button" @click="fillTestData" class="btn btn-sm btn-warning">
-                                                [DEV] Fill Test Data
-                                            </button>
-                                        </div>
+                                <div v-show="activeStep === 'travelers'" class="fadeIn">
+                                    <div>
                                         <div class="accordion" id="accordionTravelers">
                                             <div v-for="(traveler, ti) in travelers" :key="ti" class="accordion-item">
                                                 <h2 class="accordion-header" :id="`th-${ti}`">
-                                                    <button class="accordion-button collapsed" type="button"
+                                                    <button class="accordion-button collapsed traveler-header-btn" type="button"
                                                         data-bs-toggle="collapse"
                                                         :data-bs-target="`#tc-${ti}`"
                                                         aria-expanded="false"
                                                         :aria-controls="`tc-${ti}`">
-                                                        <img v-if="traveler.type !== 'Child' && traveler.type !== 'Infant'"
-                                                            src="../../../../../public/theme/Booking_Steps/traveller_icon.svg" alt="">
-                                                        <i v-else class="fa-solid fa-child-reaching" style="color: #7239ea;"></i>
-                                                        <span class="pt-1 ps-1">Traveller {{ ti + 1 }}: {{ traveler.label }}</span>
-                                                        <div v-if="travelerForms[ti]?.isPrimaryContact" style="margin-left: 20px;"
-                                                            class="badge rounded-pill text-success bg-light-success p-1 px-4">
-                                                            Primary Contact</div>
+                                                        <span class="traveler-avatar" :class="`traveler-avatar--${traveler.type.toLowerCase()}`">
+                                                            <img v-if="traveler.type !== 'Child' && traveler.type !== 'Infant'"
+                                                                src="../../../../../public/theme/Booking_Steps/traveller_icon.svg" alt="">
+                                                            <i v-else class="fa-solid fa-child-reaching"></i>
+                                                        </span>
+                                                        <span class="traveler-header-text">
+                                                            <span class="traveler-header-index">Traveller {{ ti + 1 }}</span>
+                                                            <span class="traveler-header-type">{{ traveler.label }}</span>
+                                                        </span>
+                                                        <span v-if="travelerForms[ti]?.isPrimaryContact" class="traveler-primary-badge">
+                                                            <i class="fa-solid fa-circle-check"></i> Primary Contact
+                                                        </span>
                                                     </button>
                                                 </h2>
                                                 <div :id="`tc-${ti}`" class="accordion-collapse collapse"
@@ -772,135 +725,169 @@ function handlePnrNewSearch() {
                                                         style="background-color: rgba(248, 252, 255, 1);">
                                                         <div class="row">
                                                             <!-- passport notice -->
-                                                            <div class="col-md-12">
+                                                            <!-- <div class="col-md-12">
                                                                 <div class="mt-2 mb-0 p-2 passport-notice" style="font-size: 13px !important; background-color: rgba(255, 250, 238, 1); border-radius: 5px;">
                                                                     <span class="bluesky-departure-text mobile-chips-text">
                                                                         <i style="color: rgba(240, 180, 27, 1);" class="fa fa-info-circle"></i>
                                                                         <span class="passport-notice__text" style="font-size: 12px; color: rgba(119, 95, 35, 1);">Please fill-up all the information below as same as given in your passport, to avoid complications at immigration proccess.</span>
                                                                     </span>
                                                                 </div>
-                                                            </div>
+                                                            </div> -->
                                                             <!-- existing traveler search -->
-                                                            <div class="col-12 col-lg-12 mt-3">
-                                                                <label class="form-label">Existing Traveller</label>
-                                                                <input type="text" class="form-control" placeholder="Search with name, phone, email, password">
+                                                            <div class="col-8 offset-2 mt-3 text-center">
+                                                                <label class="form-label d-block">Existing Traveller</label>
+                                                                <SearchInput v-model="existingTravelerQuery[ti]" placeholder="Search by Name, Phone, Email, Passport No" />
                                                             </div>
                                                             <div class="col-12 col-sm-12 col-md-12 mt-3">
                                                                 <div class="text-center" style="color: rgba(161, 171, 183, 1);font-size: 10px;">Or fill up the information below</div>
                                                             </div>
-                                                            <!-- name -->
-                                                            <div class="col-12 col-sm-12 col-md-12 mt-3">
-                                                                <div class="row bd-highlight mb-3">
-                                                                    <div class="col-md-2 bd-highlight pe-3">
-                                                                        <label class="form-label">Title <span class="text-danger">*</span></label>
-                                                                        <Select2 v-model="travelerForms[ti].title" :options="titleOptionsFor(traveler.type)" :clearable="false" />
+                                                            <!-- Personal Details -->
+                                                            <div class="col-12 mt-4">
+                                                                <div class="traveler-form-section-title">
+                                                                    <i class="fa-solid fa-id-card"></i>
+                                                                    <span>Personal Details</span>
+                                                                    <button v-if="ti === 0" type="button" @click="fillTestData" class="btn btn-sm btn-warning ms-auto auto-fill-btn">
+                                                                        Auto Fill
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-12 col-md-6 mt-2">
+                                                                <div class="d-flex align-items-center gap-2">
+                                                                    <label class="form-label mb-0 text-nowrap personal-detail-label">Title <span class="text-danger">*</span></label>
+                                                                    <div class="flex-grow-1">
+                                                                        <Select2 v-model="travelerForms[ti].title" :options="titleOptionsFor(traveler.type)" />
                                                                     </div>
-                                                                    <div class="col-md-3 pe-3">
-                                                                        <label class="form-label">First Name (Given Name) <span class="text-danger">*</span></label>
+                                                                </div>
+                                                                <div class="d-flex align-items-center gap-2 mt-1">
+                                                                    <label class="form-label mb-0 text-nowrap personal-detail-label">First Name <span class="text-danger">*</span></label>
+                                                                    <div class="flex-grow-1">
                                                                         <input v-model="travelerForms[ti].firstName" type="text" class="form-control" placeholder="Enter First Name">
                                                                     </div>
-                                                                    <div class="col-md-3 pe-3">
-                                                                        <label class="form-label">Middle Name</label>
+                                                                </div>
+                                                                <div class="d-flex align-items-center gap-2 mt-1">
+                                                                    <label class="form-label mb-0 text-nowrap personal-detail-label">Middle Name</label>
+                                                                    <div class="flex-grow-1">
                                                                         <input v-model="travelerForms[ti].middleName" type="text" class="form-control" placeholder="Enter Middle Name">
                                                                     </div>
-                                                                    <div class="col-md-4 pe-3">
-                                                                        <label class="form-label">Last Name (Sur Name) <span class="text-danger">*</span></label>
+                                                                </div>
+                                                                <div class="d-flex align-items-center gap-2 mt-1">
+                                                                    <label class="form-label mb-0 text-nowrap personal-detail-label">Last Name <span class="text-danger">*</span></label>
+                                                                    <div class="flex-grow-1">
                                                                         <input v-model="travelerForms[ti].lastName" type="text" class="form-control" placeholder="Enter Last Name">
                                                                     </div>
                                                                 </div>
                                                             </div>
-                                                            <!-- dob with live age badge + validation -->
-                                                            <div class="col-6 col-sm-6 col-md-6 mt-2">
-                                                                <label class="form-label">Date of Birth <span class="text-danger">*</span></label>
-                                                                <DobWithAge
-                                                                    v-model="travelerForms[ti].dob"
-                                                                    :pax-type="traveler.type"
-                                                                    :travel-date="bookingStore.form?.dep_date"
-                                                                    placeholder="Date of Birth"
-                                                                />
+                                                            <div class="col-12 col-md-6 mt-2">
+                                                                <!-- dob with live age badge + validation -->
+                                                                <div class="d-flex align-items-center gap-2">
+                                                                    <label class="form-label mb-0 text-nowrap personal-detail-label">Date of Birth <span class="text-danger">*</span></label>
+                                                                    <div class="flex-grow-1">
+                                                                        <DobWithAge
+                                                                            v-model="travelerForms[ti].dob"
+                                                                            :pax-type="traveler.type"
+                                                                            :travel-date="bookingStore.form?.dep_date"
+                                                                            placeholder="Date of Birth"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                                <!-- gender -->
+                                                                <div class="d-flex align-items-center gap-2 mt-1">
+                                                                    <label class="form-label mb-0 text-nowrap personal-detail-label">Gender <span class="text-danger">*</span></label>
+                                                                    <div class="flex-grow-1">
+                                                                        <Select2 v-model="travelerForms[ti].gender" :options="genderOptions" placeholder="Select Gender" />
+                                                                    </div>
+                                                                </div>
+                                                                <!-- nationality -->
+                                                                <div class="d-flex align-items-center gap-2 mt-1">
+                                                                    <label class="form-label mb-0 text-nowrap personal-detail-label">Nationality <span class="text-danger">*</span></label>
+                                                                    <div class="flex-grow-1">
+                                                                        <Select2 v-model="travelerForms[ti].nationality" :options="nationalityOptions" placeholder="Select Nationality" />
+                                                                    </div>
+                                                                </div>
+                                                                <!-- frequent flyer - adults only -->
+                                                                <div v-if="traveler.type === 'Adult'" class="d-flex align-items-center gap-2 mt-1">
+                                                                    <label class="form-label mb-0 text-nowrap personal-detail-label">Frequent Flyer No</label>
+                                                                    <div class="flex-grow-1">
+                                                                        <input v-model="travelerForms[ti].frequentFlyer" type="text" class="form-control" placeholder="Enter Flyer Number">
+                                                                    </div>
+                                                                </div>
                                                             </div>
-                                                            <!-- gender -->
-                                                            <div class="col-6 col-sm-6 col-md-6 mt-2">
-                                                                <label class="form-label">Gender <span class="text-danger">*</span></label>
-                                                                <Select2 v-model="travelerForms[ti].gender" :options="genderOptions" placeholder="Select Gender" />
-                                                            </div>
-                                                            <!-- nationality -->
-                                                            <div class="col-6 col-sm-6 col-md-6 mt-2">
-                                                                <label class="form-label">Nationality <span class="text-danger">*</span></label>
-                                                                <Select2 v-model="travelerForms[ti].nationality" :options="nationalityOptions" placeholder="Select Nationality" />
-                                                            </div>
-                                                            <!-- frequent flyer - adults only -->
-                                                            <div v-if="traveler.type === 'Adult'" class="col-6 col-sm-6 col-md-6 mt-2">
-                                                                <label class="form-label">Frequent Flyer Number</label>
-                                                                <input v-model="travelerForms[ti].frequentFlyer" type="text" class="form-control" placeholder="Enter Flyer Number">
+
+                                                            <!-- Travel Document -->
+                                                            <div class="col-12 mt-5">
+                                                                <div class="traveler-form-section-title">
+                                                                    <i class="fa-solid fa-passport"></i>
+                                                                    <span>Travel Document</span>
+                                                                </div>
                                                             </div>
                                                             <!-- passport -->
-                                                            <div class="col-6 col-sm-6 col-md-6 mt-2">
+                                                            <div class="col-12 col-sm-6 col-md-4 mt-2">
                                                                 <label class="form-label">Passport Number <span class="text-danger">*</span></label>
                                                                 <input v-model="travelerForms[ti].passportNo" type="text" class="form-control" placeholder="Enter Passport Number">
-                                                            </div>
-                                                            <div class="col-6 col-sm-6 col-md-6 mt-2">
-                                                                <label class="form-label">Expiry Date <span class="text-danger">*</span></label>
+                                                                <label class="form-label mt-2">Expiry Date <span class="text-danger">*</span></label>
                                                                 <AppDatePicker v-model="travelerForms[ti].expiryDate" placeholder="Expiry Date" />
                                                             </div>
-                                                            <div class="col-6 col-sm-6 col-md-6 mt-2">
+                                                            <div class="col-6 col-sm-3 col-md-4 mt-2">
                                                                 <label class="form-label">Passport Image</label>
                                                                 <ImageUploader
                                                                     v-model="travelerFiles[ti].passportFiles"
                                                                     :max-files="1"
                                                                 />
                                                             </div>
-                                                            <div class="col-6 col-sm-6 col-md-6 mt-2">
+                                                            <div class="col-6 col-sm-3 col-md-4 mt-2">
                                                                 <label class="form-label">Visa Image</label>
                                                                 <ImageUploader
                                                                     v-model="travelerFiles[ti].visaFiles"
                                                                     :max-files="1"
                                                                 />
                                                             </div>
-                                                            <!-- contact -->
-                                                            <div class="col-6 col-sm-6 col-md-6 mt-1">
-                                                                <label class="form-label">Email <span class="text-danger">*</span></label>
-                                                                <input v-model="travelerForms[ti].email" type="text" class="form-control" placeholder="Enter Email">
-                                                            </div>
-                                                            <div class="col-6 col-sm-6 col-md-6 mt-1">
-                                                                <label class="form-label">Phone <span class="text-danger">*</span></label>
-                                                                <input v-model="travelerForms[ti].phone" type="text" class="form-control" placeholder="Enter Phone">
-                                                            </div>
-                                                            <!-- meal & wheelchair -->
-                                                            <div class="col-6 col-sm-6 col-md-6 mt-2">
-                                                                <label class="form-label">Meal Type</label>
-                                                                <Select2 v-model="travelerForms[ti].meal" :options="mealOptions" placeholder="Choose One..." />
-                                                            </div>
-                                                            <div class="col-6 col-sm-6 col-md-6 mt-2">
-                                                                <label class="form-label">Wheel Chair Needed ?</label>
-                                                                <Select2 v-model="travelerForms[ti].wheelchair" :options="wheelchairOptions" placeholder="Choose One..." />
-                                                            </div>
-                                                            <!-- primary contact checkbox - adults only -->
-                                                            <div v-if="traveler.type === 'Adult'" class="col-6 col-sm-6 col-md-6 mt-3">
-                                                                <div class="form-check">
-                                                                    <input v-model="travelerForms[ti].isPrimaryContact" class="form-check-input" type="checkbox" :id="`primary-${ti}`" @change="setPrimaryContact(ti)">
-                                                                    <label class="form-check-label" :for="`primary-${ti}`">Select as Primary Contact</label>
+
+                                                            <!-- Contact -->
+                                                            <div class="col-12 col-md-7 mt-5">
+                                                                <div class="traveler-form-section-title">
+                                                                    <i class="fa-solid fa-address-book"></i>
+                                                                    <span>Contact</span>
+                                                                    <div v-if="traveler.type === 'Adult'" class="form-check ms-auto mb-0 contact-primary-check">
+                                                                        <input v-model="travelerForms[ti].isPrimaryContact" class="form-check-input" type="checkbox" :id="`primary-${ti}`" @change="setPrimaryContact(ti)">
+                                                                        <label class="form-check-label" :for="`primary-${ti}`">Select as Primary Contact</label>
+                                                                    </div>
                                                                 </div>
+                                                                <div class="row">
+                                                                    <div class="col-8 mt-2">
+                                                                        <label class="form-label">Email <span class="text-danger">*</span></label>
+                                                                        <input v-model="travelerForms[ti].email" type="text" class="form-control" placeholder="Enter Email">
+                                                                    </div>
+                                                                    <div class="col-4 mt-2">
+                                                                        <label class="form-label">Phone <span class="text-danger">*</span></label>
+                                                                        <input v-model="travelerForms[ti].phone" type="text" class="form-control" placeholder="Enter Phone">
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <!-- SSR -->
+                                                            <div class="col-12 col-md-5 mt-5 ssr-section">
+                                                                <div class="traveler-form-section-title">
+                                                                    <i class="fa-solid fa-wheelchair"></i>
+                                                                    <span>SSR</span>
+                                                                </div>
+                                                                <div class="row">
+                                                                    <div class="col-6 mt-2">
+                                                                        <label class="form-label">Meal Type</label>
+                                                                        <Select2 v-model="travelerForms[ti].meal" :options="mealOptions" placeholder="Choose One..." />
+                                                                    </div>
+                                                                    <div class="col-6 mt-2">
+                                                                        <label class="form-label">Wheel Chair Need ?</label>
+                                                                        <Select2 v-model="travelerForms[ti].wheelchair" :options="wheelchairOptions" placeholder="Choose One..." />
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <!-- traveler-level error surfaces here; Continue action lives in the sidebar footer now -->
+                                                            <div v-if="ti === travelers.length - 1 && travelerSubmitError" class="col-12 mt-3 text-end">
+                                                                <div class="text-danger small mb-0">{{ travelerSubmitError }}</div>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </div>
-                                    <div class="card-footer">
-                                        <div class="d-block">
-                                            <!-- <button @click="addAddOnServices()" class="w3-button w3-dark-gray w3-round w3-medium float-left">Back</button> -->
-                                            <div v-if="travelerSubmitError" class="text-danger small mb-2 w-100">{{ travelerSubmitError }}</div>
-                                            <button type="button" @click="handleTravelerContinue"
-                                                :disabled="isSubmittingTravelers || !isTravelerFormValid"
-                                                class="w3-button w3-blue-sky-purple w3-round w3-medium float-end">
-                                                <template v-if="isSubmittingTravelers">
-                                                    <i class="fa-solid fa-spinner fa-spin me-2"></i>
-                                                    Processing...
-                                                </template>
-                                                <template v-else>Continue</template>
-                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -930,7 +917,7 @@ function handlePnrNewSearch() {
                                                     <!-- Loading -->
                                                     <div v-if="isShoppingAncillaries" class="ancillary-loading">
                                                         <div class="ancillary-loading-spinner">
-                                                            <i class="fa-solid fa-spinner fa-spin"></i>
+                                                            <LoadingSpinner :inline="true" size="sm" />
                                                         </div>
                                                         <span class="text-muted small ms-2">Loading ancillary options...</span>
                                                     </div>
@@ -997,7 +984,7 @@ function handlePnrNewSearch() {
                                                                     @click="bookAncillary(item, selectedCoverage(item))"
                                                                     :disabled="isBookingAncillary"
                                                                     class="ancillary-btn ancillary-btn--add">
-                                                                    <i v-if="isBookingAncillary" class="fa-solid fa-spinner fa-spin"></i>
+                                                                    <LoadingSpinner v-if="isBookingAncillary" :inline="true" size="sm" />
                                                                     <template v-else><i class="fa-solid fa-plus me-1"></i> Add</template>
                                                                 </button>
                                                             </div>
@@ -1016,10 +1003,6 @@ function handlePnrNewSearch() {
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div class="card-footer booking-step-footer">
-                                        <button type="button" @click="goToStep('travelers')" class="w3-button w3-dark-gray w3-round w3-medium">Back</button>
-                                        <button type="button" @click="goToStep('ssr')" class="w3-button w3-blue-sky-purple w3-round w3-medium">Continue</button>
                                     </div>
                                 </div>
 
@@ -1069,7 +1052,7 @@ function handlePnrNewSearch() {
                                                     @click="handleApplySsr"
                                                     :disabled="isApplyingSsr || !ssrHasRequests"
                                                     class="w3-button w3-tiny w3-blue-sky-purple w3-round">
-                                                    <i v-if="isApplyingSsr" class="fa-solid fa-spinner fa-spin"></i>
+                                                    <LoadingSpinner v-if="isApplyingSsr" :inline="true" size="sm" class="text-white" />
                                                     <span v-else>Apply SSR to booking</span>
                                                 </button>
                                             </div>
@@ -1077,55 +1060,119 @@ function handlePnrNewSearch() {
                                             <div v-if="ssrSubmitted && ssrSkipped" class="text-muted small mt-1">Skipped — nothing to send.</div>
                                         </div>
                                     </div>
-                                    <div class="card-footer booking-step-footer">
-                                        <button type="button" @click="goToStep('addons')" class="w3-button w3-dark-gray w3-round w3-medium">Back</button>
-                                        <button type="button" @click="goToReviewStep"
-                                            :disabled="isReviewLoading"
-                                            class="w3-button w3-blue-sky-purple w3-round w3-medium">
-                                            <span v-if="isReviewLoading"><i class="fa-solid fa-spinner fa-spin"></i></span>
-                                            <span v-else>Continue</span>
-                                        </button>
-                                    </div>
                                 </div>
 
                                 <!-- Step 4: Review & confirm -->
-                                <div v-show="activeStep === 'review'" class="card fadeIn border-0 shadow-sm booking-step-panel">
-                                    <div class="card-body p-3 p-md-4">
-                                        <BookingReviewConfirm
-                                            :snapshot="reviewSnapshotDisplay"
-                                            :loading="isReviewLoading"
-                                            :confirming="isConfirmingBooking"
-                                            :error="reviewError"
-                                            @back="goToStep('ssr')"
-                                            @confirm="handleConfirmBooking"
-                                        />
-                                    </div>
-                                </div>
-
-                                <!-- Step 5: PNR -->
-                                <div v-show="activeStep === 'pnr'" class="card fadeIn border-0 shadow-sm booking-step-panel">
-                                    <div class="card-body p-3 p-md-4">
-                                        <BookingPnrStep
-                                            :pnr="commitDisplay.pnr"
-                                            :reservation-identifier="commitDisplay.reservation_identifier"
-                                            :reservation-status="commitDisplay.reservation_status"
-                                            :commit-pending="commitDisplay.commit_pending"
-                                            :commit-error="commitDisplay.commit_error"
-                                            :travelport-response="commitDisplay.travelport_response"
-                                            :loading="isConfirmingBooking"
-                                            :workbench-expired="!!commitDisplay.workbench_expired"
-                                            @back="goToStep('review')"
-                                            @done="handlePnrDone"
-                                            @retry="handleRetryCommit"
-                                            @new-search="handlePnrNewSearch"
-                                        />
-                                    </div>
+                                <div v-show="activeStep === 'review'" class="fadeIn">
+                                    <BookingReviewConfirm
+                                        :snapshot="reviewSnapshotDisplay"
+                                        :loading="isReviewLoading"
+                                        :error="reviewError"
+                                    />
                                 </div>
 
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
+            </div>
+
+            <aside class="booking-page-sidebar" :style="{ top: sidebarStickyTop + 'px' }">
+                <!-- Gross Fare + discount only on Review; earlier steps show slim fare/baggage -->
+                <BookingFareSidebar
+                    v-if="activeStep === 'review'"
+                    :price="bookingStore.priceData"
+                />
+                <BookingTripSidebar
+                    v-else
+                    :price="bookingStore.priceData"
+                    :form="bookingStore.form"
+                />
+
+                <!-- Back/Continue live here so every step shares one location -->
+                <div class="booking-sidebar-actions">
+                    <div v-if="activeStep === 'travelers' && travelerSubmitError" class="text-danger small mb-2">{{ travelerSubmitError }}</div>
+                    <div v-if="activeStep === 'review' && reviewError" class="text-danger small mb-2">{{ reviewError }}</div>
+                    <div class="booking-sidebar-actions__row">
+                        <button
+                            type="button"
+                            class="booking-sidebar-back-btn"
+                            title="Back"
+                            @click="handleSidebarBack"
+                        >
+                            <i class="fa-solid fa-arrow-left" aria-hidden="true" />
+                        </button>
+
+                        <button
+                            v-if="activeStep === 'travelers'"
+                            type="button"
+                            class="btn wizard-btn-continue"
+                            :disabled="isSubmittingTravelers || !isTravelerFormValid"
+                            @click="handleTravelerContinue"
+                        >
+                            <template v-if="isSubmittingTravelers">
+                                <LoadingSpinner :inline="true" size="sm" class="text-white me-2" />
+                                Processing...
+                            </template>
+                            <template v-else>
+                                Continue
+                                <i class="fa-solid fa-arrow-right ms-1" aria-hidden="true" />
+                            </template>
+                        </button>
+
+                        <button
+                            v-else-if="activeStep === 'addons'"
+                            type="button"
+                            class="btn wizard-btn-continue"
+                            @click="goToStep('ssr')"
+                        >
+                            Continue
+                            <i class="fa-solid fa-arrow-right ms-1" aria-hidden="true" />
+                        </button>
+
+                        <button
+                            v-else-if="activeStep === 'ssr'"
+                            type="button"
+                            class="btn wizard-btn-continue"
+                            :disabled="isReviewLoading"
+                            @click="goToReviewStep"
+                        >
+                            <template v-if="isReviewLoading">
+                                <LoadingSpinner :inline="true" size="sm" class="text-white me-2" />
+                                Processing...
+                            </template>
+                            <span v-else>
+                                Continue
+                                <i class="fa-solid fa-arrow-right ms-1" aria-hidden="true" />
+                            </span>
+                        </button>
+
+                        <button
+                            v-else-if="activeStep === 'review' && !bookingStore.reviewConfirmed"
+                            type="button"
+                            class="btn wizard-btn-continue"
+                            :disabled="isConfirmingBooking"
+                            @click="handleConfirmBooking"
+                        >
+                            <LoadingSpinner v-if="isConfirmingBooking" :inline="true" size="sm" class="text-white me-2" />
+                            <i v-else class="fa-solid fa-lock me-2" aria-hidden="true" />
+                            Confirm Booking
+                        </button>
+
+                        <button
+                            v-else-if="activeStep === 'review'"
+                            type="button"
+                            class="btn wizard-btn-continue"
+                            @click="openConfirmModal"
+                        >
+                            <i v-if="bookingFullyCommitted" class="fa-solid fa-check me-2" aria-hidden="true" />
+                            <i v-else class="fa-solid fa-triangle-exclamation me-2" aria-hidden="true" />
+                            {{ bookingFullyCommitted ? 'Booking Confirmed' : 'View Booking Status' }}
+                        </button>
+                    </div>
+                </div>
+            </aside>
             </div>
         </div>
 
@@ -1140,10 +1187,17 @@ function handlePnrNewSearch() {
         @close="showFlightDetails = false"
     />
 
-    <BookingReceiptModal
-        :visible="showReceiptModal"
-        :receipt="receiptData"
-        @close="handleReceiptClose"
+    <BookingConfirmModal
+        :visible="showConfirmModal"
+        :receipt="confirmReceipt"
+        :commit-error="commitDisplay.commit_error"
+        :commit-pending="commitDisplay.commit_pending"
+        :workbench-expired="!!commitDisplay.workbench_expired"
+        :loading="isConfirmingBooking"
+        @close="showConfirmModal = false"
+        @retry="handleRetryCommit"
+        @new-search="handleStartNewSearch"
+        @go-to-list="handleConfirmModalGoToList"
     />
 
     <!-- Timer-expired redirect overlay -->
@@ -1167,315 +1221,500 @@ function handlePnrNewSearch() {
 </template>
 
 <style>
-.booking-trip-bar {
+.booking-sticky-header {
+    position: sticky;
+    top: 60px;
+    z-index: 5;
+    background: #fff;
+    padding-top: 0.75rem;
+    padding-bottom: 0.5rem;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+}
+
+[data-bs-theme="dark"] .booking-sticky-header {
+    background: var(--bs-body-bg);
+}
+
+.booking-page-layout {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem 1.25rem;
-    padding: 1rem 1.25rem;
-    margin: 0;
-    border-radius: 14px;
-    background: linear-gradient(180deg, #ffffff 0%, #faf8ff 100%);
-    border: 1px solid rgba(114, 57, 234, 0.12);
-    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06);
-}
-
-.booking-trip-bar__main {
-    flex: 1 1 280px;
-    min-width: 0;
-}
-
-.booking-trip-bar__route {
-    font-size: 1.35rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    color: #1f2937;
-    line-height: 1.2;
+    align-items: flex-start;
+    gap: 1.25rem;
+    padding-bottom: 2rem;
     margin-bottom: 0.5rem;
 }
 
-.booking-trip-bar__meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
+.booking-page-main {
+    flex: 1 1 0;
+    min-width: 0;
 }
 
-.booking-trip-bar__chip {
+.booking-page-sidebar {
+    flex: 0 0 300px;
+    position: sticky;
+    top: 72px;
+}
+
+#accordionTravelers {
+    --bs-accordion-btn-focus-box-shadow: none;
+}
+
+#accordionTravelers .accordion-button:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+#accordionTravelers .accordion-button:not(.collapsed):focus {
+    box-shadow: inset 0 calc(-1 * var(--bs-accordion-border-width)) 0 var(--bs-accordion-border-color);
+}
+
+#accordionTravelers .accordion-button::after {
+    margin-left: auto !important;
+}
+
+/* Wizard continue button — sits in the sidebar footer now, one style for every step */
+.wizard-btn-continue {
+    cursor: pointer;
+    background: linear-gradient(135deg, #0880e1, #3b9eff);
+    border: none;
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.8rem;
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    line-height: 1.2;
+    box-shadow: none;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.wizard-btn-continue:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 28px rgba(2, 125, 226, 0.38);
+    color: #fff;
+}
+
+.wizard-btn-continue:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.wizard-btn-continue:focus-visible {
+    outline: 2px solid #027de2;
+    outline-offset: 2px;
+}
+
+.wizard-btn-continue i.fa-lock {
+    font-size: 0.75em;
+}
+
+.wizard-btn-continue i {
+    display: inline-block;
+    transition: transform 0.18s ease;
+}
+
+.wizard-btn-continue:hover:not(:disabled) i.fa-arrow-right {
+    transform: translateX(3px);
+}
+
+.wizard-btn-continue:hover:not(:disabled) i.fa-lock {
+    transform: scale(1.1);
+}
+
+/* Sidebar back/continue — sits below the fare/baggage cards, same spot for every step */
+.booking-sidebar-actions {
+    margin-top: 0.65rem;
+}
+
+.booking-sidebar-actions__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.booking-sidebar-actions .wizard-btn-continue {
+    flex: 0 0 auto;
+    justify-content: center;
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
-    padding: 0.28rem 0.65rem;
-    font-size: 0.78rem;
-    font-weight: 500;
-    color: #4b5563;
-    background: #f3f4f6;
-    border-radius: 999px;
-    border: 1px solid #e5e7eb;
 }
 
-.booking-trip-bar__chip i {
-    font-size: 0.7rem;
-    color: #7239ea;
+/* Back button reuses AppBreadcrumbs' circular style so it reads as the same affordance */
+.booking-sidebar-back-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 1px solid #e2e8f0;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    color: #64748b;
+    background: #fff;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
 }
 
-.booking-trip-bar__chip--source {
-    background: #f4f0ff;
-    border-color: rgba(114, 57, 234, 0.25);
-    color: #7239ea;
-    font-weight: 600;
+.booking-sidebar-back-btn:hover {
+    background: #2563eb;
+    color: #fff;
+    border-color: #2563eb;
 }
 
-.booking-trip-bar__payable {
-    flex: 0 1 auto;
-    text-align: center;
-    padding: 0.35rem 1rem;
-    border-left: 1px solid rgba(114, 57, 234, 0.12);
-    border-right: 1px solid rgba(114, 57, 234, 0.12);
+.booking-sidebar-back-btn:focus-visible {
+    outline: 2px solid #027de2;
+    outline-offset: 2px;
 }
 
-.booking-trip-bar__payable-label {
-    display: block;
-    font-size: 0.65rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #6b7280;
+[data-bs-theme="dark"] .booking-sidebar-back-btn {
+    background: #1e293b;
+    border-color: #334155;
+    color: #94a3b8;
 }
 
-.booking-trip-bar__payable-amount {
-    display: block;
-    font-size: 1.25rem;
-    font-weight: 800;
-    color: #7239ea;
-    line-height: 1.2;
+[data-bs-theme="dark"] .booking-sidebar-back-btn:hover {
+    background: #2563eb;
+    color: #fff;
+    border-color: #2563eb;
 }
 
-.booking-trip-bar__payable-meta {
-    display: block;
-    font-size: 0.72rem;
-    color: #9ca3af;
+.traveler-header-btn {
+    gap: 0.75rem;
 }
 
-.booking-trip-bar__actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: stretch;
-    gap: 0.65rem;
+.traveler-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #f1edff;
     flex-shrink: 0;
 }
 
-.booking-trip-bar__timer {
+.traveler-avatar img {
+    width: 14px;
+    height: 14px;
+}
+
+.traveler-avatar i {
+    font-size: 12px;
+    color: #7239ea;
+}
+
+.traveler-avatar--child,
+.traveler-avatar--infant {
+    background: #e6fbf8;
+}
+
+.traveler-avatar--child i,
+.traveler-avatar--infant i {
+    color: #0aa89e;
+}
+
+.traveler-header-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    line-height: 1.25;
+}
+
+.traveler-header-index {
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: #1e1b2e;
+}
+
+.traveler-header-type {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: #8b8398;
+}
+
+.traveler-primary-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: 14px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: rgba(25, 135, 84, 0.1);
+    color: #198754;
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.traveler-primary-badge i {
+    font-size: 11px;
+}
+
+[data-bs-theme="dark"] .traveler-avatar {
+    background: rgba(114, 57, 234, 0.18);
+}
+
+[data-bs-theme="dark"] .traveler-avatar--child,
+[data-bs-theme="dark"] .traveler-avatar--infant {
+    background: rgba(10, 168, 158, 0.18);
+}
+
+[data-bs-theme="dark"] .traveler-header-index {
+    color: #e2e8f0;
+}
+
+[data-bs-theme="dark"] .traveler-header-type {
+    color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .traveler-primary-badge {
+    background: rgba(25, 135, 84, 0.18);
+    color: #6ee7b7;
+}
+
+@media (max-width: 991px) {
+    .booking-page-layout { flex-direction: column; }
+    .booking-page-sidebar { flex: 1 1 auto; width: 100%; position: static; }
+}
+
+.booking-header-actions {
     display: flex;
     align-items: center;
-    gap: 0.65rem;
-    padding: 0.55rem 1rem;
-    min-width: 150px;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #f4f0ff 0%, #ede9fe 100%);
-    border: 1px solid rgba(114, 57, 234, 0.15);
+    gap: 0.6rem;
 }
 
-.booking-trip-bar__timer--critical {
-    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-    border-color: rgba(220, 38, 38, 0.25);
-}
-
-.booking-trip-bar__timer-icon {
-    width: 36px;
-    height: 36px;
+.booking-flight-details-btn {
+    width: 34px;
+    height: 34px;
     border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(114, 57, 234, 0.12);
-    color: #7239ea;
-    font-size: 1rem;
-}
-
-.booking-trip-bar__timer--critical .booking-trip-bar__timer-icon {
-    background: rgba(220, 38, 38, 0.12);
-    color: #dc2626;
-}
-
-.booking-trip-bar__timer-label {
-    display: block;
-    font-size: 0.65rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #6b7280;
-    line-height: 1.2;
-}
-
-.booking-trip-bar__timer-value {
-    display: block;
-    font-size: 1.1rem;
-    font-weight: 800;
-    font-variant-numeric: tabular-nums;
-    color: #7239ea;
-    line-height: 1.2;
-}
-
-.booking-trip-bar__timer--critical .booking-trip-bar__timer-value {
-    color: #dc2626;
-}
-
-.booking-trip-bar__details {
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #2563eb;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
-    padding: 0.55rem 1.1rem;
-    border: none;
-    border-radius: 12px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #fff;
-    background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
-    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+    font-size: 0.9rem;
     cursor: pointer;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
-.booking-trip-bar__details:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.4);
+.booking-flight-details-btn:hover {
+    background: #2563eb;
     color: #fff;
+    border-color: #2563eb;
 }
 
-.booking-trip-bar__details i {
-    font-size: 0.95rem;
+.compact-timer-block {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(255, 255, 255, 0.75);
+    border: 1px solid rgba(26, 158, 181, 0.22);
+    border-radius: 10px;
+    padding: 4px 12px;
+    flex-shrink: 0;
 }
 
-@media (max-width: 767px) {
-    .booking-trip-bar__payable {
-        width: 100%;
-        border-left: none;
-        border-right: none;
-        border-top: 1px solid rgba(114, 57, 234, 0.12);
-        padding-top: 0.75rem;
-    }
-    .booking-trip-bar__actions {
-        width: 100%;
-    }
-    .booking-trip-bar__timer,
-    .booking-trip-bar__details {
-        flex: 1 1 auto;
-    }
+.compact-timer-icon {
+    font-size: 15px;
+    color: #1a9eb5;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.compact-timer-digits {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    font-size: 19px;
+    color: #0f172a;
+    letter-spacing: -0.01em;
+    line-height: 1;
+}
+
+.digit-slot {
+    position: relative;
+    overflow: hidden;
+    height: 1.15em;
+    width: 0.62em;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.digit-val {
+    display: block;
+    line-height: 1.15em;
+    text-align: center;
+    width: 100%;
+}
+
+.digit-colon {
+    font-size: 17px;
+    font-weight: 800;
+    color: #94a3b8;
+    margin: 0 2px;
+    line-height: 1;
+    position: relative;
+    top: -1px;
+}
+
+.digit-slip-enter-active {
+    transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.32s ease;
+}
+.digit-slip-leave-active {
+    transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.32s ease;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+}
+.digit-slip-enter-from { transform: translateY(-100%); opacity: 0; }
+.digit-slip-enter-to   { transform: translateY(0);     opacity: 1; }
+.digit-slip-leave-from { transform: translateY(0);     opacity: 1; }
+.digit-slip-leave-to   { transform: translateY(100%);  opacity: 0; }
+
+.compact-timer-block--critical {
+    border-color: rgba(220, 38, 38, 0.3);
+}
+
+.compact-timer-block--critical .compact-timer-icon,
+.compact-timer-block--critical .compact-timer-digits {
+    color: #dc2626;
+}
+
+[data-bs-theme="dark"] .booking-flight-details-btn {
+    background: #1e293b;
+    border-color: #334155;
+    color: #93c5fd;
+}
+
+[data-bs-theme="dark"] .compact-timer-block {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(125, 211, 252, 0.22);
+}
+
+[data-bs-theme="dark"] .compact-timer-icon {
+    color: #7dd3fc;
+}
+
+[data-bs-theme="dark"] .compact-timer-digits {
+    color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .digit-colon {
+    color: #64748b;
 }
 
 .booking-wizard {
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 8px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     margin-bottom: 16px;
-    padding: 4px;
-    background: linear-gradient(180deg, rgba(114, 57, 234, 0.06), rgba(114, 57, 234, 0.02));
-    border: 1px solid rgba(114, 57, 234, 0.12);
-    border-radius: 12px;
 }
 
 .booking-wizard__step {
+    position: relative;
     display: flex;
     align-items: center;
-    gap: 10px;
-    width: 100%;
-    border: 1px solid transparent;
-    border-radius: 10px;
-    background: transparent;
-    padding: 10px 12px;
-    text-align: left;
-    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    justify-content: flex-start;
+    gap: 8px;
+    height: 42px;
+    border: none;
+    background: #cfd2d8;
+    color: #5e5f60;
+    font-size: 14px;
+    /* font-weight: 600; */
+    padding-left: 30px;
+    padding-right: 28px;
+    clip-path: polygon(
+        2.8px 2.8px,
+        4px 0,
+        calc(100% - 26px) 0,
+        calc(100% - 19.2px) 2.8px,
+        calc(100% - 2.8px) 19.2px,
+        calc(100% - 2.8px) 24.8px,
+        calc(100% - 19.2px) 41.2px,
+        calc(100% - 26px) 44px,
+        4px 44px,
+        2.8px 41.2px,
+        19.2px 24.8px,
+        19.2px 19.2px
+    );
+    margin-left: -13px;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.booking-wizard__step:first-child {
+    margin-left: 0;
+}
+
+.booking-wizard__step:focus {
+    outline: none;
+}
+
+.booking-wizard__step:focus-visible {
+    outline: 2px solid #7239ea;
+    outline-offset: -3px;
 }
 
 .booking-wizard__step:hover:not(:disabled) {
-    background: rgba(114, 57, 234, 0.06);
-    border-color: rgba(114, 57, 234, 0.18);
+    background: #e2e6ee;
+}
+
+.booking-wizard__step--completed:not(.booking-wizard__step--active) {
+    background: #dfe3ea;
+    color: #475569;
 }
 
 .booking-wizard__step--active {
-    background: #fff;
-    border-color: rgba(114, 57, 234, 0.35);
-    box-shadow: 0 4px 14px rgba(114, 57, 234, 0.12);
-}
-
-.booking-wizard__step--completed:not(.booking-wizard__step--active) .booking-wizard__index {
-    background: rgba(34, 197, 94, 0.14);
-    color: #16a34a;
-    border-color: rgba(34, 197, 94, 0.35);
+    background: #7239ea;
+    color: #fff;
+    z-index: 1;
 }
 
 .booking-wizard__step--disabled {
-    opacity: 0.45;
+    opacity: 0.6;
     cursor: not-allowed;
 }
 
-.booking-wizard__index {
-    width: 28px;
-    height: 28px;
-    border-radius: 999px;
-    border: 1px solid rgba(114, 57, 234, 0.25);
-    color: #7239ea;
-    background: rgba(114, 57, 234, 0.08);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: 700;
-    flex-shrink: 0;
-}
-
-.booking-wizard__step--active .booking-wizard__index {
-    background: linear-gradient(135deg, #7239ea, #a855f7);
-    color: #fff;
-    border-color: transparent;
-}
-
-.booking-wizard__text {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    flex: 1;
-}
-
 .booking-wizard__label {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--bs-body-color);
-    line-height: 1.2;
-}
-
-.booking-wizard__hint {
-    font-size: 10px;
-    color: var(--bs-secondary-color, #6c757d);
-    line-height: 1.2;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.booking-wizard__step--active .booking-wizard__label {
-    color: #5b21b6;
-}
-
 .booking-wizard__icon {
-    color: rgba(114, 57, 234, 0.45);
     font-size: 14px;
     flex-shrink: 0;
 }
 
-.booking-wizard__step--active .booking-wizard__icon {
-    color: #7239ea;
+@media (max-width: 575px) {
+    .booking-wizard {
+        grid-template-columns: 1fr;
+    }
+    .booking-wizard__step,
+    .booking-wizard__step:first-child {
+        clip-path: none;
+        margin-left: 0;
+        border-radius: 8px;
+        margin-bottom: 4px;
+    }
+}
+
+[data-bs-theme="dark"] .booking-wizard__step {
+    background: rgba(255, 255, 255, 0.06);
+    color: #94a3b8;
+}
+[data-bs-theme="dark"] .booking-wizard__step--completed:not(.booking-wizard__step--active) {
+    background: rgba(255, 255, 255, 0.1);
+    color: #cbd5e1;
 }
 
 .booking-step-panel {
-    border: 1px solid rgba(114, 57, 234, 0.1);
-}
-
-.booking-step-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
+    border: none;
 }
 
 .booking-step-section {
@@ -1495,31 +1734,117 @@ function handlePnrNewSearch() {
     color: var(--bs-body-color);
 }
 
-@media (max-width: 1199px) {
-    .booking-wizard {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+.traveler-form-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #7239ea;
+    padding-bottom: 6px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid rgba(114, 57, 234, 0.15);
+}
+
+.traveler-form-section-title i {
+    font-size: 12px;
+}
+
+[data-bs-theme="dark"] .traveler-form-section-title {
+    color: #c084fc;
+    border-bottom-color: rgba(192, 132, 252, 0.25);
+}
+
+.personal-detail-label {
+    width: 135px;
+    flex-shrink: 0;
+}
+
+.auto-fill-btn {
+    text-transform: none;
+    font-weight: 600;
+    font-size: 0.8rem;
+    letter-spacing: normal;
+}
+
+.contact-primary-check {
+    text-transform: none;
+    font-weight: 400;
+    font-size: 0.875rem;
+    letter-spacing: normal;
+    color: var(--bs-body-color);
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    padding-left: 0;
+}
+
+.contact-primary-check .form-check-input {
+    margin: 0;
+    flex-shrink: 0;
+}
+
+.contact-primary-check .form-check-label {
+    margin: 0;
+}
+
+@media (min-width: 768px) {
+    .ssr-section {
+        border-left: 1px solid var(--bs-border-color);
+        padding-left: 1.5rem;
     }
 }
 
-@media (min-width: 1200px) and (max-width: 1399px) {
-    .booking-wizard__hint {
-        display: none;
-    }
+/* passport/visa preview thumbnail: match the empty dropzone's own footprint, not a tiny 82x82 crop */
+.traveller-accordion-body .img-uploader__previews {
+    width: 100% !important;
+    margin-top: 0 !important;
+}
+
+.traveller-accordion-body .img-uploader__zone,
+.traveller-accordion-body .img-uploader__preview {
+    width: 100% !important;
+    height: 160px !important;
+    border-radius: 8px !important;
+}
+
+.traveller-accordion-body .img-uploader__zone {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+}
+
+.traveller-accordion-body .img-uploader__remove {
+    color: #dc3545 !important;
+}
+
+.traveller-accordion-body .img-uploader__remove:hover {
+    color: #fff !important;
+}
+
+.traveller-accordion-body .img-uploader__size {
+    color: #22c55e !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+}
+
+.traveller-accordion-body .img-uploader__size--invalid {
+    color: #dc3545 !important;
+}
+
+/* Select2 + date pickers render as form-control-sm by default; match plain input height in this form */
+.traveller-accordion-body .app-select2-control.form-control-sm,
+.traveller-accordion-body input.form-control.form-control-sm {
+    min-height: 38px;
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
 }
 
 @media (max-width: 991px) {
-    .booking-wizard {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
     .booking-wizard__icon {
         display: none;
-    }
-}
-
-@media (max-width: 575px) {
-    .booking-wizard {
-        grid-template-columns: 1fr;
     }
 }
 
@@ -1786,52 +2111,6 @@ function handlePnrNewSearch() {
 }
 
 /* ── Dark mode overrides ──────────────────────────────────────── */
-[data-bs-theme="dark"] .booking-trip-bar {
-    background: var(--bs-card-bg) !important;
-    border-color: rgba(114, 57, 234, 0.2);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-}
-[data-bs-theme="dark"] .booking-trip-bar__route {
-    color: var(--bs-body-color);
-}
-[data-bs-theme="dark"] .booking-trip-bar__chip {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: var(--bs-border-color);
-    color: var(--bs-body-color);
-}
-[data-bs-theme="dark"] .booking-trip-bar__chip--source {
-    background: rgba(114, 57, 234, 0.18);
-    border-color: rgba(114, 57, 234, 0.35);
-    color: #c084fc;
-}
-[data-bs-theme="dark"] .booking-trip-bar__payable {
-    border-color: rgba(114, 57, 234, 0.15);
-}
-[data-bs-theme="dark"] .booking-trip-bar__payable-label,
-[data-bs-theme="dark"] .booking-trip-bar__payable-meta,
-[data-bs-theme="dark"] .booking-trip-bar__timer-label {
-    color: var(--bs-secondary-color);
-}
-[data-bs-theme="dark"] .booking-trip-bar__timer {
-    background: rgba(114, 57, 234, 0.12);
-    border-color: rgba(114, 57, 234, 0.25);
-}
-[data-bs-theme="dark"] .booking-trip-bar__timer--critical {
-    background: rgba(220, 38, 38, 0.12);
-    border-color: rgba(220, 38, 38, 0.25);
-}
-[data-bs-theme="dark"] .booking-wizard {
-    background: rgba(114, 57, 234, 0.05);
-    border-color: rgba(114, 57, 234, 0.15);
-}
-[data-bs-theme="dark"] .booking-wizard__step--active {
-    background: rgba(114, 57, 234, 0.14);
-    border-color: rgba(114, 57, 234, 0.4);
-    box-shadow: 0 4px 14px rgba(114, 57, 234, 0.18);
-}
-[data-bs-theme="dark"] .booking-wizard__step--active .booking-wizard__label {
-    color: #c084fc;
-}
 [data-bs-theme="dark"] .booking-step-section {
     background: var(--bs-card-bg) !important;
     border-color: rgba(114, 57, 234, 0.15);

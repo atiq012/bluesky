@@ -45,7 +45,7 @@ const CreateAgency = () => import('./components/admin/agent/create.vue')
 
 // deposit management
 const depositList = () => import('./components/admin/deposite/index.vue')
-const depoDetails = () => import('./components/admin/deposite/depoDetails.vue')
+const depoDetails = () => import('./components/admin/deposite/viewDepo.vue')
 const CreateDeposit = () => import('./components/admin/deposite/CreateDeposit.vue')
 const accountStatement = () => import('./components/admin/deposite/accountStatement.vue')
 
@@ -115,6 +115,7 @@ const requestCreate = () => import('./components/admin/helpdesk/create.vue')
 const requestEdit = () => import('./components/admin/helpdesk/edit.vue')
 const categoryList = () => import('./components/admin/category/index.vue')
 const categoryCreate = () => import('./components/admin/category/create.vue')
+const requestDetails = () => import('./components/admin/helpdesk/requestDetails.vue')
 
 // /Group
 const groupList = () => import('./components/admin/group/index.vue');
@@ -248,6 +249,11 @@ const routes = [
 
     //group payment
     { path: '/all-b2b-group-payment-list', component: b2bGroupPaymentList, name: 'b2bGroupPaymentList', meta: { auth: true } },
+    // help desks
+    { path: '/help-desk-index', component: helpDesk, name: 'helpDesk', meta: { auth: true } },
+    { path: '/new-request-create', component: requestCreate, name: 'requestCreate', meta: { auth: true } },
+    { path: '/edit-request/:ids', component: requestEdit, name: 'requestEdit', meta: { auth: true }, props: true },
+    { path: '/helpdesk/support-requests', component: requestDetails, name: 'requestDetails', meta: { auth: true }, props: true },
 
 ]
 

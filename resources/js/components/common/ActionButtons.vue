@@ -16,6 +16,7 @@ const props = defineProps({
     showLogs: { type: Boolean, default: false },
     showDelete: { type: Boolean, default: true },
     showStatusModal: { type: Boolean, default: false },
+    showResetPassword: { type: Boolean, default: false },
     showStatusChange: { type: Boolean, default: false },
     showReverse: { type: Boolean, default: false },
     showComing: { type: Boolean, default: false },
@@ -72,7 +73,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits([
-    'more', 'view','view-group','pax-upload', 'generate-eticket','edit', 'delete', 'print', 'logs', 'showStatusModal', 'statusChange', 'reverse', 'coming',
+    'more', 'view','view-group','pax-upload', 'generate-eticket','edit', 'delete', 'print', 'logs', 'showStatusModal', 'reset-password', 'statusChange', 'reverse', 'coming',
     'fund-request', 'place-order', 'receive', 'fund-processing', 'funds-ready', 'give-advance', 'authorize',
     'payment-history', 'return', 'download-request', 'download-response', 'issue-ticket', 'cancel-booking', 'history', 'void-ticket',
 ]);
@@ -101,7 +102,7 @@ const hasStatusChangeOptions = computed(() => filteredStatusChangeOptions.value.
 
 const visibleCount = computed(() => [
     props.showMore, props.showView,props.showGroupAssign,props.showPAXUpload,props.showUploadedPAX,props.generateEticket ,props.showEdit, props.showDelete,
-    props.showPrint, props.showLogs, props.showStatusModal,
+    props.showPrint, props.showLogs, props.showStatusModal, props.showResetPassword,
     props.showStatusChange && hasStatusChangeOptions.value,
     props.showReverse, props.showComing, props.showFundRequest,
     props.showPlaceOrder, props.showReceive, props.showFundProcessing,
@@ -130,6 +131,7 @@ const simpleActions = computed(() => {
         { key: 'delete', show: props.showDelete, label: props.deleteLabel || 'Delete', icon: 'fa-solid fa-trash', btnClass: 'action-btn-delete' },
         { key: 'logs', show: props.showLogs, label: props.logsLabel || 'Logs', icon: 'fa-solid fa-file-lines', btnClass: 'action-btn-logs' },
         { key: 'statusModal', emit: 'showStatusModal', show: props.showStatusModal, label: props.statusModalLabel || 'Status', icon: 'fa-solid fa-circle-check', btnClass: 'action-btn-status-modal' },
+        { key: 'reset-password', show: props.showResetPassword, label: 'Change Password', icon: 'fa-solid fa-key', btnClass: 'action-btn-reset-password' },
         { key: 'reverse', show: props.showReverse, label: props.reverseLabel || 'Reverse', icon: 'fa-solid fa-rotate-left', btnClass: 'action-btn-reverse' },
         { key: 'coming', show: props.showComing, label: props.comingLabel || 'Coming Soon', icon: 'fa-solid fa-clock', btnClass: 'action-btn-coming', disabled: true },
         { key: 'fund-request', show: props.showFundRequest, label: props.fundRequestLabel || 'Fund Request', icon: 'fa-solid fa-coins', btnClass: 'action-btn-fund-request', disabled: props.fundRequestDisabled },
@@ -226,6 +228,7 @@ function emitAction(action) {
 :deep(.action-btn-logs) { --action-btn-color: #1ba3f0; --action-btn-bg: #e8f4fe; }
 :deep(.action-btn-generate-eticket) { --action-btn-color: #0822b2 ; --action-btn-bg: #e6e8fa ; }
 :deep(.action-btn-status-modal) { --action-btn-color: #eab308; --action-btn-bg: #fef9c3; }
+:deep(.action-btn-reset-password) { --action-btn-color: #c026d3; --action-btn-bg: #fae8ff; }
 :deep(.action-btn-status-change) { --action-btn-color: #059669; --action-btn-bg: #e6f7f0; }
 :deep(.action-btn-reverse) { --action-btn-color: #e11d48; --action-btn-bg: #fde8ef; }
 :deep(.action-btn-coming) { --action-btn-color: #64748b; --action-btn-bg: #f1f5f9; opacity: 0.65; }

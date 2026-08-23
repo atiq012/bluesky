@@ -7,7 +7,7 @@ use App\Models\BookingAttempt;
 use App\Models\BookingPriceLog;
 use App\Models\Agent\Agent;
 use App\Services\SearchV2\Concerns\PersistsTravelportResponseFile;
-use App\Services\DynamicRule\DynamicRulePricingApplier;
+use App\Services\FareRule\FareRuleSearchIntegration;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\File;
@@ -22,8 +22,15 @@ class TravelportPriceService
         private readonly TravelportTokenService  $tokenService,
         private readonly PriceResponseMapper     $mapper,
         private readonly BookingAttemptService   $bookingAttemptService,
-        private readonly DynamicRulePricingApplier $dynamicRulePricingApplier,
+        private readonly FareRuleSearchIntegration $fareRuleSearchIntegration,
     ) {}
+
+    // Phase 13 cutover — the old DynamicRule applier is gone; the fare rule engine is the only
+    // pricing path now (plan §12.1 "swap applier").
+    private function applyPricing(array $priceData, array $form, ?int $agencyId): array
+    {
+        return $this->fareRuleSearchIntegration->applyToPriceData($priceData, $form, $agencyId);
+    }
 
     public function price(array $priceRequest, int|string|null $userId = null): array
     {
@@ -36,8 +43,8 @@ class TravelportPriceService
             $agencyId = $this->resolveAgencyId($userId);
             $fixture = $this->loadPriceFixture();
             if ($fixture !== null) {
-                $priceData = $this->mapper->map($fixture);
-                $priceData = $this->dynamicRulePricingApplier->applyToPriceData(
+                $priceData = $this->mapper->map($fixture, (int) ($priceRequest['form']['KID'] ?? 0));
+                $priceData = $this->applyPricing(
                     $priceData,
                     $priceRequest['form'] ?? [],
                     $agencyId
@@ -60,8 +67,8 @@ class TravelportPriceService
             $payload   = $this->buildPricePayload($priceRequest);
             $response  = $this->executePrice($priceUrl, $payload);
 
-            $priceData = $this->mapper->map($response);
-            $priceData = $this->dynamicRulePricingApplier->applyToPriceData(
+            $priceData = $this->mapper->map($response, (int) ($priceRequest['form']['KID'] ?? 0));
+            $priceData = $this->applyPricing(
                 $priceData,
                 $priceRequest['form'] ?? [],
                 $agencyId
@@ -89,6 +96,7 @@ class TravelportPriceService
                 'cnn'                    => (int) ($priceRequest['form']['CNN'] ?? 0),
                 'kid'                    => (int) ($priceRequest['form']['KID'] ?? 0),
                 'inf'                    => (int) ($priceRequest['form']['INF'] ?? 0),
+                'ins'                    => (int) ($priceRequest['form']['INS'] ?? 0),
                 'cabin_class'            => (string) ($priceRequest['form']['cabin_class'] ?? 'Economy'),
                 'price_payload'          => ['request' => $payload, 'mapped' => $priceData],
                 'total_price'            => $priceData['total_price'] ?? null,
@@ -137,6 +145,7 @@ class TravelportPriceService
                 'cnn'                  => (int) ($priceRequest['form']['CNN'] ?? 0),
                 'kid'                  => (int) ($priceRequest['form']['KID'] ?? 0),
                 'inf'                  => (int) ($priceRequest['form']['INF'] ?? 0),
+                'ins'                  => (int) ($priceRequest['form']['INS'] ?? 0),
                 'cabin_class'          => (string) ($priceRequest['form']['cabin_class'] ?? 'Economy'),
                 'price_payload'        => ['request' => $payload],
                 'provider'             => 'travelport_v2',

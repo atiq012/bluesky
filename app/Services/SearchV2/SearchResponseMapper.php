@@ -14,6 +14,7 @@ class SearchResponseMapper
     private array $airportMap   = [];
     private array $airlineDbMap = [];
     private array $aircraftMap = [];
+    private int $kidCount = 0;
 
     public function __construct(
         private readonly AirlineRestrictionResolver $restrictionResolver,
@@ -22,6 +23,8 @@ class SearchResponseMapper
     public function map(array $providerResponse, array $form, ?int $agencyId = null): array
     {
         $root = $providerResponse['CatalogProductOfferingsResponse'] ?? $providerResponse;
+
+        $this->kidCount = (int) ($form['KID'] ?? 0);
 
         $this->buildReferenceMaps($root['ReferenceList'] ?? []);
         $this->buildAirportMap();
@@ -634,15 +637,41 @@ class SearchResponseMapper
 
     private function buildPriceBreakdown(array $breakdowns): array
     {
-        $ptcMap = ['ADT' => 'Adult', 'CNN' => 'Child', 'CHD' => 'Child', 'INF' => 'Infant', 'INS' => 'Infant'];
-        $result = [];
+        // "Kids" (2-<5) is sent to Travelport as CNN age 3 (see TravelportSearchService::
+        // buildPassengerCriteria), so Travelport echoes it back with the same PTC (CNN) as
+        // real Children — no age comes back in the price response to tell them apart. Children's
+        // CNN criteria is always sent before Kids' CNN criteria and Travelport preserves that
+        // order one row per criteria, so the LAST CNN row is always the Kids row when kidCount > 0.
+        $ptcMap = ['ADT' => 'Adult', 'CNN' => 'Child', 'CHD' => 'Kids', 'KID' => 'Kids', 'INF' => 'Infant', 'INS' => 'Infant (seat)'];
 
-        foreach ($breakdowns as $bd) {
+        $lastCnnIndex = null;
+        if ($this->kidCount > 0) {
+            foreach ($breakdowns as $i => $bd) {
+                if (($bd['requestedPassengerType'] ?? '') === 'CNN') {
+                    $lastCnnIndex = $i;
+                }
+            }
+        }
+
+        $result = [];
+        $seen   = [];
+
+        foreach ($breakdowns as $i => $bd) {
             $ptc    = $bd['requestedPassengerType'] ?? '';
             $amount = $bd['Amount'] ?? [];
 
+            // Travelport can echo the same PTC breakdown more than once with identical totals —
+            // drop exact duplicates instead of rendering the block twice.
+            $dedupeKey = implode('|', [$ptc, $amount['Base'] ?? 0, $amount['Taxes']['TotalTaxes'] ?? 0, $amount['Total'] ?? 0]);
+            if (isset($seen[$dedupeKey])) {
+                continue;
+            }
+            $seen[$dedupeKey] = true;
+
+            $type = ($ptc === 'CNN' && $i === $lastCnnIndex) ? 'Kids' : ($ptcMap[$ptc] ?? $ptc);
+
             $result[] = [
-                'type'              => $ptcMap[$ptc] ?? $ptc,
+                'type'              => $type,
                 'passengerTypeCode' => $ptc,
                 'quantity'          => (int) ($bd['quantity'] ?? 1),
                 'baseFare'          => (float) ($amount['Base'] ?? 0),

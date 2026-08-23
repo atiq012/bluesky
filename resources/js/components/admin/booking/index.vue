@@ -1,8 +1,7 @@
 <script setup>
 import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
 
-import { ref, computed, onMounted, provide } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, onUnmounted, provide } from 'vue'
 import axiosInstance from '../../../axiosInstance'
 import { runAction } from '../../../utils/runAction'
 import { buildReceiptFromAttemptDetail } from '../../../utils/buildReceiptFromCommit'
@@ -18,17 +17,22 @@ import VoidConfirmModal from './VoidConfirmModal.vue'
 import VoidResultModal from './VoidResultModal.vue'
 import BookingHistoryModal from './BookingHistoryModal.vue'
 import TicketErrorModal from './TicketErrorModal.vue'
+import SearchWingsBuildLoader from '../../search/SearchWingsBuildLoader.vue'
 
 const rows = ref([])
 const loading = ref(false)
 const refreshLoading = ref(false)
 const loadingItemId = ref(null)
 const loadingAction = ref(null)
+const issueTicketOverlay = ref(false)
 const showReceiptModal = ref(false)
 const receiptData = ref(null)
 
 const showTicketModal = ref(false)
 const ticketModalData = ref({ ticketNumbers: [], ticketedAt: null, pnr: null })
+// Full booking receipt for the ticket modal's print buttons — null while unavailable,
+// which just hides "Print All Ticket" / "Print Single Page" rather than erroring.
+const ticketPrintReceipt = ref(null)
 
 const showCancelModal = ref(false)
 const cancelModalData = ref({ pnr: null, cancelledAt: null })
@@ -52,7 +56,6 @@ const ticketErrorData = ref({ pnr: null, message: null })
 const { issueTicket } = useTpV2Ticket()
 const { cancelBooking } = useTpV2Cancel()
 const { voidTicket } = useTpV2Void()
-const router = useRouter()
 
 const tableRows = computed(() =>
     rows.value.map(row => ({
@@ -62,14 +65,13 @@ const tableRows = computed(() =>
 )
 
 const columns = [
-    { field: 'code_name', title: 'Booking ID & User', sort: false },
+    { field: 'code_name', title: 'Booking ID & Agency', sort: false },
     { field: 'sector', title: 'Sector', sort: false },
     { field: 'date', title: 'Date', sort: false },
     { field: 'pax', title: 'No. of PAX', sort: false },
     { field: 'pnr', title: 'PNR', sort: false },
     { field: 'total_fare', title: 'Total Fare', sort: false },
-    { field: 'last_ticketing', title: 'Last Ticketing', sort: false },
-    { field: 'tickets', title: 'Tickets', sort: false },
+    { field: 'ticketing', title: 'Ticketing', sort: false },
     { field: 'airline', title: 'Airline', sort: false },
     { field: 'status', title: 'Status', sort: false },
     { field: 'created_by', title: 'Created by', sort: false },
@@ -103,20 +105,24 @@ function wayTypeMeta(row) {
 
 function paxTotal(row) {
     if (row?.pax_count != null) return Number(row.pax_count) || 0
-    return (Number(row?.pax_adt) || 0) + (Number(row?.pax_cnn) || 0) + (Number(row?.pax_inf) || 0)
+    return (Number(row?.pax_adt) || 0) + (Number(row?.pax_cnn) || 0) + (Number(row?.pax_kid) || 0)
+        + (Number(row?.pax_inf) || 0) + (Number(row?.pax_ins) || 0)
 }
 
 function paxTooltipHtml(row) {
     const adt = Number(row?.pax_adt) || 0
     const cnn = Number(row?.pax_cnn) || 0
+    const kid = Number(row?.pax_kid) || 0
     const inf = Number(row?.pax_inf) || 0
-    return [
-        '<div class="bl-pax-tooltip">',
+    const ins = Number(row?.pax_ins) || 0
+    const items = [
         `<span class="bl-pax-tooltip__item bl-pax-tooltip__item--adt"><i class="fa-solid fa-user"></i> ADT ${adt}</span>`,
         `<span class="bl-pax-tooltip__item bl-pax-tooltip__item--cnn"><i class="fa-solid fa-child"></i> CNN ${cnn}</span>`,
-        `<span class="bl-pax-tooltip__item bl-pax-tooltip__item--inf"><i class="fa-solid fa-baby"></i> INF ${inf}</span>`,
-        '</div>',
-    ].join('')
+    ]
+    if (kid) items.push(`<span class="bl-pax-tooltip__item bl-pax-tooltip__item--cnn"><i class="fa-solid fa-child-reaching"></i> KID ${kid}</span>`)
+    items.push(`<span class="bl-pax-tooltip__item bl-pax-tooltip__item--inf"><i class="fa-solid fa-baby"></i> INF ${inf}</span>`)
+    if (ins) items.push(`<span class="bl-pax-tooltip__item bl-pax-tooltip__item--inf"><i class="fa-solid fa-baby"></i> INS ${ins}</span>`)
+    return ['<div class="bl-pax-tooltip">', ...items, '</div>'].join('')
 }
 
 function journeyLines(row) {
@@ -156,6 +162,72 @@ function ticketList(row) {
     return []
 }
 
+// Ticks every second so the seconds digit reads as a live clock rather than a static figure
+const countdownTick = ref(Date.now())
+let countdownTimer = null
+
+onMounted(() => {
+    countdownTimer = setInterval(() => { countdownTick.value = Date.now() }, 1000)
+})
+onUnmounted(() => {
+    if (countdownTimer) clearInterval(countdownTimer)
+})
+
+function buildCountdown(iso, now) {
+    if (!iso) return null
+    const target = new Date(iso).getTime()
+    if (Number.isNaN(target)) return null
+
+    const diffMs = target - now
+    if (diffMs <= 0) {
+        return { head: 'Expired', seconds: null, severity: 'expired', label: 'Ticketing deadline has expired' }
+    }
+
+    const totalSeconds = Math.floor(diffMs / 1000)
+    const days = Math.floor(totalSeconds / 86400)
+    const hours = Math.floor((totalSeconds % 86400) / 3600)
+    const minutes = Math.floor((totalSeconds % 3600) / 60)
+    const seconds = totalSeconds % 60
+
+    // Larger units drop off once they hit zero so the chip stays compact
+    const head = days > 0
+        ? `${days}D-${hours}H-${minutes}M`
+        : hours > 0
+            ? `${hours}H-${minutes}M`
+            : `${minutes}M`
+
+    const spoken = [
+        days ? `${days} day${days > 1 ? 's' : ''}` : null,
+        hours ? `${hours} hour${hours > 1 ? 's' : ''}` : null,
+        minutes ? `${minutes} minute${minutes > 1 ? 's' : ''}` : null,
+    ].filter(Boolean).join(' ')
+
+    // Tiers track how an agent actually triages: plenty of time, due today, or act now
+    const severity = totalSeconds < 10800
+        ? 'critical'
+        : totalSeconds < 86400
+            ? 'soon'
+            : 'calm'
+
+    return {
+        head,
+        seconds: String(seconds).padStart(2, '0'),
+        severity,
+        label: `${spoken} left to issue the ticket`,
+    }
+}
+
+// Computed once per tick instead of per template reference, so a 1s interval stays cheap
+const countdowns = computed(() => {
+    const now = countdownTick.value
+    const map = {}
+    for (const row of rows.value ?? []) {
+        if (row?.ticket_no || !row?.payment_deadline) continue
+        map[row.id] = buildCountdown(row.payment_deadline, now)
+    }
+    return map
+})
+
 const STATUS_LABELS = { 'Cancelled': 'Booking Cancelled' }
 function statusLabel(row) {
     const s = row?.legacy_status || row?.status || '—'
@@ -185,6 +257,7 @@ async function load(isRefresh = false) {
     try {
         const response = await axiosInstance.get('v2/booking-attempts', { params: { scope: 'booking' } })
         rows.value = response.data?.data ?? []
+        console.log('Booking attempts loaded:', rows.value)
     } catch (error) {
         console.log(error)
         rows.value = []
@@ -244,14 +317,53 @@ function canVoidTicket(row) {
     return ticketDate.toDateString() === today.toDateString()
 }
 
-function onViewTicket(row) {
+// Flame/view button is one action but its target differs by row status —
+// Ticketed rows print the ticket, everything else prints the booking confirmation.
+function onViewAction(row) {
+    if (isTicketed(row)) return onViewTicket(row)
+    return onView(row)
+}
+
+async function onViewTicket(row) {
     if (!row?.ticket_no) return
     ticketModalData.value = {
         ticketNumbers: row.ticket_numbers ?? [],
         ticketedAt:    row.ticket_date ?? null,
         pnr:           row.gds_pnr ?? row.pnr ?? null,
     }
+    // Clear first — otherwise a previous row's receipt could flash on this one while it loads
+    ticketPrintReceipt.value = null
     showTicketModal.value = true
+
+    if (row.id) {
+        ticketPrintReceipt.value = await buildTicketPrintReceipt(row.id, row.ticket_date)
+    }
+}
+
+// Best-effort — the "View" flow already builds this same receipt shape from the same
+// endpoint, so a failure here just hides the print buttons rather than the ticket modal itself.
+async function buildTicketPrintReceipt(attemptId, ticketedAt) {
+    try {
+        const res = await axiosInstance.get(`v2/booking-attempts/${attemptId}`)
+        const attempt = res.data?.data?.attempt
+        const snapshot = attempt?.snapshot_json ?? attempt?.pre_commit_snapshot ?? null
+        const commitResponse = attempt?.commit_response ?? null
+        if (!commitResponse?.ReservationResponse) return null
+
+        const receipt = await buildReceiptFromAttemptDetail({ attempt, snapshot, commitResponse })
+        receipt.status = 'Ticketed'
+        // Ticketed already — the "issue by" deadline notice no longer applies
+        receipt.paymentDeadline = null
+        receipt.paymentDeadlineLong = null
+        if (ticketedAt) {
+            receipt.ticketDate = new Date(ticketedAt).toLocaleString('en-GB', {
+                day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true,
+            })
+        }
+        return receipt
+    } catch {
+        return null
+    }
 }
 
 async function onIssueTicket(row) {
@@ -259,6 +371,7 @@ async function onIssueTicket(row) {
 
     loadingItemId.value = row.id
     loadingAction.value = 'issue-ticket'
+    issueTicketOverlay.value = true
 
     try {
         const res = await issueTicket(row.id)
@@ -269,9 +382,12 @@ async function onIssueTicket(row) {
             pnr: row.gds_pnr ?? row.pnr ?? null,
         }
         showTicketModal.value = true
-        window.dispatchEvent(new CustomEvent('balance:refresh'))
 
-        await load()
+        const [receipt] = await Promise.all([
+            buildTicketPrintReceipt(row.id, res.ticketed_at),
+            load(),
+        ])
+        ticketPrintReceipt.value = receipt
     } catch (e) {
         const msg = e?.response?.data?.message || 'Ticketing failed. Please try again.'
         ticketErrorData.value = { pnr: row?.gds_pnr ?? row?.pnr ?? null, message: msg }
@@ -279,6 +395,7 @@ async function onIssueTicket(row) {
     } finally {
         loadingItemId.value = null
         loadingAction.value = null
+        issueTicketOverlay.value = false
     }
 }
 
@@ -288,6 +405,7 @@ function handleTicketErrorModalClose() {
 
 function handleTicketModalClose() {
     showTicketModal.value = false
+    ticketPrintReceipt.value = null
 }
 
 function onCancelBooking(row) {
@@ -339,18 +457,6 @@ function onHistory(row) {
     showHistoryModal.value = true
 }
 
-function onLogs(row) {
-    runAction(async () => {
-        if (!row?.id) return
-        await router.push({ name: 'bookingAttemptDetail', params: { id: row.id } })
-    }, {
-        setLoading: (val) => {
-            loadingItemId.value = val ? row?.id ?? null : null
-            loadingAction.value = val ? 'logs' : null
-        },
-    })
-}
-
 function handleHistoryClose() {
     showHistoryModal.value = false
     historyTargetRow.value = null
@@ -386,7 +492,6 @@ async function onVoidConfirmed(selectedTickets) {
             voidedTickets: res.voided_tickets ?? selectedTickets,
         }
         showVoidModal.value = true
-        window.dispatchEvent(new CustomEvent('balance:refresh'))
         await load()
     } catch (e) {
         Notification.showToast('e', e?.response?.data?.message || 'Ticket void failed. Please try again.')
@@ -404,6 +509,14 @@ function handleVoidModalClose() {
 onMounted(() => load())
 </script>
 <template>
+    <Teleport to="body">
+        <Transition name="issue-ticket-fade">
+            <div v-if="issueTicketOverlay" class="issue-ticket-overlay" aria-hidden="true">
+                <SearchWingsBuildLoader />
+            </div>
+        </Transition>
+    </Teleport>
+
         <AppBreadcrumbs
         title="Flight Management"
         :back-to="{ name: 'Home' }"
@@ -539,8 +652,11 @@ onMounted(() => load())
                                 <span>{{ row?.booking_code || '—' }}</span>
                             </div>
                             <div class="bl-line bl-name">
-                                <i class="fa-solid fa-user bl-ico bl-ico-user" aria-hidden="true" />
-                                <span class="bl-name-text">{{ row?.created_by || '—' }}</span>
+                                <i class="fa-solid fa-building bl-ico bl-ico-building" aria-hidden="true" />
+                                <div class="bl-name-stack">
+                                    <span class="bl-name-text">{{ row?.agency_name || '—' }}</span>
+                                    <span class="bl-user">{{ row?.created_by || '—' }}</span>
+                                </div>
                             </div>
                         </div>
                     </template>
@@ -609,34 +725,24 @@ onMounted(() => load())
                         </div>
                     </template>
 
-                    <template #last_ticketing="{ value: row }">
-                        <div class="bl-stack">
-                            <div class="bl-line bl-deadline-date">
-                                <i class="fa-regular fa-calendar bl-ico bl-ico-cal" aria-hidden="true" />
-                                <span>{{ row?.payment_deadline_date || '—' }}</span>
-                            </div>
-                            <div class="bl-line bl-deadline-time">
-                                <i class="fa-regular fa-clock bl-ico bl-ico-time" aria-hidden="true" />
-                                <span>{{ row?.payment_deadline_time || '—' }}</span>
-                            </div>
-                        </div>
-                    </template>
-
-                    <template #tickets="{ value: row }">
-                        <div class="bl-stack">
+                    <template #ticketing="{ value: row }">
+                        <!-- Ticketed and awaiting-ticketing are mutually exclusive, so each state
+                             leads with its own labelled pill instead of relying on colour alone -->
+                        <div v-if="row?.ticket_no" class="bl-stack">
                             <div
-                                class="bl-line bl-ticket-no"
-                                :class="{ 'bl-ticket-no--clickable': row?.ticket_no }"
-                                @click="row?.ticket_no && onViewTicket(row)"
+                                class="bl-line bl-ticket-no bl-ticket-no--clickable"
+                                role="button"
+                                tabindex="0"
+                                :aria-label="`Ticket ${ticketList(row)[0]} — view details`"
+                                @click="onViewTicket(row)"
+                                @keydown.enter.prevent="onViewTicket(row)"
+                                @keydown.space.prevent="onViewTicket(row)"
                             >
-                                <i class="fa-solid fa-ticket bl-ico" aria-hidden="true" />
-                                <template v-if="row?.ticket_no">
-                                    <span>{{ ticketList(row)[0] }}</span>
-                                    <span v-if="ticketList(row).length > 1" class="bl-ticket-more">+{{ ticketList(row).length - 1 }} More</span>
-                                </template>
-                                <span v-else>—</span>
+                                <span class="bl-state-pill bl-state-pill--tkt" title="Ticket issued">TKT</span>
+                                <span>{{ ticketList(row)[0] }}</span>
+                                <span v-if="ticketList(row).length > 1" class="bl-ticket-more">+{{ ticketList(row).length - 1 }} More</span>
                             </div>
-                            <div v-if="row?.ticket_no" class="bl-line bl-ticket-at">
+                            <div class="bl-line bl-ticket-at">
                                 <i class="fa-regular fa-calendar bl-ico bl-ico-cal" aria-hidden="true" />
                                 <span>{{ ticketParts(row).date }}</span>
                                 <span class="bl-ticket-at__sep">|</span>
@@ -644,6 +750,43 @@ onMounted(() => load())
                                 <span>{{ ticketParts(row).time }}</span>
                             </div>
                         </div>
+
+                        <div v-else-if="row?.payment_deadline" class="bl-stack">
+                            <div class="bl-line bl-deadline-date">
+                                <span class="bl-state-pill bl-state-pill--lt" title="Last Ticketing deadline">LT</span>
+                                <span>{{ row?.payment_deadline_date || '—' }} | {{ row?.payment_deadline_time || '—' }}</span>
+                            </div>
+                            <div v-if="countdowns[row.id]" class="bl-line bl-deadline-time">
+                                <span class="bl-countdown-caption">Expires in</span>
+                                <span
+                                    class="bl-countdown"
+                                    :class="`bl-countdown--${countdowns[row.id].severity}`"
+                                    :aria-label="countdowns[row.id].label"
+                                >
+                                    <span>{{ countdowns[row.id].head }}</span>
+                                    <template v-if="countdowns[row.id].seconds !== null">
+                                        <span aria-hidden="true">-</span>
+                                        <!-- Each digit slips independently, matching the search-page
+                                             timer; the S is static so only numbers move -->
+                                        <span class="bl-sec" aria-hidden="true">
+                                            <span class="bl-digit-slot">
+                                                <Transition name="bl-digit-slip">
+                                                    <span :key="countdowns[row.id].seconds[0]" class="bl-digit-val">{{ countdowns[row.id].seconds[0] }}</span>
+                                                </Transition>
+                                            </span>
+                                            <span class="bl-digit-slot">
+                                                <Transition name="bl-digit-slip">
+                                                    <span :key="countdowns[row.id].seconds[1]" class="bl-digit-val">{{ countdowns[row.id].seconds[1] }}</span>
+                                                </Transition>
+                                            </span>
+                                            <span>S</span>
+                                        </span>
+                                    </template>
+                                </span>
+                            </div>
+                        </div>
+
+                        <span v-else class="bl-muted">—</span>
                     </template>
 
                     <template #airline="{ value: row }">
@@ -684,15 +827,13 @@ onMounted(() => load())
                             :show-cancel-booking="isBookingConfirmed(row)"
                             :show-void-ticket="canVoidTicket(row)"
                             :show-history="true"
-                            :show-logs="true"
                             :loading-item-id="row._loadingAction ? row.id : null"
                             :loading-action="row._loadingAction"
-                            @view="onView"
+                            @view="onViewAction"
                             @issue-ticket="onIssueTicket"
                             @cancel-booking="onCancelBooking"
                             @void-ticket="onVoidTicket"
                             @history="onHistory"
-                            @logs="onLogs"
                         />
                     </template>
                 </DataTable>
@@ -711,6 +852,7 @@ onMounted(() => load())
         :ticket-numbers="ticketModalData.ticketNumbers"
         :ticketed-at="ticketModalData.ticketedAt"
         :pnr="ticketModalData.pnr"
+        :receipt="ticketPrintReceipt"
         @close="handleTicketModalClose"
     />
 
@@ -789,7 +931,6 @@ onMounted(() => load())
 }
 
 .bl-ico-building { color: #2563eb; }
-.bl-ico-user { color: #2563eb; }
 .bl-ico-barcode { color: #7c3aed; }
 .bl-ico-cal { color: #0d9488; }
 .bl-ico-time { color: #ea580c; }
@@ -802,12 +943,30 @@ onMounted(() => load())
 }
 
 .bl-name {
-    align-items: center;
+    align-items: flex-start;
+}
+
+.bl-name-stack {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.05rem;
+    line-height: 1.1;
+    width: fit-content;
+    max-width: 100%;
 }
 
 .bl-name-text {
     font-weight: 500;
     color: #334155;
+}
+
+.bl-user {
+    align-self: flex-end;
+    font-size: 0.625rem;
+    font-weight: 400;
+    color: #94a3b8;
+    text-align: right;
 }
 
 .bl-sector {
@@ -879,6 +1038,8 @@ onMounted(() => load())
     font-variant-numeric: tabular-nums;
 }
 
+/* The LT pill alone carries the danger identity; the date itself is plain reference text so a
+   whole column of deadlines does not read as a wall of red */
 .bl-deadline-date,
 .bl-deadline-time {
     font-size: 0.82rem;
@@ -886,19 +1047,13 @@ onMounted(() => load())
 }
 
 .bl-deadline-date {
-    color: #0d9488;
+    color: #334155;
+    font-weight: 600;
 }
 
-.bl-deadline-date .bl-ico {
-    color: #0d9488;
-}
-
-.bl-deadline-time {
-    color: #ea580c;
-}
-
-.bl-deadline-time .bl-ico {
-    color: #ea580c;
+.bl-deadline-clock {
+    color: #64748b;
+    font-weight: 500;
 }
 
 .bl-ticket-at {
@@ -965,6 +1120,166 @@ onMounted(() => load())
 
 .bl-ticket-no--clickable:hover .bl-ico {
     color: #6d28d9;
+}
+
+/* Leading state marker — the text itself carries the meaning, so the two states stay
+   distinguishable without relying on colour */
+.bl-state-pill {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    border-radius: 0.25rem;
+    padding: 0.2rem 0.3rem;
+    flex-shrink: 0;
+    width: 30px;
+    text-align: center;
+    cursor: default;
+}
+
+/* Low-saturation rose: enough to mark this as a deadline, quiet enough to repeat on every row */
+.bl-state-pill--lt {
+    background: #fff1f2;
+    color: #9f1239;
+    box-shadow: inset 0 0 0 1px #fecdd3;
+}
+.bl-state-pill--tkt { background: #ede9fe; color: #5b21b6; }
+
+[data-bs-theme=dark] .bl-state-pill--lt {
+    background: #3f0d16;
+    color: #fda4af;
+    box-shadow: inset 0 0 0 1px #7f1d2e;
+}
+[data-bs-theme=dark] .bl-state-pill--tkt { background: #2e1065; color: #c4b5fd; }
+
+.bl-countdown-caption {
+    font-size: 0.7rem;
+    color: #64748b;
+}
+
+[data-bs-theme=dark] .bl-countdown-caption { color: #94a3b8; }
+
+.bl-countdown {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.05rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    border-radius: 999px;
+    padding: 0.1rem 0.45rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Rolling seconds — same slip mechanic as the search-page booking timer */
+.bl-sec {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+}
+
+.bl-digit-slot {
+    position: relative;
+    overflow: hidden;
+    height: 1.15em;
+    width: 0.6em;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.bl-digit-val {
+    display: block;
+    line-height: 1.15em;
+    text-align: center;
+    width: 100%;
+}
+
+.bl-digit-slip-enter-active,
+.bl-digit-slip-leave-active {
+    transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.32s ease;
+}
+
+.bl-digit-slip-leave-active {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+}
+
+.bl-digit-slip-enter-from { transform: translateY(-100%); opacity: 0; }
+.bl-digit-slip-enter-to   { transform: translateY(0);     opacity: 1; }
+.bl-digit-slip-leave-from { transform: translateY(0);     opacity: 1; }
+.bl-digit-slip-leave-to   { transform: translateY(100%);  opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+    .bl-digit-slip-enter-active,
+    .bl-digit-slip-leave-active { transition: none; }
+}
+
+/* All four states use the same tinted-badge treatment as the LT pill and escalate by depth of
+   tint, so the column never turns into a wall of solid colour */
+.bl-countdown--calm {
+    background: #f1f5f9;
+    color: #475569;
+    box-shadow: inset 0 0 0 1px #e2e8f0;
+}
+.bl-countdown--soon {
+    background: #fef3c7;
+    color: #92400e;
+    box-shadow: inset 0 0 0 1px #fde68a;
+}
+.bl-countdown--critical {
+    background: #ffe4e6;
+    color: #9f1239;
+    box-shadow: inset 0 0 0 1px #fda4af;
+}
+.bl-countdown--expired {
+    background: #fecdd3;
+    color: #881337;
+    box-shadow: inset 0 0 0 1px #fb7185;
+}
+
+[data-bs-theme=dark] .bl-countdown--calm {
+    background: #1e293b;
+    color: #cbd5e1;
+    box-shadow: inset 0 0 0 1px #334155;
+}
+[data-bs-theme=dark] .bl-countdown--soon {
+    background: #422006;
+    color: #fcd34d;
+    box-shadow: inset 0 0 0 1px #78350f;
+}
+[data-bs-theme=dark] .bl-countdown--critical {
+    background: #4c0519;
+    color: #fda4af;
+    box-shadow: inset 0 0 0 1px #9f1239;
+}
+[data-bs-theme=dark] .bl-countdown--expired {
+    background: #6b0a20;
+    color: #fecdd3;
+    box-shadow: inset 0 0 0 1px #be123c;
+}
+
+.bl-muted {
+    color: #94a3b8;
+}
+
+/* The mid-tone accents in this column sit below 4.5:1 on the dark surface, so lift them */
+[data-bs-theme=dark] .bl-ticket-no,
+[data-bs-theme=dark] .bl-ticket-no .bl-ico { color: #c4b5fd; }
+[data-bs-theme=dark] .bl-deadline-date { color: #e2e8f0; }
+[data-bs-theme=dark] .bl-deadline-clock { color: #94a3b8; }
+[data-bs-theme=dark] .bl-muted { color: #64748b; }
+[data-bs-theme=dark] .bl-ticket-no--clickable:hover {
+    background: #2e1065;
+    color: #ddd6fe;
+}
+
+.bl-ticket-no--clickable:focus-visible {
+    outline: 2px solid #7c3aed;
+    outline-offset: 2px;
 }
 
 .bl-status {
@@ -1045,6 +1360,32 @@ onMounted(() => load())
 </style>
 
 <style>
+.issue-ticket-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(6px);
+    pointer-events: auto;
+}
+
+html[data-bs-theme="dark"] .issue-ticket-overlay {
+    background: rgba(0, 0, 0, 0.65);
+}
+
+.issue-ticket-fade-enter-active,
+.issue-ticket-fade-leave-active {
+    transition: opacity 0.22s ease;
+}
+
+.issue-ticket-fade-enter-from,
+.issue-ticket-fade-leave-to {
+    opacity: 0;
+}
+
 .text-blue {
     color: blue;
 }
@@ -1500,5 +1841,9 @@ onMounted(() => load())
 
 html[data-bs-theme='dark'] .booking-list-card .bl-name-text {
     color: #cbd5e1;
+}
+
+html[data-bs-theme='dark'] .booking-list-card .bl-user {
+    color: #64748b;
 }
 </style>

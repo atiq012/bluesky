@@ -47,7 +47,7 @@ class RequestDetailsController extends BaseController
                 'request_id'        => $request->ticketId,
                 'note'              => $request->note,
                 'from_user_id'      => auth()->id(),
-                'to_user_id'        => $to_user_id->requester_id,
+                'to_user_id'        => $to_user_id->assignee_id,
                 'send_notification' => $request->send_as_notification ?? false,
                 'send_email'        => $request->send_as_email ?? false,
                 'show_to_assignee'  => $request->show_to_assignee ?? false,
@@ -80,7 +80,13 @@ class RequestDetailsController extends BaseController
     {
         $data = DB::table('requests as req')
             ->where('req.id', '=', $id)
-            ->selectRaw('req.id as idd,req.category_id,req.requester_id,req.priority,req.subject,req.description,req.file_path,req.status,req.updated_at,f_username(req.updated_by) as updated_by,f_username(req.created_by) as created_by,req.created_at,req.updated_at,(SELECT name FROM categories WHERE id = req.category_id) as category_name,(SELECT name FROM users WHERE id = req.requester_id) as requester_name,(SELECT name FROM users WHERE id = req.assignee_id) as assigned_to_name,req.request_number')->first();
+            ->selectRaw('req.id as idd,req.category_id,req.requester_id,req.priority,req.subject,req.description,
+                req.assignee_id, req.file_path,req.status,req.updated_at,f_username(req.updated_by) as updated_by,
+                f_username(req.created_by) as created_by,req.created_at,req.updated_at,
+                (SELECT name FROM categories WHERE id = req.category_id) as category_name,
+                (SELECT name FROM users WHERE id = req.requester_id) as requester_name,
+                (SELECT name FROM users WHERE id = req.assignee_id) as assigned_to_name,req.request_number')
+            ->first();
 
         $details = DB::table('request_details')
                     ->where('request_id', '=', $id)
@@ -89,7 +95,8 @@ class RequestDetailsController extends BaseController
 
         $me     = auth()->user();
         $author = DB::table('users')->where('id', $data->requester_id)->first();
-        return response()->json(['data' => $data, 'details' => $details, 'me' => $me, 'author' => $author]);
+        $assignee = DB::table('users')->where('id', $data->assignee_id)->first();
+        return response()->json(['data' => $data, 'details' => $details, 'me' => $me, 'author' => $author, 'assignee' => $assignee]);
     }
 
     /**

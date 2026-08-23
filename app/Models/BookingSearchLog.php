@@ -28,6 +28,7 @@ class BookingSearchLog extends Model
         'cnn',
         'kid',
         'inf',
+        'ins',
         'cabin_class',
         'provider',
         'endpoint',

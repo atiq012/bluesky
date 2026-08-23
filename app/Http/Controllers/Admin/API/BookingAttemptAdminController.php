@@ -24,7 +24,7 @@ class BookingAttemptAdminController extends BaseController
     {
         $query = BookingAttempt::query()
             ->with([
-                'searchLog:id,from_airport,to_airport,dep_date,arrival_date,way,adt,cnn,inf,cabin_class',
+                'searchLog:id,from_airport,to_airport,dep_date,arrival_date,way,adt,cnn,kid,inf,ins,cabin_class',
                 'priceLog:id,total_price,currency,base_fare,total_taxes,price_payload',
                 'commitSession:id,booking_attempt_id,response_payload,session_type,status',
                 'paxes:id,booking_attempt_id,first_name,last_name,pax_type,sequence',

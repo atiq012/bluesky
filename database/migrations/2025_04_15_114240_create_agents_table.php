@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('logo_path', 255)->nullable();
             $table->string('country');
             $table->string('city');
-            $table->string('zone');
+            $table->string('zone')->nullable();
             $table->string('address');
             $table->string('trade_licence', 50)->unique();
             $table->string('ca_number', 50)->nullable()->unique();
@@ -49,7 +49,7 @@ return new class extends Migration
             // Add foreign key constraints
             $table->foreign('created_by')->references('id')->on('users');
             $table->foreign('updated_by')->references('id')->on('users');
-            $table->foreign('user_id')->references('id')->on('users');
+            // $table->foreign('user_id')->references('id')->on('agent_users');
             $table->foreign('kam')->references('id')->on('users');
         });
     }

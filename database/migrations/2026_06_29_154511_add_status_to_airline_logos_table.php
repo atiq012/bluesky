@@ -1,0 +1,31 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::table('airline_logos', function (Blueprint $table) {
+            $table->string('status')->default('active')->after('region');
+            // Add index for better query performance if you'll filter by status often
+            $table->index('status');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('airline_logos', function (Blueprint $table) {
+            $table->dropIndex(['status']);
+            $table->dropColumn('status');
+        });
+    }
+};
