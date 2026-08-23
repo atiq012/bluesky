@@ -66,6 +66,7 @@ const iataFiles = ref([]);
 const hajjFiles = ref([]);
 const tinFiles = ref([]);
 const nidFiles = ref([]);
+const logoKey = ref(0);
 
 // File Input Refs
 const fileTradeInput = ref(null);
@@ -154,13 +155,13 @@ async function getDistrict() {
     try {
         const response = await axios.get('/api/districts');
         console.log(response);
-        
+
         const sortedData = response.data.sort((a, b) => a.name.localeCompare(b.name));
 
         cityOptions.value = sortedData.map(item => ({
             value: item.id,
             label: item.name,
-           
+
         }));
     } catch (error) {
         console.error("Failed to fetch districts:", error);
@@ -266,10 +267,10 @@ function validateStep1() {
     const hajjValidation = /^[A-Za-z0-9/-]+$/;
     const tradeValidation = /^[A-Za-z0-9/-]+$/;
 
-    // errors.iata = form.agencyType==='IATA' && (!form.iataNumber.trim() || !iataValidation.test(!form.iataNumber.trim()));
-    errors.iata = form.agencyType === 'IATA' && (!form.iataNumber.trim() || !iataValidation.test(form.iataNumber.trim()));
+    errors.iata = form.agencyType==='IATA' && (!form.iataNumber.trim() || !iataValidation.test(form.iataNumber.trim()));
     errors.hajj = form.hajjType==='Hajj' && (!form.hajjNumber.trim() || !hajjValidation.test(form.hajjNumber.trim()));
     errors.trade = !form.tradeLicense.trim() || !tradeValidation.test(form.tradeLicense.trim());
+    errors.cacNumber = !form.cacNumber.trim() || !tradeValidation.test(form.cacNumber.trim());
     return (
         !errors.agencyName &&
         !errors.establishedDate &&
@@ -278,6 +279,7 @@ function validateStep1() {
         !errors.city &&
         !errors.address &&
         !errors.agencyPhone &&
+        !errors.cacNumber &&
         !errors.trade &&
         !errors.iata &&
         !errors.hajj
@@ -474,7 +476,16 @@ watch(isSuccessModalOpen, (isOpen) => {
     }
 });
 
+watch(() => form.agencyType, (newVal, oldVal) => {
+    // If changing from IATA to something else, clear the iataNumber
+    if (oldVal === 'IATA' && newVal !== 'IATA') {
+        form.iataNumber = '';
+        errors.iata = false; // Also clear any error state
+    }
+});
+
 const isSubmitting = ref(false);
+
 async function submitForm() {
     if (!validateStep3()) return;
     isSubmitting.value = true;
@@ -532,19 +543,33 @@ async function submitForm() {
         const response = await axios.post('/api/agent/registration', fd, { headers });
 
         Notification.showToast('s', response.data.message);
+
+        // Open success modal
         openSuccessModal();
+
+        // Reset form AFTER showing success modal
+        // This ensures the form is ready for a new registration
+        // when the user clicks "New Registration"
 
     } catch (error) {
         ErrorCatch.CatchError(error);
+    } finally {
+        isSubmitting.value = false;
     }
 }
 
 function registerAnother() {
     closeSuccessModal();
     resetForm();
+    // Force navigation to step 1
+    showPane(1);
+    // Clear any stored step
+    sessionStorage.removeItem(STEP_KEY);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function resetForm() {
+    // Reset all form fields
     form.agencyName = "";
     form.establishedDate = "";
     form.agencyEmail = "";
@@ -556,12 +581,13 @@ function resetForm() {
     form.postalCode = "";
     form.cacNumber = "";
     form.tradeLicense = "";
-    form.agencyType = "IATA";
+    form.agencyType = "Non-IATA"; // Set default to Non-IATA
     form.iataNumber = "";
-    form.hajjType = "Hajj";
+    form.hajjType = "Non-Hajj"; // Set default to Non-Hajj
     form.hajjNumber = "";
     form.logoFile = null;
     form.logoName = "";
+    logoKey.value += 1;
     form.firstName = "";
     form.lastName = "";
     form.designation = "";
@@ -572,12 +598,15 @@ function resetForm() {
     form.userPhone = "";
     form.agreeTerms = false;
 
+    // Clear all file arrays
     tradeFiles.value = [];
     cacFiles.value = [];
     iataFiles.value = [];
     hajjFiles.value = [];
     tinFiles.value = [];
     nidFiles.value = [];
+
+    // Revoke and clear image previews
     Object.keys(docImagePreviews).forEach((key) => {
         if (docImagePreviews[key]?.startsWith("blob:")) {
             URL.revokeObjectURL(docImagePreviews[key]);
@@ -585,16 +614,20 @@ function resetForm() {
         docImagePreviews[key] = "";
     });
 
+    // Reset all errors
     Object.keys(errors).forEach(key => {
         errors[key] = null;
     });
 
-    sessionStorage.removeItem(STEP_KEY);
-    showPane(1);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
+    // Reset submission state
+    isSubmitting.value = false;
 
-// Clear field error as soon as user provides a value
+    // Clear session storage
+    sessionStorage.removeItem(STEP_KEY);
+
+    // Reset to step 1
+    currentStep.value = 1;
+}
 watch(() => form.agencyName, v => { if (v?.trim()) errors.agencyName = false; });
 watch(() => form.establishedDate, v => { if (v) errors.establishedDate = false; });
 watch(() => form.agencyEmail, v => { if (v) errors.agencyEmail = false; });
@@ -726,7 +759,7 @@ onUnmounted(() => {
                                 <label class="form-label">Agency Name <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" placeholder="Agency name"
                                     v-model="form.agencyName"
-                                    :class="{ 'is-invalid': errors.agencyName === true, 'is-valid': errors.agencyName === false }"
+                                    :class="{ 'is-invalid': errors.agencyName === true}"
                                     required>
                                 <div class="invalid-feedback">Please enter the agency name.</div>
                             </div>
@@ -757,7 +790,7 @@ onUnmounted(() => {
                                 <label class="form-label">Address <span class="text-danger">*</span></label>
                                 <textarea class="form-control" placeholder="Full address" rows="3"
                                     v-model="form.address"
-                                    :class="{ 'is-invalid': errors.address === true, 'is-valid': errors.address === false }"
+                                    :class="{ 'is-invalid': errors.address === true }"
                                     required style="min-height:70px;"></textarea>
                                 <div class="invalid-feedback">Please enter the address.</div>
                             </div>
@@ -765,7 +798,7 @@ onUnmounted(() => {
                                 <label class="form-label">District <span class="text-danger">*</span></label>
                                 <div :class="{ 'select2-error': errors.city === true }">
                                     <Select2 v-model="form.city" :options="cityOptions" :clearable="true"
-                                        control-class="form-control" 
+                                        control-class="form-control"
                                         control-style="border-radius: 10px; padding: 10px 14px; font-size: .9rem; color: #3F4754; border: 1.5px solid #E2E8F0;"
                                         @update:modelValue="v => { if (v) errors.city = false }" />
                                 </div>
@@ -788,18 +821,22 @@ onUnmounted(() => {
                                 <div v-if="errors.country === true" class="invalid-feedback d-block">Please select a
                                     country.</div>
                             </div>
-                            
+
                             <div class="col-md-6">
-                                <label class="form-label">Civil Aviation Certificate Number</label>
+                                <label class="form-label">Civil Aviation Certificate Number
+                                    <span class="text-danger">*</span>
+                                </label>
                                 <input type="text" class="form-control" placeholder="CAC number"
-                                    v-model="form.cacNumber">
+                                    v-model="form.cacNumber" :class="{ 'is-invalid': errors.cacNumber === true }" required>
+                                <div class="invalid-feedback">Please enter a valid Civil Aviation Certificate Number.</div>
+
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Trade License Number
                                     <span class="text-danger">*</span>
                                 </label>
                                 <input type="text" class="form-control" placeholder="Trade license number"
-                                    v-model="form.tradeLicense" :class="{ 'is-invalid': errors.trade === true, 'is-valid': errors.trade === false }"
+                                    v-model="form.tradeLicense" :class="{ 'is-invalid': errors.trade === true }"
                                     required>
                                 <div class="invalid-feedback">Please enter a valid trade license.</div>
                             </div>
@@ -827,7 +864,7 @@ onUnmounted(() => {
                                 <div class="mt-2" v-if="showIataField">
                                     <input type="text" id="iata_field" class="form-control"
                                         :placeholder="iataPlaceholder" v-model="form.iataNumber"
-                                        :class="{ 'is-invalid': errors.iata === true, 'is-valid': errors.iata === false && form.iataNumber?.trim()}">
+                                        :class="{ 'is-invalid': errors.iata === true}">
                                     <div class="invalid-feedback">Please enter a valid IATA number.</div>
                                 </div>
                             </div>
@@ -854,7 +891,7 @@ onUnmounted(() => {
                                     <div class="invalid-feedback">Please enter a valid hajj license number.</div>
                                 </div>
                             </div>
-                            <div class="col-12">
+                            <!-- <div class="col-12">
                                 <label class="form-label">Company Logo <small class="text-muted fw-normal">(Max 2 MB —
                                         JPEG or PNG)</small></label>
                                 <div class="d-flex align-items-center gap-3">
@@ -864,6 +901,24 @@ onUnmounted(() => {
                                     <span class="text-muted small">
                                         {{ form.logoFile ? form.logoFile.name : 'Click box to upload logo (JPEG or PNG)'
                                         }}
+                                    </span>
+                                </div>
+                            </div> -->
+                            <!-- In your template, update the ImageCropUpload component -->
+                            <div class="col-12">
+                                <label class="form-label">Company Logo <small class="text-muted fw-normal">(Max 2 MB — JPEG or PNG)</small></label>
+                                <div class="d-flex align-items-center gap-3">
+                                    <ImageCropUpload
+                                        :key="logoKey"
+                                        v-model="form.logoFile"
+                                        :max-file-size-mb="2"
+                                        accept="image/jpeg,image/png"
+                                        crop-modal-title="Crop Company Logo"
+                                        shape="square"
+                                        :free-aspect="true"
+                                    />
+                                    <span class="text-muted small">
+                                        {{ form.logoFile ? form.logoFile.name : 'Click box to upload logo (JPEG or PNG)' }}
                                     </span>
                                 </div>
                             </div>
@@ -877,9 +932,7 @@ onUnmounted(() => {
                     <!-- ── STEP 2 ── -->
                     <div class="step-pane" id="pane-2" :class="{ active: currentStep === 2 }">
                         <div class="row g-4">
-                            <div class="col-12">
-                                <div class="section-title">Required Documents</div>
-                            </div>
+
                             <div class="col-md-6 tdl">
                                 <label class="form-label">Trade License <span class="text-danger">*</span></label>
                                 <div class="upload-zone" id="zone-trade" :style="getZoneStyle('trade')"
@@ -1035,14 +1088,11 @@ onUnmounted(() => {
                     <!-- ── STEP 3 ── -->
                     <div class="step-pane" id="pane-3" :class="{ active: currentStep === 3 }">
                         <div class="row g-3">
-                            <div class="col-12">
-                                <div class="section-title" style="margin-top:0;">Primary User Information</div>
-                            </div>
                             <div class="col-md-6">
                                 <label class="form-label">Owner Name <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" placeholder="First name"
                                     v-model="form.firstName"
-                                    :class="{ 'is-invalid': errors.firstName === true, 'is-valid': errors.firstName === false }"
+                                    :class="{ 'is-invalid': errors.firstName === true }"
                                     required>
                                 <div class="invalid-feedback">Please enter the owner name.</div>
                             </div>
@@ -1050,7 +1100,7 @@ onUnmounted(() => {
                                 <label class="form-label">Designation <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" placeholder="Designation"
                                     v-model="form.designation"
-                                    :class="{ 'is-invalid': errors.lastName === true, 'is-valid': errors.lastName === false }"
+                                    :class="{ 'is-invalid': errors.lastName === true }"
                                     required>
                                 <div class="invalid-feedback">Please enter designation.</div>
                             </div>
@@ -1082,7 +1132,7 @@ onUnmounted(() => {
                                 <span class="small"> (Agent login email)</span>
                                 <input type="email" class="form-control" placeholder="user@email.com"
                                     v-model="form.email"
-                                    :class="{ 'is-invalid': errors.email === true, 'is-valid': errors.email === false }"
+                                    :class="{ 'is-invalid': errors.email === true }"
                                     required>
                                 <div class="invalid-feedback" id="emailFeedback">Please enter a valid email address.
                                 </div>
@@ -1169,10 +1219,10 @@ onUnmounted(() => {
                             <span class="summary-label">Email</span>
                             <span class="summary-val">{{ form.agencyEmail }}</span>
                         </div>
-                        <div class="summary-row">
+                        <!-- <div class="summary-row">
                             <span class="summary-label">Location</span>
                             <span class="summary-val">{{ form.city }}, {{ form.country }}</span>
-                        </div>
+                        </div> -->
                         <div class="summary-row">
                             <span class="summary-label">Status</span>
                             <span class="summary-val">
@@ -1432,7 +1482,7 @@ body.preload *::after {
     font-size: .9rem;
     color: #3F4754;
     transition: border-color .25s cubic-bezier(.4, 0, .2, 1), box-shadow .25s cubic-bezier(.4, 0, .2, 1);
-    
+
 }
 
 .form-control:focus,

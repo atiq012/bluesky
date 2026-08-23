@@ -25,6 +25,7 @@ const props = defineProps({
     enableTimePicker: { type: Boolean, default: false },
     multiCalendars: { type: [Boolean, Object], default: true },
     maxDate: { type: [Date, String, Number], default: null },
+    minDate: { type: [Date, String, Number], default: null },
 });
 
 const emit = defineEmits(['update:modelValue']);
@@ -218,6 +219,7 @@ const { isDarkMode } = storeToRefs(authStore);
         :clearable="clearable"
         :enable-time-picker="enableTimePicker"
         :max-date="maxDate"
+        :min-date="minDate"
         :auto-apply="true"
         :dark="isDarkMode"
         :format="formats"
