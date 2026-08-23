@@ -317,7 +317,7 @@ onUnmounted(() => {
     </div>
 
     <Teleport to="body">
-        <div v-if="showCropModal && cropImageSrc" class="image-crop-modal-backdrop" @click.self="closeCropModal">
+        <div v-if="showCropModal && cropImageSrc" class="image-crop-modal-backdrop" >
             <div class="image-crop-panel">
                 <div class="image-crop-header">
                     <h5 class="image-crop-title">{{ cropModalTitle }}</h5>

@@ -117,7 +117,7 @@ onMounted(() => {
                             </router-link>
                         </li>
                         <li>
-                            <router-link v-wave :to="{ name: 'flightSearch' }">
+                            <router-link v-wave :to="{ name: 'b2bGroupPaymentList' }">
                                 <i class='bx bx-radio-circle'></i> Payments
                             </router-link>
                         </li>

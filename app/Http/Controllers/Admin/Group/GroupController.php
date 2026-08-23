@@ -68,7 +68,7 @@ class GroupController extends BaseController
          ) as total_paid'),
                 DB::raw('COUNT(pax.id) as pax_count'),
                 DB::raw('f_username(NULLIF(group_requests.assigned_to, "")) as assigned_to_kam'),
-                DB::raw('GROUP_CONCAT(
+                DB::raw('GROUP_CONCAT(DISTINCT
             CONCAT_WS("- ",
                 group_request_segments.origin,
                 group_request_segments.destination
@@ -76,7 +76,7 @@ class GroupController extends BaseController
             ORDER BY group_request_segments.segment_order
             SEPARATOR " | "
         ) as segments_info'),
-                DB::raw('GROUP_CONCAT(
+                DB::raw('GROUP_CONCAT(DISTINCT
             CONCAT_WS("- ",
                 DATE_FORMAT(group_request_segments.departure_date, "%d-%b-%Y %l:%i %p")
             )

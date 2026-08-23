@@ -250,7 +250,7 @@ function applyPicker() {
 
 .single-modal {
     width: min(480px, 100%);
-    max-height: min(80vh, 640px);
+    height: min(80vh, 640px);
     background: #fff;
     border-radius: 14px;
     overflow: hidden;
@@ -299,10 +299,12 @@ function applyPicker() {
 }
 
 .single-modal-body {
+    flex: 1 1 auto;
     padding: 16px;
-    overflow: auto;
+    overflow-y: auto;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
     gap: 8px;
 }
 
