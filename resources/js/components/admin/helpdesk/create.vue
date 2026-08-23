@@ -336,9 +336,10 @@ async function save() {
 
         // Reset form state
         resetForm();
-        Notification.showToast('s', response.data.message);
+        Notification.showToast('s', response?.data?.message);
     } catch (error) {
-        Notification.showToast('e', error.message);
+        const backendMessage = error.response?.data?.message || 'Failed to submit request. Please try again.';
+        Notification.showToast('e', backendMessage);
     }
 }
 

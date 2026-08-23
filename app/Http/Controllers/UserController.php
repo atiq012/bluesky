@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password as Pass;
 use Yajra\DataTables\DataTables;
 use App\Models\Agent\Agent;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Log;
+
 
 
 class UserController extends BaseController
@@ -95,15 +98,17 @@ class UserController extends BaseController
         $auth      = User::where('email', $request->useEmail)->first();
         $validator = validator(
             $request->all(),
-            ['name' => 'required'],
-            ['phone' => 'required'],
-            ['email' => 'required'],
-            ['staff_id' => 'required'],
-            ['dept_name' => 'required'],
-            ['desg' => 'required'],
-            ['off_loct' => 'required'],
-            ['report_to' => 'required'],
-            ['role_id' => 'required'],
+            [
+                'name'      => 'required',
+                'phone'     => 'required',
+                'email'     => 'required',
+                'staff_id'  => 'required',
+                'dept_name' => 'required',
+                'desg'      => 'required',
+                'off_loct'  => 'required',
+                'report_to' => 'required',
+                'role_id'   => 'required',
+            ],
         );
         if ($validator->fails()) {
             return response()->json(['message' => $validator->errors()->all(), 'types' => 'e']);
@@ -152,8 +157,8 @@ class UserController extends BaseController
         $validator = validator($request->all(), [
             'name' => 'required',
             'phone' => 'required',
-            'email' => 'required',
-            'staff_id' => 'required',
+            'email'     => 'required|email|unique:users,email',
+            'staff_id'  => 'required|unique:users,emp_id',
             'dept_name' => 'required',
             // 'desg' => 'required',
             // 'off_loct' => 'required',
@@ -161,7 +166,10 @@ class UserController extends BaseController
             // 'role_id' => 'required',
         ]);
         if ($validator->fails()) {
-            return response()->json(['message' => $validator->errors()->all(), 'types' => 'e']);
+            return response()->json([
+                'message' => $validator->errors()->first(),
+                'types'   => 'e'
+            ], 422);
         }
         $department = Department::where('name', trim($request->dept_name))->first();
         if (! $department) {
@@ -218,8 +226,30 @@ class UserController extends BaseController
         $user->created_by = $auth->id;
         $user->password   = Hash::make('Gblue@sky7');
         // $user->agent_id = $auth->agent_id;
-        $user->save();
-        return response()->json(['message' => 'Successfully User Saved.', 'types' => 's']);
+        // $user->save();
+
+
+        try {
+            $user->save();
+            return response()->json([
+                'message' => 'Successfully User Saved.',
+                'types'   => 's'
+            ]);
+        } catch (QueryException $e) {
+            $driverCode = (int) ($e->errorInfo[1] ?? 0);
+
+            if ($driverCode === 1062) {
+                return response()->json([
+                    'message' => 'This record already exists.',
+                    'types' => 'e',
+                ], 422);
+            }
+
+            return response()->json([
+                'message' => 'A database error occurred. Please try again later.',
+                'types' => 'e',
+            ], 500);
+        }
     }
 
     /**
@@ -271,46 +301,65 @@ class UserController extends BaseController
      */
     public function update(Request $request)
     {
-        // dd($request->all());
-        $auth = User::where('email', $request->useEmail)->first();
+        try {
+            $userId = $request->user_id;
 
-        $user = User::where('id', $request->user_id)->where('agent_id', auth()->user()->agent_id)->first();
-        if (! $user) {
-            return response()->json(['message' => 'User not found.', 'types' => 'e'], 404);
-        }
-        $user->name           = $request->name ? $request->name : $user->name;
-        $user->phone          = $request->phone ? $request->phone : $user->phone;
-        $user->email          = $request->email ? $request->email : $user->email;
-        $user->emp_id         = $request->staff_id ? $request->staff_id : $user->emp_id;
-        $user->dept_id        = $request->dept_name ? $request->dept_name : $user->dept_id;
-        $user->designation_id = $request->desg ? $request->desg : $user->designation_id;
-        $user->office_loc_id  = $request->off_loct ? $request->off_loct : $user->office_loc_id;
-        $user->report_to      = $request->report_to ? $request->report_to : $user->report_to;
-        $user->user_role      = $request->role_id ? $request->role_id : $user->user_role;
+            // Validate inputs & ignore the current user ID for uniqueness checks
+            $request->validate([
+                'name'     => 'required|string|max:255',
+                'email'    => 'required|email|max:255|unique:users,email,' . $userId,
+                'staff_id' => 'required|string|max:50|unique:users,emp_id,' . $userId,
+                'dept_name' => 'required',
+            ], [
+                'email.unique'    => 'This email is already in use by another user.',
+                // 'phone.unique'    => 'This phone number is already in use by another user.',
+                'staff_id.unique' => 'This Staff ID is already in use by another user.',
+            ]);
+            // dd($request->all());
+            $auth = User::where('email', $request->useEmail)->first();
 
-        if ($request->hasFile('profile_picture')) {
-
-            $request_image = $request->file('profile_picture');
-            $image_name    = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
-
-            $image_path = public_path('/uploads/profile_image/');
-            if (! File::exists($image_path)) {
-                File::makeDirectory($image_path, 0777, true);
+            $user = User::where('id', $request->user_id)->where('agent_id', auth()->user()->agent_id)->first();
+            if (! $user) {
+                return response()->json(['message' => 'User not found.', 'types' => 'e'], 404);
             }
 
-            $request_image->move($image_path, $image_name);
-            $user->img_path = '/uploads/profile_image/' . $image_name;
-        } else {
-            $profilePicturePath = null;
+
+            $user->name           = $request->name ?: $user->name;
+            $user->phone          = $request->phone ?: $user->phone;
+            $user->email          = $request->email ?: $user->email;
+            $user->emp_id         = $request->staff_id ?: $user->emp_id;
+            $user->dept_id        = $request->dept_name ?: $user->dept_id;
+            $user->designation_id = $request->desg ?: $user->designation_id;
+            $user->office_loc_id  = $request->off_loct ? $request->off_loct : $user->office_loc_id;
+            $user->report_to      = $request->report_to ? $request->report_to : $user->report_to;
+            $user->user_role      = $request->role_id ? $request->role_id : $user->user_role;
+            $user->updated_by     = $auth->id;
+            // Image upload handling
+            if ($request->hasFile('profile_picture')) {
+
+                $request_image = $request->file('profile_picture');
+                $image_name    = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
+
+                $image_path = public_path('/uploads/profile_image/');
+                if (! File::exists($image_path)) {
+                    File::makeDirectory($image_path, 0777, true);
+                }
+
+                $request_image->move($image_path, $image_name);
+                $user->img_path = '/uploads/profile_image/' . $image_name;
+            } else {
+                $profilePicturePath = null;
+            }
+
+            $user->save();
+            return response()->json(['message' => 'User updated successfully.', 'types' => 's']);
+        } catch (\Illuminate\Database\QueryException $e) {
+            report($e);
+            return response()->json([
+                'message' => 'Could not update user due to a database error. Please try again later.'
+            ], 500);
         }
 
-        // $user->type = 1;
-        // $user->is_active = 1;
-        // $user->status = 1;
-        $user->updated_by = $auth->id;
-
-        $user->save();
-        return response()->json(['message' => 'Successfully User Upadete.', 'types' => 's']);
     }
 
     public function statusUpdate(Request $request)

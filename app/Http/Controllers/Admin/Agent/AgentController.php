@@ -349,20 +349,43 @@ class AgentController extends BaseController
 
     private function processRegistration(Request $request)
     {
+        // $request->validate([
+        //     'agencyName'  => 'required|string|max:50',
+        //     'agencyEmail' => 'required|email|max:50',
+        //     'agencyPhone' => 'required|string|max:20',
+        //     'country'     => 'required|string|max:255',
+        //     'city'        => 'required|string|max:255',
+        //     'address'     => 'required|string|max:255',
+        //     'firstName'   => 'required|string|max:50',
+        //     'designation' => 'required|string|max:50',
+        //     'nidNumber'   => 'required|string|max:20',
+        //     'birthDate'   => 'required|string',
+        //     'email'       => 'required|email|max:50',
+        //     'userPhone'   => 'required|string|max:20',
+        //     'tradeLicense' => 'required|string|max:50'
+        // ]);
+
         $request->validate([
-            'agencyName'  => 'required|string|max:50',
-            'agencyEmail' => 'required|email|max:50',
-            'agencyPhone' => 'required|string|max:20',
-            'country'     => 'required|string|max:255',
-            'city'        => 'required|string|max:255',
-            'address'     => 'required|string|max:255',
-            'firstName'   => 'required|string|max:50',
-            'designation' => 'required|string|max:50',
-            'nidNumber'   => 'required|string|max:20',
-            'birthDate'   => 'required|string',
-            'email'       => 'required|email|max:50',
-            'userPhone'   => 'required|string|max:20',
-            'tradeLicense' => 'required|string|max:50'
+            'agencyName'   => 'required|string|max:50',
+            'agencyEmail'  => 'required|email|max:50|unique:agents,email',
+            'agencyPhone'  => 'required|string|max:20',
+            'country'      => 'required|string|max:255',
+            'city'         => 'required|string|max:255',
+            'address'      => 'required|string|max:255',
+            'firstName'    => 'required|string|max:50',
+            'designation'  => 'required|string|max:50',
+            'nidNumber'    => 'required|string|max:20|unique:agent_users,nid',
+            'birthDate'    => 'required|string',
+            'email'        => 'required|email|max:50|unique:agent_users,email',
+            'userPhone'    => 'required|string|max:20',
+            'tradeLicense' => 'required|string|max:50|unique:agents,trade_licence',
+            'cacNumber'    => 'nullable|string|max:50|unique:agents,ca_number',
+            // 'iataNumber'   => 'nullable|string|max:50|unique:agents,iata_number',
+        ], [
+            'email.unique'       => 'This owner email is already registered.',
+            'agencyEmail.unique' => 'This agency email is already registered.',
+            'nidNumber.unique'   => 'This NID number is already registered.',
+            'tradeLicense.unique'   => 'This trade license number is already registered.',
         ]);
 
         $nullIfEmpty = static function ($value) {

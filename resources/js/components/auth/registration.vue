@@ -266,7 +266,8 @@ function validateStep1() {
     const hajjValidation = /^[A-Za-z0-9/-]+$/;
     const tradeValidation = /^[A-Za-z0-9/-]+$/;
 
-    errors.iata = form.agencyType==='IATA' && (!form.iataNumber.trim() || !iataValidation.test(!form.iataNumber.trim()));
+    // errors.iata = form.agencyType==='IATA' && (!form.iataNumber.trim() || !iataValidation.test(!form.iataNumber.trim()));
+    errors.iata = form.agencyType === 'IATA' && (!form.iataNumber.trim() || !iataValidation.test(form.iataNumber.trim()));
     errors.hajj = form.hajjType==='Hajj' && (!form.hajjNumber.trim() || !hajjValidation.test(form.hajjNumber.trim()));
     errors.trade = !form.tradeLicense.trim() || !tradeValidation.test(form.tradeLicense.trim());
     return (

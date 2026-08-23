@@ -318,7 +318,8 @@ async function save() {
 
         Notification.showToast('s', response.data.message);
     } catch (error) {
-        Notification.showToast('e', error.message || 'An error occurred');
+        const backendMessage = error.response?.data?.message || 'An error occurred while updating support request.';
+        Notification.showToast('e', backendMessage);
     }
 }
 
