@@ -6,7 +6,7 @@ import axiosInstance from "../../../axiosInstance";
 
 import { ref, onMounted, reactive, watch} from "vue";
 import AppButton from '../../common/AppButton.vue';
-import ImageUploader from '../../common/ImageUploader.vue';
+import ImageCropUpload from '../../common/ImageCropUpload.vue';
 import { useRouter } from 'vue-router';
 
 
@@ -33,30 +33,51 @@ function goBack() {
 }
 
 const submitting = ref(false);
-const profileImages = ref([]);
+const profileImageFile = ref(null);
 
 watch(() => form.name,      v => { if (v)        errors.name = null; });
 watch(() => form.email,     v => { if (v)        errors.email = null; });
 watch(() => form.staff_id,  v => { if (v)        errors.staff_id = null; });
 watch(() => form.phone,     v => { if (v)        errors.phone = null; });
 watch(() => form.dept_name, v => { if (v)        errors.dept_name = null; });
-watch(profileImages, (newVal) => {
-    form.profile_picture = newVal.length > 0 ? newVal[0].file : null;
-}, { deep: true });
+watch(profileImageFile, (file) => {
+    form.profile_picture = file || null;
+});
 
+
+// Mirrors the backend rule in UserController::agntUserstore — keep both in sync.
+const validEmailRegex = /^[A-Za-z0-9]+([._%+-][A-Za-z0-9]+)*@[A-Za-z0-9]+([.-][A-Za-z0-9]+)*\.[A-Za-z]{2,}$/;
+
+function emailError(raw) {
+    const value = (raw || '').trim();
+
+    if (!value) return 'Please enter an email address.';
+    if (/\s/.test(value)) return 'Email address cannot contain spaces.';
+    if (value.length > 150) return 'Email address cannot be longer than 150 characters.';
+    if ((value.match(/@/g) || []).length !== 1) return 'Email address must contain exactly one @ symbol.';
+    if (value.includes('..')) return 'Email address cannot contain consecutive dots.';
+
+    const [local, domain] = value.split('@');
+
+    if (!local) return 'Please enter the part before the @ symbol.';
+    if (local.length > 64) return 'The part before @ cannot be longer than 64 characters.';
+    if (!domain) return 'Please enter the domain after the @ symbol.';
+    if (!domain.includes('.')) return 'Domain must include a dot, e.g. example.com';
+    if (!validEmailRegex.test(value)) return 'Please enter a valid email address.';
+
+    return null;
+}
 
 function validate(type) {
     // Reset all
     Object.keys(errors).forEach(k => errors[k] = null);
-    const validEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const validPhoneRegex = /^(?:\+?[1-9]\d{7,14}|0\d{7,14})$/;
 
 
-    if (!form.name.trim()) 
+    if (!form.name.trim())
         errors.name = 'Please enter a name.';
-    if (!form.email.trim() || !validEmailRegex.test(form.email.trim())) 
-        errors.email = 'Please enter a valid email address.';    
-    if (!form.staff_id.trim()) 
+    errors.email = emailError(form.email);
+    if (!form.staff_id.trim())
         errors.staff_id = 'Please enter a staff ID.';
     if (!form.phone.trim() || !validPhoneRegex.test(form.phone.trim())) 
         errors.phone = 'Please enter a valid phone number.';
@@ -65,6 +86,28 @@ function validate(type) {
     
     
     return !Object.values(errors).some(Boolean);
+}
+
+// Copies Laravel's errors bag onto the field messages; returns true if anything was shown.
+function applyServerErrors(payload) {
+    const bag = payload?.errors;
+
+    if (!bag || typeof bag !== 'object') {
+        return false;
+    }
+
+    let shown = false;
+
+    Object.keys(errors).forEach(field => {
+        const message = Array.isArray(bag[field]) ? bag[field][0] : bag[field];
+
+        if (message) {
+            errors[field] = message;
+            shown = true;
+        }
+    });
+
+    return shown;
 }
 
 async function save() {
@@ -88,15 +131,28 @@ async function save() {
             },
         });
 
+        // Backend answers 200 with types 'e' in some paths, so never assume success.
+        if (response.data?.types === 'e') {
+            applyServerErrors(response.data);
+            Notification.showToast('e', response.data.message);
+            return;
+        }
+
         document.getElementById("addUserform").reset();
         //previewImage.value = '';
-        profileImages.value = []; 
+        profileImageFile.value = null;
 
         Notification.showToast('s', response.data.message);
         router.push({ name: 'UserList' });
 
 
     } catch (error) {
+        // Duplicate email / validation failures come back as 422 with a per-field errors bag.
+        if (error?.response?.status === 422 && applyServerErrors(error.response.data)) {
+            Notification.showToast('e', error.response.data.message);
+            return;
+        }
+
         ErrorCatch.CatchError(error);
 
     } finally {
@@ -164,7 +220,15 @@ function triggerFileInput() {
 
                     <div class="col-lg-3">
                         <label class="form-label">Profile Image</label>
-                        <ImageUploader v-model="profileImages" :max-files="1" preview-size="large"/>
+                        <ImageCropUpload
+                            v-model="profileImageFile"
+                            shape="circle"
+                            size-class="profile-image-preview"
+                            :max-file-size-mb="2"
+                            crop-modal-title="Crop Profile Image"
+                        >
+                            {{ profileImageFile ? 'Click to change · drag to reposition while cropping' : 'JPEG, PNG, GIF or WebP · max 2 MB' }}
+                        </ImageCropUpload>
                     </div>
 
                     <!-- Form Fields -->

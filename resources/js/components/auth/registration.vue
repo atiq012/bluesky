@@ -859,7 +859,7 @@ onUnmounted(() => {
                                 <div class="d-flex align-items-center gap-3">
                                     <ImageCropUpload v-model="form.logoFile" :max-file-size-mb="2"
                                         accept="image/jpeg,image/png" crop-modal-title="Crop Company Logo"
-                                        shape="square" :free-aspect="true" />
+                                        shape="square" />
                                     <span class="text-muted small">
                                         {{ form.logoFile ? form.logoFile.name : 'Click box to upload logo (JPEG or PNG)'
                                         }}

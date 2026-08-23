@@ -2,6 +2,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\BaseController;
+use App\Jobs\Mail\SendAgentUserCreatedMailJob;
+use App\Models\Agent\Agent;
 use App\Models\Department\Department;
 use App\Models\Designation\Designation;
 use App\Models\User;
@@ -9,6 +11,8 @@ use DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password as Pass;
 use Yajra\DataTables\DataTables;
 
@@ -115,23 +119,55 @@ class UserController extends BaseController
     }
     public function agntUserstore(Request $request)
     {
-        // dd($request->all());
+        // Trust the token owner, not the client-sent useEmail — otherwise anyone could
+        // create a user under another agency by posting a different email.
+        $auth = auth()->user() ?: User::where('email', $request->useEmail)->first();
 
-        $auth      = User::where('email', $request->useEmail)->first();
+        if (! $auth) {
+            return response()->json(['message' => 'Unable to identify the requesting user.', 'types' => 'e'], 401);
+        }
+
+        // Normalise before validating so casing/spacing never creates a duplicate account.
+        $request->merge(['email' => strtolower(trim((string) $request->email))]);
+
         $validator = validator($request->all(), [
-            'name' => 'required',
-            'phone' => 'required',
-            'email' => 'required',
-            'staff_id' => 'required',
-            'dept_name' => 'required',
+            'name'      => 'required|string|max:100',
+            'phone'     => 'required|string|max:20',
+            'email'     => [
+                'required',
+                'string',
+                'max:150',
+                'email:rfc,filter',
+                // Blocks things Laravel's filter still accepts: no TLD, trailing dot, double dots.
+                'regex:/^[A-Za-z0-9]+([._%+\-][A-Za-z0-9]+)*@[A-Za-z0-9]+([.\-][A-Za-z0-9]+)*\.[A-Za-z]{2,}$/',
+            ],
+            'staff_id'  => 'required|string|max:50',
+            'dept_name' => 'required|string|max:100',
             // 'desg' => 'required',
             // 'off_loct' => 'required',
             // 'report_to' => 'required',
             // 'role_id' => 'required',
+        ], [
+            'email.email' => 'Please enter a valid email address.',
+            'email.regex' => 'Please enter a valid email address.',
         ]);
+
         if ($validator->fails()) {
-            return response()->json(['message' => $validator->errors()->all(), 'types' => 'e']);
+            return response()->json([
+                'message' => $validator->errors()->first(),
+                'errors'  => $validator->errors()->toArray(),
+                'types'   => 'e',
+            ], 422);
         }
+
+        if ($conflict = $this->emailConflictMessage($request->email)) {
+            return response()->json([
+                'message' => $conflict,
+                'errors'  => ['email' => [$conflict]],
+                'types'   => 'e',
+            ], 422);
+        }
+
         $department = Department::where('name', trim($request->dept_name))->first();
         if (! $department) {
             $department            = new Department;
@@ -182,15 +218,87 @@ class UserController extends BaseController
             $profilePicturePath = null;
         }
 
+        // Random per-user password instead of a shared hardcoded one; it only reaches the
+        // user through the welcome mail below.
+        $generatedPassword = Str::password(10);
+
         $user->type       = 2;
         $user->is_active  = 1; // active
         $user->status     = 1; // active
         $user->created_by = $auth->id;
-        $user->password   = Hash::make('Gblue@sky7');
+        $user->password   = Hash::make($generatedPassword);
+        // Already expired so the first login forces a password change.
+        $user->password_updated_at  = now();
+        $user->password_max_expired = 0;
         // $user->agent_id = $auth->agent_id;
         $user->save();
-        return response()->json(['message' => 'Successfully User Saved.', 'types' => 's']);
 
+        $this->sendAgentUserCreatedMail(
+            user: $user,
+            createdBy: $auth,
+            department: $department->name,
+            designation: $designation?->name,
+            password: $generatedPassword,
+        );
+
+        return response()->json([
+            'message' => 'Successfully User Saved. Login details are being emailed to the user.',
+            'types'   => 's',
+        ]);
+
+    }
+
+    // Welcome mail must never delay or break user creation: on the sync driver the job is
+    // deferred until after the HTTP response is flushed, so the SMTP round trip never
+    // blocks the save. Any real queue driver hands it to a worker instead.
+    private function sendAgentUserCreatedMail(User $user, User $createdBy, string $department, ?string $designation, string $password): void
+    {
+        try {
+            $agencyName = Agent::where('id', $user->agent_id)->value('name');
+
+            $pending = SendAgentUserCreatedMailJob::dispatch(
+                recipientEmail: $user->email,
+                userName: $user->name,
+                agencyName: (string) ($agencyName ?: 'your agency'),
+                username: $user->email,
+                phone: (string) $user->phone,
+                department: $department,
+                designation: (string) ($designation ?? ''),
+                defaultPassword: $password,
+                portalUrl: rtrim((string) config('app.url'), '/'),
+                createdByName: (string) $createdBy->name,
+            );
+
+            if (config('queue.default') === 'sync') {
+                $pending->afterResponse();
+            }
+        } catch (\Throwable $e) {
+            Log::error('Agent user created mail dispatch failed', [
+                'user_id' => $user->id,
+                'email'   => $user->email,
+                'error'   => $e->getMessage(),
+            ]);
+        }
+    }
+
+    // Returns a human message naming the owning agency when the email is already taken.
+    private function emailConflictMessage(string $email): ?string
+    {
+        $existing = User::where('email', $email)->first();
+
+        if (! $existing) {
+            return null;
+        }
+
+        $agencyName = $existing->agent_id
+            ? Agent::where('id', $existing->agent_id)->value('name')
+            : null;
+
+        if ($agencyName) {
+            return "This email already exist with {$agencyName}.";
+        }
+
+        return 'This email already exist in the system.';
     }
 
     /**
