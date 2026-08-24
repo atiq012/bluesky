@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Exception;
 use App\Models\User;
+use App\Models\Agent\Agent;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -40,6 +41,16 @@ class AuthController extends BaseController
             // Do not allow users of type 1 to login via this endpoint
             if ((int) $user->type === 1) {
                 return $this->ErrorResponse('User not allowed to login here.');
+            }
+
+            // Agency portal: only Approved agency (and its users) may log in
+            if ($blockMessage = $this->agencyLoginBlockMessage($user)) {
+                return $this->ErrorResponse($blockMessage);
+            }
+
+            // Per-user login block from agency Users page (status ≠ Active)
+            if ($blockMessage = $this->userStatusLoginBlockMessage($user)) {
+                return $this->ErrorResponse($blockMessage);
             }
 
             if ($user->is_active == 0) {
@@ -235,6 +246,7 @@ class AuthController extends BaseController
             'is_active'        => $user->is_active,
             'require_2fa'      => $user->require_2fa,
             'registered_2fa'   => $user->registered_2fa,
+            'is_primary'       => $user->is_primary,
             'google2fa_secret' => $revealTwoFa ? $user->google2fa_secret : null,
             'google2fa_qr'     => $revealTwoFa ? $user->google2fa_qr : null,
             'access_token'     => $token,
@@ -432,5 +444,46 @@ class AuthController extends BaseController
 
         dd($response);
         return $response;
+    }
+
+    // Block B2B login unless the user's agency is Approved
+    private function agencyLoginBlockMessage(User $user): ?string
+    {
+        if ((int) $user->type !== 2) {
+            return null;
+        }
+
+        $agent = $user->agent_id ? Agent::find($user->agent_id) : null;
+        if ($agent && $agent->status === 'Approved') {
+            return null;
+        }
+
+        return match ($agent?->status) {
+            'Pending' => 'Your agency registration is pending approval. You cannot log in until it is approved.',
+            'Recommended' => 'Your agency is under final review. Login will be available after approval.',
+            'Hold' => 'Your agency account is on hold. Please contact BlueSky support.',
+            'Decline', 'Reject' => 'Your agency registration has been declined. Please contact BlueSky support.',
+            default => 'Your agency is not approved for portal access. Please contact BlueSky support.',
+        };
+    }
+
+    // status: 1 Active, 2 On Hold, 3 Locked, 4 Deactivated — only Active may log in
+    private function userStatusLoginBlockMessage(User $user): ?string
+    {
+        if ((int) $user->type !== 2) {
+            return null;
+        }
+
+        $status = (int) $user->status;
+        if ($status === 1) {
+            return null;
+        }
+
+        return match ($status) {
+            2 => 'Your account is on hold. Please contact your agency admin.',
+            3 => 'Your account is locked. Please contact your agency admin.',
+            4 => 'Your account has been deactivated. Please contact your agency admin.',
+            default => 'Your account is not active. Please contact your agency admin.',
+        };
     }
 }

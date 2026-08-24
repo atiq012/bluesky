@@ -31,11 +31,11 @@ const form = reactive({
 });
 
 const errors = reactive({
-    name: null, 
-    email: null, 
-    staff_id: null, 
-    phone: null, 
-    dept_name: null, 
+    name: null,
+    email: null,
+    staff_id: null,
+    phone: null,
+    dept_name: null,
 });
 
 watch(() => form.name,      v => { if (v) errors.name = null; });
@@ -129,8 +129,8 @@ async function getUserData(props) {
         form.staff_id = userData.emp_id ?? '';
         form.email = userData.email ?? '';
         form.phone = userData.phone ?? '';
-        form.desg = userData.designation_id ?? '';
-        form.dept_name = userData.dept_id ?? '';
+        form.desg = userData.desg_name ?? '';
+        form.dept_name = userData.dept_name ?? '';
 
         // Existing image shows as the cropper's initial preview until a new one is cropped
         existingImageUrl.value = userData.img_path || '';

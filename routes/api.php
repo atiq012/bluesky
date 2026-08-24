@@ -280,6 +280,7 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('/v2/booking/sessions/{id}/response-download', [BookingAttemptAdminController::class, 'downloadSessionResponse'])->name('booking.v2.sessions.response-download');
 
     //Helpdesk
+    Route::get('/getHelpdeskRequesters', [UserController::class, 'getHelpdeskRequesters']);
     Route::get('getAllRequests', [RequestController::class, 'index'])->name('request.getAllRequests');
     Route::post('/request/save', [RequestController::class, 'store'])->name('request.store');
     Route::post('/request/update', [RequestController::class, 'update'])->name('request.update');
