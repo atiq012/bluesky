@@ -173,7 +173,7 @@ function validateForm() {
         if (isEmpty(form.value.from)) newErrors.from = 'From is required.';
         if (isEmpty(form.value.to)) newErrors.to = 'To is required.';
         if (isEmpty(form.value.departureDate)) newErrors.departureDate = 'Departure Date is required.';
-        if (isEmpty(form.value.flightNo)) newErrors.flightNo = 'Flight No. is required.';
+        // if (isEmpty(form.value.flightNo)) newErrors.flightNo = 'Flight No. is required.';
     } else if (tripType.value === 'roundway') {
         if (isEmpty(form.value.from)) newErrors.from = 'From is required.';
         if (isEmpty(form.value.to)) newErrors.to = 'To is required.';
@@ -181,7 +181,7 @@ function validateForm() {
         if (isEmpty(form.value.returnFrom)) newErrors.returnFrom = 'Return From is required.';
         if (isEmpty(form.value.returnTo)) newErrors.returnTo = 'Return To is required.';
         if (isEmpty(form.value.returnDate)) newErrors.returnDate = 'Return Date is required.';
-        if (isEmpty(form.value.flightNo)) newErrors.flightNo = 'Flight No. is required.';
+        // if (isEmpty(form.value.flightNo)) newErrors.flightNo = 'Flight No. is required.';
     } else if (tripType.value === 'multicity') {
         const segmentErrors = [];
         multiCityFlights.value.forEach((flight, idx) => {
@@ -213,9 +213,9 @@ function validateForm() {
     // }
 
     // ---- Fare (all trip types) ----
-    if (isEmpty(form.value.perPersonFare)) {
-        newErrors.perPersonFare = 'Per Person Requested Fare is required.';
-    }
+    // if (isEmpty(form.value.perPersonFare)) {
+    //     newErrors.perPersonFare = 'Per Person Requested Fare is required.';
+    // }
 
     // ---- Requirements (all trip types) ----
     if (isEmpty(form.value.detailsRequirements) || !form.value.detailsRequirements.trim()) {
@@ -370,13 +370,13 @@ async function submitForm() {
                                 </div>
                                 <div class="row g-3">
                                     <div class="col-md-4" :class="{ 'has-error': errors.from }">
-                                        <SingleSectorPickerField v-model="form.from" label="From"
+                                        <SingleSectorPickerField v-model="form.from" label="From" star="*"
                                             all-label="All Departure Airports" entity-name="airports"
                                             :options="airportOptions" />
-                                        <span v-if="errors.from" class="error-text">{{ errors.from }}</span>
+                                        <span v-if="errors.from" class="error-text">{{ errors.from }} </span>
                                     </div>
                                     <div class="col-md-4" :class="{ 'has-error': errors.to }">
-                                        <SingleSectorPickerField v-model="form.to" label="To"
+                                        <SingleSectorPickerField v-model="form.to" label="To" star="*"
                                             all-label="All Departure Airports" entity-name="airports"
                                             :options="airportOptions" />
                                         <span v-if="errors.to" class="error-text">{{ errors.to }}</span>
@@ -395,18 +395,18 @@ async function submitForm() {
                                 <div class="form-section">
                                     <div class="section-heading teal">
                                         <span class="section-bar"></span>
-                                        <h5>Return Flight</h5>
+                                        <h5>Return Flight </h5>
                                     </div>
                                     <div class="row g-3">
                                         <div class="col-md-4" :class="{ 'has-error': errors.returnFrom }">
-                                            <SingleSectorPickerField v-model="form.returnFrom" label="Return From"
+                                            <SingleSectorPickerField v-model="form.returnFrom" label="Return From" star="*"
                                                 all-label="Return From" entity-name="airports"
                                                 :options="airportOptions" />
                                             <span v-if="errors.returnFrom" class="error-text">{{ errors.returnFrom }}</span>
                                         </div>
                                         <div class="col-md-4" :class="{ 'has-error': errors.returnTo }">
 
-                                            <SingleSectorPickerField v-model="form.returnTo" label="Return To"
+                                            <SingleSectorPickerField v-model="form.returnTo" label="Return To" star="*"
                                                 all-label="Return From" entity-name="airports"
                                                 :options="airportOptions"/>
                                             <span v-if="errors.returnTo" class="error-text">{{ errors.returnTo }}</span>
@@ -430,16 +430,16 @@ async function submitForm() {
                                 <div class="row g-3">
                                     <div class="col-md-6" :class="{ 'has-error': errors.preferredAirlines }">
                                         <SingleSectorPickerField v-model="form.preferredAirlines"
-                                            label="Preferred Airlines" all-label="To" entity-name="airports"
+                                            label="Preferred Airlines" star="*" all-label="To" entity-name="airports"
                                             :options="airlinesOptions" />
                                         <span v-if="errors.preferredAirlines" class="error-text">{{ errors.preferredAirlines }}</span>
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="field-label">Preferred Flight No. <span class="required-star">*</span></label>
+                                        <label class="field-label">Preferred Flight No.</label>
                                         <input v-model="form.flightNo" type="text"
                                             class="field-input" :class="{ 'input-error': errors.flightNo }"
                                             placeholder="Flight No." />
-                                        <span v-if="errors.flightNo" class="error-text">{{ errors.flightNo }}</span>
+                                        <!-- <span v-if="errors.flightNo" class="error-text">{{ errors.flightNo }}</span> -->
                                     </div>
                                     <div class="col-md-6">
                                         <label class="field-label">Preferred Class <span class="required-star">*</span></label>
@@ -602,11 +602,11 @@ async function submitForm() {
                                     </div>
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="field-label">Requested Fare Per Person ({{ form.currency }}) <span class="required-star">*</span></label>
+                                    <label class="field-label">Requested Fare Per Person ({{ form.currency }}) </label>
                                     <input v-model="form.perPersonFare" type="number" min="0"
                                         class="field-input" :class="{ 'input-error': errors.perPersonFare }"
                                         placeholder="Enter Fare" />
-                                    <span v-if="errors.perPersonFare" class="error-text">{{ errors.perPersonFare }}</span>
+                                    <!-- <span v-if="errors.perPersonFare" class="error-text">{{ errors.perPersonFare }}</span> -->
                                 </div>
                             </div>
                         </div>
