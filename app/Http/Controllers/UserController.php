@@ -8,6 +8,7 @@ use App\Models\Agent\Agent;
 use App\Models\Department\Department;
 use App\Models\Designation\Designation;
 use App\Models\User;
+use App\Services\ImageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -123,19 +124,9 @@ class UserController extends BaseController
         $user->user_role      = $request->role_id;
 
         if ($request->hasFile('profile_picture')) {
-
-            $request_image = $request->file('profile_picture');
-            $image_name    = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
-
-            $image_path = public_path('/uploads/profile_image/');
-            if (! File::exists($image_path)) {
-                File::makeDirectory($image_path, 0777, true);
-            }
-
-            $request_image->move($image_path, $image_name);
-            $user->img_path = '/uploads/profile_image/' . $image_name;
-        } else {
-            $profilePicturePath = null;
+            // Base path is config-driven — on live the web root is outside the app dir
+            $user->img_path = app(ImageService::class)
+                ->uploadProfileImage($request->file('profile_picture'), $user->img_path);
         }
 
         $user->type       = 2;
@@ -232,19 +223,9 @@ class UserController extends BaseController
         $user->agent_id = $auth->agent_id;
 
         if ($request->hasFile('profile_picture')) {
-
-            $request_image = $request->file('profile_picture');
-            $image_name    = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
-
-            $image_path = public_path('/uploads/profile_image/');
-            if (! File::exists($image_path)) {
-                File::makeDirectory($image_path, 0777, true);
-            }
-
-            $request_image->move($image_path, $image_name);
-            $user->img_path = '/uploads/profile_image/' . $image_name;
-        } else {
-            $profilePicturePath = null;
+            // Base path is config-driven — on live the web root is outside the app dir
+            $user->img_path = app(ImageService::class)
+                ->uploadProfileImage($request->file('profile_picture'), $user->img_path);
         }
 
         // Random per-user password instead of a shared hardcoded one; it only reaches the
@@ -352,11 +333,9 @@ class UserController extends BaseController
             return response()->json(['message' => 'User not found.', 'types' => 'e'], 404);
         }
 
-        if ($data->img_path && File::exists(public_path($data->img_path))) {
-            $data->profile_file_size = File::size(public_path($data->img_path));
-        } else {
-            $data->profile_file_size = 0;
-        }
+        // Resolve through the service — the file may live outside this app's public dir on live
+        $profileImagePath = app(ImageService::class)->resolveProfileImagePath($data->img_path);
+        $data->profile_file_size = $profileImagePath ? File::size($profileImagePath) : 0;
 
         // Edit form expects names (same as create), not raw FK ids
         $data->dept_name = $data->dept_id
@@ -431,19 +410,9 @@ class UserController extends BaseController
         $user->user_role     = $request->role_id ? $request->role_id : $user->user_role;
 
         if ($request->hasFile('profile_picture')) {
-
-            $request_image = $request->file('profile_picture');
-            $image_name    = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
-
-            $image_path = public_path('/uploads/profile_image/');
-            if (! File::exists($image_path)) {
-                File::makeDirectory($image_path, 0777, true);
-            }
-
-            $request_image->move($image_path, $image_name);
-            $user->img_path = '/uploads/profile_image/' . $image_name;
-        } else {
-            $profilePicturePath = null;
+            // Base path is config-driven — on live the web root is outside the app dir
+            $user->img_path = app(ImageService::class)
+                ->uploadProfileImage($request->file('profile_picture'), $user->img_path);
         }
 
         // $user->type = 1;
@@ -559,11 +528,7 @@ class UserController extends BaseController
                 return $this->ErrorResponse($error);
             }
             if ($user->img_path) {
-                if ($user->img_path) {
-
-                    $filePath = public_path() . $user->img_path;
-                    File::delete($filePath);
-                }
+                app(ImageService::class)->deleteProfileImageByDbPath($user->img_path);
             }
             $user->delete();
             $success = '';
