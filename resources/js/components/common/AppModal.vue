@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, useSlots } from 'vue';
 
 const props = defineProps({
     isOpen: { type: Boolean, default: false },
@@ -14,6 +14,10 @@ const props = defineProps({
 });
 
 defineEmits(['close']);
+
+const slots = useSlots();
+const hasBodySlot = computed(() => !!slots.body);
+const hasFooterSlot = computed(() => !!slots.footer);
 
 const dialogClass = computed(() => {
     const map = {
@@ -53,7 +57,17 @@ const panelStyle = computed(() => {
                             </slot>
                             <button type="button" class="btn-close" aria-label="Close" @click="$emit('close')"></button>
                         </div>
-                        <slot />
+
+                        <!-- Named body/footer → consistent padding; default slot keeps legacy layouts -->
+                        <template v-if="hasBodySlot || hasFooterSlot">
+                            <div v-if="hasBodySlot" class="app-modal-body">
+                                <slot name="body" />
+                            </div>
+                            <div v-if="hasFooterSlot" class="app-modal-footer">
+                                <slot name="footer" />
+                            </div>
+                        </template>
+                        <slot v-else />
                     </div>
                 </div>
             </div>
@@ -101,7 +115,7 @@ const panelStyle = computed(() => {
     align-items: center;
     justify-content: space-between;
     flex-shrink: 0;
-    padding: 0.65rem 1rem;
+    padding: 0.75rem 1.25rem;
     border-bottom: 1px solid var(--bs-border-color, #dee2e6);
 }
 
@@ -109,6 +123,33 @@ const panelStyle = computed(() => {
     font-size: 1rem;
     font-weight: 600;
     line-height: 1.3;
+    margin: 0;
+}
+
+.app-modal-body {
+    flex: 1 1 auto;
+    padding: 1.25rem 1.25rem;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.app-modal-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    flex-shrink: 0;
+    padding: 0.875rem 1.25rem;
+    border-top: 1px solid var(--bs-border-color, #dee2e6);
+    background-color: transparent;
+}
+
+.app-modal-footer :deep(.btn) {
+    margin: 0;
+    min-height: 2.125rem;
+    min-width: 5.5rem;
+    padding: 0.4rem 1rem;
 }
 
 .app-modal-fade-enter-active,
@@ -129,7 +170,8 @@ const panelStyle = computed(() => {
     border-color: #495057;
 }
 
-[data-bs-theme="dark"] .app-modal-header {
+[data-bs-theme="dark"] .app-modal-header,
+[data-bs-theme="dark"] .app-modal-footer {
     border-color: #495057;
 }
 </style>

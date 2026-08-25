@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import axiosInstance from '../../axiosInstance';
 import { useAuthStore } from '../../stores/authStore';
 import { useRealtimeList } from '../../composables/useRealtimeList';
@@ -7,6 +7,14 @@ import { useRealtimeList } from '../../composables/useRealtimeList';
 const authStore = useAuthStore();
 const creditBalance = ref(0);
 const netBalance = ref(0);
+
+/** Display-only: round to whole taka; DB keeps fractions. */
+function formatMoneyRounded(v) {
+    return Math.round(Number(v ?? 0)).toLocaleString('en-US', { maximumFractionDigits: 0 });
+}
+
+const creditChars = computed(() => formatMoneyRounded(creditBalance.value).split(''));
+const balanceChars = computed(() => formatMoneyRounded(netBalance.value).split(''));
 
 function menuTaggle() {
     $(".wrapper").toggleClass("toggled");
@@ -24,10 +32,6 @@ function darkMode() {
         authStore.isDarkMode = authStore.isDarkMode == false ? true : false;
         return v === 'dark' ? 'light' : 'dark';
     })
-}
-
-function formatMoney(v) {
-    return Number(v ?? 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
 }
 
 async function loadBalance() {
@@ -132,13 +136,37 @@ async function submitChangePassword() {
                                 <div class="wallet-pill pill-credit me-1">
                                     <i class="bi bi-coin"></i>
                                     <span>Credit</span>
-                                    <strong id="nav-credit-val">৳{{ formatMoney(creditBalance) }}</strong>
+                                    <strong id="nav-credit-val" class="wallet-amount">
+                                        <span class="wallet-currency">৳</span>
+                                        <span class="wallet-digit-row" aria-label="৳{{ formatMoneyRounded(creditBalance) }}">
+                                            <template v-for="(ch, i) in creditChars" :key="'cr-' + i">
+                                                <span v-if="ch === ','" class="wallet-comma">,</span>
+                                                <span v-else class="digit-slot wallet-digit-slot">
+                                                    <Transition name="digit-slip">
+                                                        <span :key="ch" class="digit-val">{{ ch }}</span>
+                                                    </Transition>
+                                                </span>
+                                            </template>
+                                        </span>
+                                    </strong>
                                 </div>
                                 <!-- Balance pill -->
                                 <div class="wallet-pill pill-balance">
                                     <i class="bi bi-wallet2"></i>
                                     <span>Balance</span>
-                                    <strong id="nav-balance-val">৳{{ formatMoney(netBalance) }}</strong>
+                                    <strong id="nav-balance-val" class="wallet-amount">
+                                        <span class="wallet-currency">৳</span>
+                                        <span class="wallet-digit-row" aria-label="৳{{ formatMoneyRounded(netBalance) }}">
+                                            <template v-for="(ch, i) in balanceChars" :key="'ba-' + i">
+                                                <span v-if="ch === ','" class="wallet-comma">,</span>
+                                                <span v-else class="digit-slot wallet-digit-slot">
+                                                    <Transition name="digit-slip">
+                                                        <span :key="ch" class="digit-val">{{ ch }}</span>
+                                                    </Transition>
+                                                </span>
+                                            </template>
+                                        </span>
+                                    </strong>
                                 </div>
                                 <i class="bi bi-chevron-down pill-chevron ms-1"></i>
                             </div>
@@ -421,6 +449,81 @@ async function submitChangePassword() {
     color: #3B6D11;
     font-size: .9rem;
 }
+
+.wallet-amount {
+    display: inline-flex;
+    align-items: center;
+    gap: 1px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+
+.wallet-currency {
+    flex-shrink: 0;
+}
+
+.wallet-digit-row {
+    display: inline-flex;
+    align-items: center;
+}
+
+.wallet-digit-slot.digit-slot {
+    position: relative;
+    overflow: hidden;
+    height: 1.15em;
+    width: 0.62em;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.wallet-amount .digit-val {
+    display: block;
+    line-height: 1.15em;
+    text-align: center;
+    width: 100%;
+}
+
+.wallet-comma {
+    display: inline-block;
+    line-height: 1.15em;
+    width: 0.35em;
+    text-align: center;
+}
+
+/* Same slip mechanic as search booking timer */
+.digit-slip-enter-active {
+    transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.32s ease;
+}
+.digit-slip-leave-active {
+    transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.32s ease;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+}
+.digit-slip-enter-from { transform: translateY(-100%); opacity: 0; }
+.digit-slip-enter-to   { transform: translateY(0);     opacity: 1; }
+.digit-slip-leave-from { transform: translateY(0);     opacity: 1; }
+.digit-slip-leave-to   { transform: translateY(100%);  opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+    .digit-slip-enter-active,
+    .digit-slip-leave-active { transition: none; }
+}
+
+[data-bs-theme="dark"] .pill-credit {
+    background: rgba(186, 117, 23, 0.18);
+    border-color: rgba(250, 122, 117, 0.45);
+    color: #fde68a;
+}
+[data-bs-theme="dark"] .pill-credit i { color: #fbbf24; }
+
+[data-bs-theme="dark"] .pill-balance {
+    background: rgba(59, 109, 17, 0.22);
+    border-color: rgba(149, 172, 215, 0.4);
+    color: #bbf7d0;
+}
+[data-bs-theme="dark"] .pill-balance i { color: #86efac; }
 
 .pill-chevron {
     color: #adb5bd;

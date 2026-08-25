@@ -61,11 +61,17 @@ function groupIdDisplay(row) {
 }
 
 function wayTypeConfig(wayType) {
-    const type = String(wayType || "One Way").toLowerCase();
-    if (type.includes("round")) {
-        return { cls: 'way-badge way-round', label: wayType || 'One Way' };
+    console.log(wayType);
+    const wayTypeR = '';
+    if (wayType === 'multicity') {
+                return { cls: 'way-badge multi-city', label: 'Multi City' };
     }
-    return { cls: 'way-badge way-one', label: wayType || 'One Way' };
+    else if (wayType === 'roundway') {
+        return { cls: 'way-badge way-round', label: 'Round Way' };
+    } else {
+        return { cls: 'way-badge way-one', label: 'One Way' };
+
+    }
 }
 
 function statusConfig(status) {
@@ -437,7 +443,8 @@ async function handleEticketGenerated(data) {
                                     {{ row.return_origin }} - {{ row.return_destination }}
                                 </div>
                             </div>
-                            <div class="cell-link">{{ row.class_type }} ({{ row.class_code }})</div>
+                            <div class="cell-link">{{ row.class_type }} <span v-if="row.class_code">({{ row.class_code }})</span>
+                            </div>
                         </div>
                     </template>
 
@@ -856,7 +863,10 @@ async function handleEticketGenerated(data) {
     background: #fff2df;
     color: #d97706;
 }
-
+.multi-city{
+    background: #05b6b2;
+    color: #ffffff;
+}
 .way-one {
     background: #3269d6;
     color: #e8f0ff;

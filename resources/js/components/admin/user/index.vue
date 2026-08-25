@@ -3,10 +3,12 @@ import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
 
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useAuthStore } from '../../../stores/authStore';
 import axiosInstance from '../../../axiosInstance';
 import { runAction } from '../../../utils/runAction';
 
 const router = useRouter();
+const authStore = useAuthStore();
 
 const externalRows = ref([]);
 const externalLoading = ref(false);
@@ -167,17 +169,34 @@ async function reloadAll() {
 }
 
 function onShowStatusModal(row) {
+    // Self + primary protected — same rules as API
+    if (String(row?.id) === String(authStore.sInfo?.id)) {
+        Notification.showToast('e', 'You cannot change your own account status.');
+        return;
+    }
+    if (Number(row?.is_primary) === 1) {
+        Notification.showToast('e', 'Primary agency user status cannot be blocked.');
+        return;
+    }
     statusForm.useridStatus = row.id;
     statusForm.status = String(row.status ?? '');
     statusModalOpen.value = true;
 }
 
 async function updateStatus() {
+    if (!statusForm.status) {
+        Notification.showToast('e', 'Please select a status.');
+        return;
+    }
     await runAction(async () => {
-        const response = await axiosInstance.post('/user-status/update', statusForm);
-        await reloadAll();
-        statusModalOpen.value = false;
-        Notification.showToast('s', response.data.message);
+        try {
+            const response = await axiosInstance.post('/user-status/update', statusForm);
+            await reloadAll();
+            statusModalOpen.value = false;
+            Notification.showToast('s', response.data.message);
+        } catch (error) {
+            ErrorCatch.CatchError(error);
+        }
     }, { setLoading: (val) => { statusSubmitting.value = val; } });
 }
 
@@ -393,7 +412,10 @@ onUnmounted(() => {
     </div>
 
     <AppModal :is-open="statusModalOpen" title="Change Status" size="sm" @close="statusModalOpen = false">
-        <div class="modal-body p-4">
+        <template #body>
+            <p class="small text-muted mb-3">
+                Only <strong>Active</strong> users can log in. On Hold / Locked / Deactivated blocks portal login.
+            </p>
             <div class="status-field-group">
                 <label class="cp-label">Status</label>
                 <div
@@ -416,7 +438,7 @@ onUnmounted(() => {
                 <Teleport to="body">
                     <div v-if="statusMenuOpen" class="status-select-panel" :style="statusPanelStyle" role="listbox">
                         <button
-                            v-for="opt in statusOptions"
+                            v-for="opt in statusOptions.filter((o) => o.value !== '')"
                             :key="opt.value"
                             type="button"
                             class="status-select-option"
@@ -430,15 +452,17 @@ onUnmounted(() => {
                     </div>
                 </Teleport>
             </div>
-        </div>
-        <div class="modal-footer">
-            <button type="button" class="btn btn-secondary btn-sm mb-2 me-2" @click="statusModalOpen = false">Close</button>
-            <button type="button" class="btn btn-sm btn-success mb-2 me-3" :disabled="statusSubmitting" @click="updateStatus">
-                <span v-if="statusSubmitting" class="spinner-border spinner-border-sm me-1" role="status"
-                    aria-hidden="true" />
-                Update
-            </button>
-        </div>
+        </template>
+        <template #footer>
+            <AppButton variant="cancel" :disabled="statusSubmitting" @click="statusModalOpen = false" />
+            <AppButton
+                variant="update"
+                label="Update"
+                :loading="statusSubmitting"
+                loading-text="Updating..."
+                @click="updateStatus"
+            />
+        </template>
     </AppModal>
 
     <DeleteConfirmModal :is-open="deleteModalOpen" title="Delete User" :item-name="deleteTarget?.name || ''"

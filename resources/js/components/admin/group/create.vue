@@ -199,7 +199,7 @@ function validateForm() {
     // ---- Flight Preferences (all trip types) ----
     if (isEmpty(form.value.preferredAirlines)) newErrors.preferredAirlines = 'Preferred Airlines is required.';
     if (isEmpty(form.value.preferredClass)) newErrors.preferredClass = 'Preferred Class is required.';
-    if (isEmpty(form.value.code)) newErrors.code = 'Code (RBD) is required.';
+    // if (isEmpty(form.value.code)) newErrors.code = 'Code (RBD) is required.';
 
     // ---- Passengers (all trip types) ----
     if (isEmpty(form.value.adult) || Number(form.value.adult) < 1) {
@@ -452,14 +452,13 @@ async function submitForm() {
                                         <span v-if="errors.preferredClass" class="error-text">{{ errors.preferredClass }}</span>
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="field-label">Code (RBD) <span class="required-star">*</span></label>
-                                        <select v-model="form.code" class="field-select"
-                                            :class="{ 'input-error': errors.code }">
+                                        <label class="field-label">Code (RBD) </label>
+                                        <select v-model="form.code" class="field-select">
                                             <option value="" disabled selected>Code</option>
                                             <option v-for="opt in rbdCodeOptions" :key="opt" :value="opt">{{ opt }}
                                             </option>
                                         </select>
-                                        <span v-if="errors.code" class="error-text">{{ errors.code }}</span>
+                                        <!-- <span v-if="errors.code" class="error-text">{{ errors.code }}</span> -->
                                     </div>
                                 </div>
                             </div>
@@ -532,14 +531,13 @@ async function submitForm() {
                                         <span v-if="errors.preferredClass" class="error-text">{{ errors.preferredClass }}</span>
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="field-label">Code (RBD) <span class="required-star">*</span></label>
-                                        <select v-model="form.code" class="field-select"
-                                            :class="{ 'input-error': errors.code }">
+                                        <label class="field-label">Code (RBD)</label>
+                                        <select v-model="form.code" class="field-select">
                                             <option value="" disabled selected>Code</option>
                                             <option v-for="opt in rbdCodeOptions" :key="opt" :value="opt">{{ opt }}
                                             </option>
                                         </select>
-                                        <span v-if="errors.code" class="error-text">{{ errors.code }}</span>
+                                        <!-- <span v-if="errors.code" class="error-text">{{ errors.code }}</span> -->
                                     </div>
                                 </div>
                             </div>
@@ -604,7 +602,7 @@ async function submitForm() {
                                     </div>
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="field-label">Per Person Requested Fare ({{ form.currency }}) <span class="required-star">*</span></label>
+                                    <label class="field-label">Requested Fare Per Person ({{ form.currency }}) <span class="required-star">*</span></label>
                                     <input v-model="form.perPersonFare" type="number" min="0"
                                         class="field-input" :class="{ 'input-error': errors.perPersonFare }"
                                         placeholder="Enter Fare" />
@@ -631,7 +629,7 @@ async function submitForm() {
                                     </select>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="field-label">Details Requirements <span class="required-star">*</span></label>
+                                    <label class="field-label">Remarks <span class="required-star">*</span></label>
                                     <textarea v-model="form.detailsRequirements" rows="4"
                                         class="field-input field-textarea" :class="{ 'input-error': errors.detailsRequirements }"
                                         placeholder="Enter details requirements of your group"></textarea>
