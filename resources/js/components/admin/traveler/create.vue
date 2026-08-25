@@ -22,7 +22,7 @@ const form = reactive({
     email: '', phone: '', passportFiles: [], visaFiles: [], meal: '', wheelchair: '',
 });
 
-const titleOptions = ['Mr.', 'Ms.', 'Mrs.','Mstr.'].map(value => ({ value, label: value }));
+const titleOptions = ['Mr.', 'Ms.', 'Mrs.', 'Mstr.'].map(value => ({ value, label: value }));
 const genderOptions = ['Male', 'Female', 'Other'].map(value => ({ value, label: value }));
 const nationalityOptions = ['Bangladeshi', 'American', 'Indian', 'Pakistani'].map(value => ({ value, label: value }));
 const mealOptions = ['Vegetarian', 'Non-vegetarian'].map(value => ({ value, label: value }));
@@ -126,7 +126,7 @@ async function selectTraveler(traveler) {
         const response = await axiosInstance.post('viewTraveler', { id: traveler.id });
         const d = response.data;
         console.log('Selected traveler data:', d);
-        
+
         // Auto-fill form fields...
         form.title = d.title || '';
         form.firstName = d.first_name || '';
@@ -156,10 +156,10 @@ async function selectTraveler(traveler) {
 }
 
 function parseDisplayDate(value) {
-    if (!value || typeof value !== 'string') 
+    if (!value || typeof value !== 'string')
         return null;
     const match = value.match(/^(\d{2})-([A-Za-z]{3})-(\d{4})$/);
-    if (!match) 
+    if (!match)
         return null;
     const month = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].indexOf(match[2]);
     const date = new Date(Number(match[3]), month, Number(match[1]));
@@ -209,10 +209,10 @@ watch(searchParam, async (newVal) => {
 //watch(() => form.title, value => { if (value) errors.title = false; });
 watch([() => form.title, () => form.dob], () => {
     if (!form.title) return;
-    
+
     const isChildOrInfant = derivedPax.value && (derivedPax.value.label === 'Child' || derivedPax.value.label === 'Infant');
     const allowedChildTitles = ['Mstr.', 'Ms.'];
-    
+
     if (isChildOrInfant && !allowedChildTitles.includes(form.title)) {
         errors.title = `Please select 'Mstr.' or 'Ms.' for ${derivedPax.value.label}.`;
     } else if (derivedPax.value?.label === 'Adult' && form.title === 'Mstr.') {
@@ -281,8 +281,15 @@ function validate() {
 
 function apiErrorMessage(error) {
     const data = error.response?.data;
-    if (Array.isArray(data?.message)) return data.message.join(' ');
-    if (Array.isArray(data?.errors)) return data.errors.flat().join(' ');
+    
+    // Check if backend returned validation error fields
+    if (data?.errors && typeof data.errors === 'object') {
+        const firstKey = Object.keys(data.errors)[0];
+        if (firstKey && data.errors[firstKey].length) {
+            return data.errors[firstKey][0]; // Show first validation message
+        }
+    }
+    
     return data?.message || 'Unable to save the traveller. Please try again.';
 }
 
@@ -319,8 +326,7 @@ async function save() {
             submitError.value = message;
         }
     } catch (error) {
-       const message = apiErrorMessage(error);
-
+        const message = apiErrorMessage(error);
         if (window.Notification?.showToast) {
             window.Notification.showToast('e', message);
         } else {
@@ -333,15 +339,11 @@ async function save() {
 </script>
 
 <template>
-    <AppBreadcrumbs
-        title="Traveller Management"
-        :back-to="{ name: 'TravelerList' }"
-        :breadcrumbs="[
-            { label: 'Dashboard', to: { name: 'Home' } },
-            { label: 'Traveller Management', to: { name: 'TravelerList' } },
-            { label: 'New Traveller' },
-        ]"
-    />
+    <AppBreadcrumbs title="Traveller Management" :back-to="{ name: 'TravelerList' }" :breadcrumbs="[
+        { label: 'Dashboard', to: { name: 'Home' } },
+        { label: 'Traveller Management', to: { name: 'TravelerList' } },
+        { label: 'New Traveller' },
+    ]" />
 
     <div class="traveler-creation">
         <div class="accordion">
@@ -358,12 +360,12 @@ async function save() {
                     </div>
                 </h2>
 
-                
+
 
                 <div class="traveller-accordion-body">
                     <form @submit.prevent>
                         <div class="row">
-                            
+
                             <div class="col-12">
                                 <div class="traveler-form-section-title">
                                     <i class="fa-solid fa-id-card"></i>
@@ -372,42 +374,55 @@ async function save() {
                             </div>
                             <div class="col-12 col-md-6 mt-2">
                                 <div class="form-row">
-                                    <label>Title 
+                                    <label>Title
                                         <span class="text-danger">*</span>
                                     </label>
-                                    <div :class="{ 'select2-error': Boolean(errors.title)}"><Select2 v-model="form.title" :options="titleOptions" placeholder="Select Title" /></div>
+                                    <div :class="{ 'select2-error': Boolean(errors.title) }">
+                                        <Select2 v-model="form.title" :options="titleOptions"
+                                            placeholder="Select Title" />
+                                    </div>
                                     <div v-if="errors.title" class="invalid-feedback d-block">
                                         {{ errors.title }}
                                     </div>
                                 </div>
                                 <div class="form-row"><label>First Name <span class="text-danger">*</span></label>
-                                    <input v-model="form.firstName" class="form-control" :class="{ 'is-invalid': errors.firstName === true }" 
-                                    placeholder="Enter First Name" style="font-size: 0.9rem;">
+                                    <input v-model="form.firstName" class="form-control"
+                                        :class="{ 'is-invalid': errors.firstName === true }"
+                                        placeholder="Enter First Name" style="font-size: 0.9rem;">
                                     <div class="invalid-feedback">Please enter first name.</div>
                                 </div>
                                 <div class="form-row"><label>Last Name <span class="text-danger">*</span></label>
-                                    <input v-model="form.lastName" class="form-control" :class="{ 'is-invalid': errors.lastName === true }" 
-                                    placeholder="Enter Last Name" style="font-size: 0.9rem;">
+                                    <input v-model="form.lastName" class="form-control"
+                                        :class="{ 'is-invalid': errors.lastName === true }"
+                                        placeholder="Enter Last Name" style="font-size: 0.9rem;">
                                     <div class="invalid-feedback">Please enter last name.</div>
                                 </div>
                             </div>
                             <div class="col-12 col-md-6 mt-2">
-                                <div class="form-row" :class="{ 'date-field-error': errors.dob === true }"><label>Date of Birth <span class="text-danger">*</span></label>
-                                    <DobWithAge
-                                        v-model="form.dob"
-                                        :pax-type="derivedPax?.label"
-                                        placeholder="Date of Birth"
-                                    />
-                                    <small v-if="derivedPax" class="text-muted">Passenger type: {{ derivedPax.label }}</small>
-                                    <div v-if="errors.dob === true" class="invalid-feedback d-block">Please select a valid date of birth.</div>
+                                <div class="form-row" :class="{ 'date-field-error': errors.dob === true }"><label>Date
+                                        of Birth <span class="text-danger">*</span></label>
+                                    <DobWithAge v-model="form.dob" :pax-type="derivedPax?.label"
+                                        placeholder="Date of Birth" />
+                                    <small v-if="derivedPax" class="text-muted">Passenger type: {{ derivedPax.label
+                                    }}</small>
+                                    <div v-if="errors.dob === true" class="invalid-feedback d-block">Please select a
+                                        valid date of birth.</div>
                                 </div>
                                 <div class="form-row"><label>Gender <span class="text-danger">*</span></label>
-                                    <div :class="{ 'select2-error': errors.gender === true }"><Select2 v-model="form.gender" :options="genderOptions" placeholder="Select Gender" /></div>
-                                    <div v-if="errors.gender === true" class="invalid-feedback d-block">Please select gender.</div>
+                                    <div :class="{ 'select2-error': errors.gender === true }">
+                                        <Select2 v-model="form.gender" :options="genderOptions"
+                                            placeholder="Select Gender" />
+                                    </div>
+                                    <div v-if="errors.gender === true" class="invalid-feedback d-block">Please select
+                                        gender.</div>
                                 </div>
                                 <div class="form-row"><label>Nationality <span class="text-danger">*</span></label>
-                                    <div :class="{ 'select2-error': errors.nationality === true }"><Select2 v-model="form.nationality" :options="nationalityOptions" placeholder="Select Nationality" /></div>
-                                    <div v-if="errors.nationality === true" class="invalid-feedback d-block">Please select nationality.</div>
+                                    <div :class="{ 'select2-error': errors.nationality === true }">
+                                        <Select2 v-model="form.nationality" :options="nationalityOptions"
+                                            placeholder="Select Nationality" />
+                                    </div>
+                                    <div v-if="errors.nationality === true" class="invalid-feedback d-block">Please
+                                        select nationality.</div>
                                 </div>
                             </div>
 
@@ -418,23 +433,30 @@ async function save() {
                                         <span>Travel Document</span>
                                     </div>
                                     <div class="col-12 mt-2">
-                                        <label class="form-label">Passport Number <span class="text-danger">*</span></label>
-                                        <input v-model="form.passportNo" class="form-control" :class="{ 'is-invalid': errors.passportNo === true }" 
-                                        placeholder="Enter Passport Number" style="font-size: 0.9rem;">
+                                        <label class="form-label">Passport Number <span
+                                                class="text-danger">*</span></label>
+                                        <input v-model="form.passportNo" class="form-control"
+                                            :class="{ 'is-invalid': errors.passportNo === true }"
+                                            placeholder="Enter Passport Number" style="font-size: 0.9rem;">
                                         <div class="invalid-feedback">Please enter passport number.</div>
                                     </div>
                                     <div class="col-12 mt-2">
                                         <label class="form-label">Expiry Date <span class="text-danger">*</span></label>
-                                         <AppDatePicker v-model="form.passportExpiry" placeholder="Expiry Date" :min-date="new Date()" :input-class="errors.passportExpiry === true ? 'form-control is-invalid' : 'form-control'"
-                                         input-style="font-size: 1rem; min-height: 38px;"/>
-                                        <div v-if="errors.passportExpiry === true" class="invalid-feedback d-block">Please select passport expiry date.</div>
+                                        <AppDatePicker v-model="form.passportExpiry" placeholder="Expiry Date"
+                                            :min-date="new Date()"
+                                            :input-class="errors.passportExpiry === true ? 'form-control is-invalid' : 'form-control'"
+                                            input-style="font-size: 1rem; min-height: 38px;" />
+                                        <div v-if="errors.passportExpiry === true" class="invalid-feedback d-block">
+                                            Please select passport expiry date.</div>
                                     </div>
                                     <div class="col-12 col-md-8 mt-2">
-                                        <label class="form-label">Passport Image <span class="text-danger">*</span></label>
+                                        <label class="form-label">Passport Image <span
+                                                class="text-danger">*</span></label>
                                         <ImageUploader v-model="form.passportFiles" :max-files="1" />
-                                        <div v-if="errors.passportFiles === true" class="invalid-feedback d-block">Please upload a passport image.</div>
+                                        <div v-if="errors.passportFiles === true" class="invalid-feedback d-block">
+                                            Please upload a passport image.</div>
                                     </div>
-                                    
+
                                 </div>
 
                                 <div class="col-12 col-md-6 mt-5">
@@ -443,15 +465,19 @@ async function save() {
                                         <span>Contact</span>
                                     </div>
                                     <div class="col-12 mt-2">
-                                        <label class="form-label">Email <span v-if="!isChildOrInfant" class="text-danger">*</span></label>
-                                        <input v-model="form.email" type="email" class="form-control" :class="{ 'is-invalid': errors.email === true }" 
-                                        placeholder="Enter Email" style="font-size: 0.9rem;">
+                                        <label class="form-label">Email <span v-if="!isChildOrInfant"
+                                                class="text-danger">*</span></label>
+                                        <input v-model="form.email" type="email" class="form-control"
+                                            :class="{ 'is-invalid': errors.email === true }" placeholder="Enter Email"
+                                            style="font-size: 0.9rem;">
                                         <div class="invalid-feedback">Please enter a valid email address.</div>
                                     </div>
                                     <div class="col-12 mt-2">
-                                        <label class="form-label">Phone <span v-if="!isChildOrInfant" class="text-danger">*</span></label>
-                                        <input v-model="form.phone" class="form-control" :class="{ 'is-invalid': errors.phone === true }" 
-                                        placeholder="Enter Phone" style="font-size: 0.9rem;">
+                                        <label class="form-label">Phone <span v-if="!isChildOrInfant"
+                                                class="text-danger">*</span></label>
+                                        <input v-model="form.phone" class="form-control"
+                                            :class="{ 'is-invalid': errors.phone === true }" placeholder="Enter Phone"
+                                            style="font-size: 0.9rem;">
                                         <div class="invalid-feedback">Please enter a valid phone number.</div>
                                     </div>
                                     <!-- <div class="row">
@@ -619,12 +645,12 @@ async function save() {
     margin-bottom: 5px;
 } */
 .form-row {
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-      gap: 4px;
-      margin-bottom: 12px;
-  }
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    margin-bottom: 12px;
+}
 
 .form-row label {
     width: 135px;

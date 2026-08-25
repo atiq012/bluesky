@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Admin\Traveler;
 
 use App\Http\Controllers\Controller;
@@ -7,6 +8,7 @@ use DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
+use \Illuminate\Validation\ValidationException;
 use Yajra\DataTables\DataTables;
 
 class TravelerController extends Controller
@@ -53,65 +55,76 @@ class TravelerController extends Controller
      */
     public function store(Request $request)
     {
-        // dd($request->all());
-        // Validate the request
-        $validator = validator($request->all(),
-            ['pax_type' => 'required'],
-            ['title_val' => 'required'],
-            ['first_name' => 'required'],
-            ['last_name' => 'required'],
-            ['dob' => 'required'],
-            ['email' => 'required'],
-            ['gender' => 'required'],
-            ['phone' => 'required'],
-            ['passport_no' => 'required'],
-            ['p_expiry_date' => 'required'],
-            ['nationality' => 'required'],
-        );
-        if ($validator->fails()) {
-            return $this->ErrorResponse($validator->errors()->all());
-        }
+        try {
+            $request->validate([
+                'pax_type'         => 'required',
+                'title_val'        => 'required|string',
+                'first_name'       => 'required|string|max:100',
+                'last_name'        => 'required|string|max:100',
+                'dob'              => 'required',
+                'gender'           => 'required',
+                'nationality'      => 'required',
+                'passport_no'      => 'required|string|max:50|unique:travellers,passport_number',
+                'p_expiry_date'    => 'required',
+                'email'            => 'nullable|email|max:100',
+                'phone'            => 'nullable|string|max:20',
+                'passport_picture' => 'required|file|max:4096', // Max 4MB
+            ], [
+                'passport_picture.required' => 'Passport image file is required.',
+                'passport_picture.max'      => 'Passport image must not exceed 4 MB.',
+            ]);
 
-        // Get the authenticated user
-        $user = auth()->user();
+            // Get the authenticated user
+            $user = auth()->user();
 
-        // Create a new traveler
-        $traveler                       = new Traveller;
-        $traveler->pax_type             = $request->pax_type;
-        $traveler->title                = $request->title_val;
-        $traveler->first_name           = $request->first_name;
-        $traveler->last_name            = $request->last_name;
-        $traveler->full_name            = $request->title_val . ' ' . $request->first_name . ' ' . $request->last_name;
-        $traveler->dob                  = date('Y-m-d', strtotime($request->dob));
-        $traveler->email                = $request->email;
-        $traveler->gender               = $request->gender;
-        $traveler->phone                = $request->phone;
-        $traveler->passport_number      = $request->passport_no;
-        $traveler->passport_expiry_date = date('Y-m-d', strtotime($request->p_expiry_date));
-        $traveler->nationality          = $request->nationality;
-        $traveler->agent_id             = $user->agent_id;
-        $traveler->created_by           = $user->id;
+            // Create a new traveler
+            $traveler                       = new Traveller;
+            $traveler->pax_type             = $request->pax_type;
+            $traveler->title                = $request->title_val;
+            $traveler->first_name           = $request->first_name;
+            $traveler->last_name            = $request->last_name;
+            $traveler->full_name            = $request->title_val . ' ' . $request->first_name . ' ' . $request->last_name;
+            $traveler->dob                  = date('Y-m-d', strtotime($request->dob));
+            $traveler->email                = $request->email;
+            $traveler->gender               = $request->gender;
+            $traveler->phone                = $request->phone;
+            $traveler->passport_number      = $request->passport_no;
+            $traveler->passport_expiry_date = date('Y-m-d', strtotime($request->p_expiry_date));
+            $traveler->nationality          = $request->nationality;
+            $traveler->agent_id             = $user->agent_id;
+            $traveler->created_by           = $user->id;
 
-        if ($request->hasFile('passport_picture')) {
+            if ($request->hasFile('passport_picture')) {
 
-            $request_image = $request->file('passport_picture');
-            $image_name    = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
+                $request_image = $request->file('passport_picture');
+                $image_name    = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
 
-            $image_path = public_path('/uploads/travler/passport/');
-            if (! File::exists($image_path)) {
-                File::makeDirectory($image_path, 0777, true);
+                $image_path = public_path('/uploads/travler/passport/');
+                if (! File::exists($image_path)) {
+                    File::makeDirectory($image_path, 0777, true);
+                }
+
+                $request_image->move($image_path, $image_name);
+                $traveler->passport_path = '/uploads/travler/passport/' . $image_name;
+            } else {
+                $profilePicturePath = null;
             }
+            $traveler->save();
 
-            $request_image->move($image_path, $image_name);
-            $traveler->passport_path = '/uploads/travler/passport/' . $image_name;
-
-        } else {
-            $profilePicturePath = null;
+            // Return a success response
+            return response()->json(['message' => 'Successfully Traveler Created.', 'types' => 's']);
+        } catch (ValidationException $e) {
+            $firstMessage = $e->validator->errors()->first() ?: 'Validation failed.';
+            return response()->json([
+                'message' => $firstMessage,
+                'errors'  => $e->errors()
+            ], 422);
+        } catch (\Throwable $e) {
+            report($e); // Log server error
+            return response()->json([
+                'message' => 'An unexpected server error occurred. Please try again later.'
+            ], 500);
         }
-        $traveler->save();
-
-        // Return a success response
-        return response()->json(['message' => 'Successfully Traveler Created.', 'types' => 's']);
     }
 
     /**
@@ -138,7 +151,7 @@ class TravelerController extends Controller
 
     public function fetchTravelerById(Request $request)
     {
-         $traveler = Traveller::find($request->id);
+        $traveler = Traveller::find($request->id);
         if (! $traveler) {
             return response()->json(['message' => 'Traveler not found.', 'types' => 'e'], 404);
         }
@@ -154,55 +167,141 @@ class TravelerController extends Controller
     /**
      * Update the specified resource in storage.
      */
+    // public function update(Request $request)
+    // {
+    //     // Get the authenticated user
+    //     $user = auth()->user();
+
+    //     // Create a new traveler
+    //     $traveler                       = Traveller::find($request->pax_id);
+    //     $traveler->pax_type             = $request->pax_type;
+    //     $traveler->title                = $request->title_val;
+    //     $traveler->first_name           = $request->first_name;
+    //     $traveler->last_name            = $request->last_name;
+    //     $traveler->full_name            = $request->title_val . ' ' . $request->first_name . ' ' . $request->last_name;
+    //     $traveler->dob                  = $request->dob ? date('Y-m-d', strtotime($request->dob)) : $traveler->dob;
+    //     $traveler->email                = $request->email;
+    //     $traveler->gender               = $request->gender;
+    //     $traveler->phone                = $request->phone;
+    //     $traveler->passport_number      = $request->passport_no;
+    //     $traveler->passport_expiry_date = $request->p_expiry_date ? date('Y-m-d', strtotime($request->p_expiry_date)) : $traveler->passport_expiry_date;
+    //     $traveler->nationality          = $request->nationality;
+    //     $traveler->updated_by           = $user->id;
+
+    //     if ($request->hasFile('passport_picture')) {
+
+    //         $request_image = $request->file('passport_picture');
+    //         $image_name    = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
+
+    //         $image_path = public_path('/uploads/travler/passport/');
+    //         if (! File::exists($image_path)) {
+    //             File::makeDirectory($image_path, 0777, true);
+    //         }
+
+    //         if ($traveler->passport_path) {
+    //             if ($traveler->passport_path) {
+    //                 $filePath = public_path() . $traveler->passport_path;
+    //                 File::delete($filePath);
+    //             }
+    //         }
+
+    //         $request_image->move($image_path, $image_name);
+    //         $traveler->passport_path = '/uploads/travler/passport/' . $image_name;
+    //     } else {
+    //         $profilePicturePath = null;
+    //     }
+    //     $traveler->save();
+
+    //     // Return a success response
+    //     return response()->json(['message' => 'Successfully Traveler Details Updated.', 'types' => 's']);
+    // }
+
     public function update(Request $request)
     {
-        // Get the authenticated user
-        $user = auth()->user();
+        try {
+            // Validate inputs
+            $request->validate([
+                'pax_id'        => 'required',
+                'pax_type'      => 'required',
+                'title_val'     => 'required|string',
+                'first_name'    => 'required|string|max:100',
+                'last_name'     => 'required|string|max:100',
+                'dob'           => 'required',
+                'gender'        => 'required',
+                'nationality'   => 'required',
+                'passport_no' => 'required|string|max:50|unique:travellers,passport_number',
+                'p_expiry_date' => 'required',
+                'email'         => 'nullable|email|max:100',
+                'phone'         => 'nullable|string|max:20',
+                'passport_picture' => 'nullable|file|max:4096',
+            ], [
+                'passport_picture.max' => 'Passport image must not exceed 4 MB.',
+            ]);
 
-        // Create a new traveler
-        $traveler                       = Traveller::find($request->pax_id);
-        $traveler->pax_type             = $request->pax_type;
-        $traveler->title                = $request->title_val;
-        $traveler->first_name           = $request->first_name;
-        $traveler->last_name            = $request->last_name;
-        $traveler->full_name            = $request->title_val . ' ' . $request->first_name . ' ' . $request->last_name;
-        $traveler->dob                  = $request->dob ? date('Y-m-d', strtotime($request->dob)) : $traveler->dob;
-        $traveler->email                = $request->email;
-        $traveler->gender               = $request->gender;
-        $traveler->phone                = $request->phone;
-        $traveler->passport_number      = $request->passport_no;
-        $traveler->passport_expiry_date = $request->p_expiry_date ? date('Y-m-d', strtotime($request->p_expiry_date)) : $traveler->passport_expiry_date;
-        $traveler->nationality          = $request->nationality;
-        $traveler->updated_by           = $user->id;
-
-        if ($request->hasFile('passport_picture')) {
-
-            $request_image = $request->file('passport_picture');
-            $image_name    = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
-
-            $image_path = public_path('/uploads/travler/passport/');
-            if (! File::exists($image_path)) {
-                File::makeDirectory($image_path, 0777, true);
+            // Find the traveler
+            $traveler = Traveller::find($request->pax_id);
+            if (! $traveler) {
+                return response()->json([
+                    'message' => 'Traveller not found or may have been deleted.'
+                ], 404);
             }
 
-            if ($traveler->passport_path) {
-                if ($traveler->passport_path) {
-                    $filePath = public_path() . $traveler->passport_path;
-                    File::delete($filePath);
+            $user = auth()->user();
+
+            $traveler->pax_type             = $request->pax_type;
+            $traveler->title                = $request->title_val;
+            $traveler->first_name           = $request->first_name;
+            $traveler->last_name            = $request->last_name;
+            $traveler->full_name            = $request->title_val . ' ' . $request->first_name . ' ' . $request->last_name;
+            $traveler->dob                  = $request->dob ? date('Y-m-d', strtotime($request->dob)) : $traveler->dob;
+            $traveler->email                = $request->email;
+            $traveler->gender               = $request->gender;
+            $traveler->phone                = $request->phone;
+            $traveler->passport_number      = $request->passport_no;
+            $traveler->passport_expiry_date = $request->p_expiry_date ? date('Y-m-d', strtotime($request->p_expiry_date)) : $traveler->passport_expiry_date;
+            $traveler->nationality          = $request->nationality;
+            $traveler->updated_by           = $user->id;
+
+            if ($request->hasFile('passport_picture')) {
+                $request_image = $request->file('passport_picture');
+                $image_name    = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
+                $image_path    = public_path('/uploads/travler/passport/');
+
+                if (! File::exists($image_path)) {
+                    File::makeDirectory($image_path, 0777, true);
                 }
+
+                if ($traveler->passport_path) {
+                    File::delete(public_path($traveler->passport_path));
+                }
+
+                $request_image->move($image_path, $image_name);
+                $traveler->passport_path = '/uploads/travler/passport/' . $image_name;
             }
 
-            $request_image->move($image_path, $image_name);
-            $traveler->passport_path = '/uploads/travler/passport/' . $image_name;
+            $traveler->save();
 
-        } else {
-            $profilePicturePath = null;
+            return response()->json([
+                'message' => 'Traveller updated successfully.',
+                'types'   => 's'
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // First field-level error as the toast message
+            $firstMessage = $e->validator->errors()->first() ?: 'Validation failed.';
+            return response()->json([
+                'message' => $firstMessage,
+                'errors'  => $e->errors()
+            ], 422);
+        } catch (\Throwable $e) {
+            report($e);
+            return response()->json([
+                'message' => 'An unexpected server error occurred. Please try again later.'
+            ], 500);
         }
-        $traveler->save();
-
-        // Return a success response
-        return response()->json(['message' => 'Successfully Traveler Details Updated.', 'types' => 's']);
     }
+
+    
+
 
     /**
      * Remove the specified resource from storage.
@@ -222,11 +321,9 @@ class TravelerController extends Controller
             $traveler->delete();
             $success = '';
             return response()->json(['message' => 'Successfully Traveler deleted.', 'types' => 's']);
-
         } else {
             $error = 'Id can not be null.';
             return response()->json(['message' => 'Id can not be null.', 'types' => 'e'], 400);
-
         }
     }
 }

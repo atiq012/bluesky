@@ -216,7 +216,7 @@ getListValues();
                             </span>
                             <small class="text-primary">
                                 <i class="fa-regular fa-calendar me-1" style="font-size:0.65rem"></i>
-                                {{ row.passport_issue_date ? moment(row.passport_issue_date).format('DD-MMM-YYYY') : '-'
+                                {{ row.passport_expiry_date ? moment(row.passport_expiry_date).format('DD-MMM-YYYY') : '-'
                                 }}
                             </small>
                             <small class="text-primary">{{ row.nationality || '-' }}</small>
