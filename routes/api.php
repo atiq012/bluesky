@@ -231,7 +231,9 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('/PricingRequestBody', [APIController::class, 'PricingRequestBody'])->name('PricingRequestBody');
 
     // Search V2
-    Route::post('/v2/search', [SearchV2Controller::class, 'search'])->middleware('throttle:search-v2')->name('search.v2');
+    Route::post('/v2/search', [SearchV2Controller::class, 'search'])
+        ->middleware(['throttle:search-v2', 'agent.api.access:travelport_v2'])
+        ->name('search.v2');
     Route::get('/v2/search/latest-snapshot', [SearchV2Controller::class, 'latestSnapshot'])->name('search.v2.latestSnapshot');
     Route::get('/flight-search-logs', [SearchV2Controller::class, 'getFlightSearchLogs'])->name('search.v2.logs');
     Route::post('/flight-search-log/view', [SearchV2Controller::class, 'viewFlightSearchLog'])->name('search.v2.logs.view');
@@ -246,7 +248,9 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('/editPolicy', [PolicyController::class, 'edit'])->name('settings.policy.edit');
 
     // Price V2
-    Route::post('/v2/price', [PriceV2Controller::class, 'price'])->name('price.v2');
+    Route::post('/v2/price', [PriceV2Controller::class, 'price'])
+        ->middleware('agent.api.access:travelport_v2')
+        ->name('price.v2');
     Route::post('/flight-price-log/view', [PriceV2Controller::class, 'viewPriceLog'])->name('price.v2.log.view');
 
     // Reservation V2
@@ -283,6 +287,7 @@ Route::middleware(['auth:api'])->group(function () {
     // Flight PNR search (GDS PNR or Airline PNR)
     Route::get('/v2/pnr/search', [PNRSearchController::class, 'search'])->name('pnr.v2.search');
     //Helpdesk
+    Route::get('/getHelpdeskRequesters', [UserController::class, 'getHelpdeskRequesters']);
     Route::get('getAllRequests', [RequestController::class, 'index'])->name('request.getAllRequests');
     Route::post('/request/save', [RequestController::class, 'store'])->name('request.store');
     Route::post('/request/update', [RequestController::class, 'update'])->name('request.update');

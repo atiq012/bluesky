@@ -1,23 +1,63 @@
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
+import BookingReceiptDoc from './BookingReceiptDoc.vue'
+import { openVoucherPrintWindow } from '../../../utils/voucherPrint'
 
 const props = defineProps({
     visible:       { type: Boolean, default: false },
     ticketNumbers: { type: Array,   default: () => [] },
     ticketedAt:    { type: String,  default: null },
     pnr:           { type: String,  default: null },
+    // Full booking receipt (same shape BookingReceiptDoc/"Booking Confirmed" uses) — powers the
+    // two print buttons. Left null, printing is unavailable but the ticket numbers still show.
+    receipt:       { type: Object,  default: null },
 })
 
 const emit = defineEmits(['close'])
 
+const NUMBERS_PREVIEW_LIMIT = 4
+
 const hasTickets = computed(() => props.ticketNumbers.length > 0)
+const hasReceipt = computed(() => !!props.receipt)
+// 2x2 grid once there's more than one ticket — a lone ticket gets a content-sized chip instead
+const isNumbersGrid = computed(() => props.ticketNumbers.length > 1)
+
+const showAllNumbers = ref(false)
+const visibleNumbers = computed(() => (
+    showAllNumbers.value ? props.ticketNumbers : props.ticketNumbers.slice(0, NUMBERS_PREVIEW_LIMIT)
+))
+const hiddenNumbersCount = computed(() => Math.max(0, props.ticketNumbers.length - NUMBERS_PREVIEW_LIMIT))
+
+watch(() => props.visible, (v) => {
+    if (!v) showAllNumbers.value = false
+})
+
+// Which tickets "Print Single Page" includes — defaults to all, user can uncheck ones they
+// don't need. Resets whenever a fresh ticket list comes in (new array each time modal opens).
+const selectedIndexes = ref(new Set())
+watch(() => props.ticketNumbers, (nums) => {
+    selectedIndexes.value = new Set(nums.map((_, idx) => idx))
+}, { immediate: true })
+
+function isSelected(idx) {
+    return selectedIndexes.value.has(idx)
+}
+
+function toggleSelected(idx) {
+    const next = new Set(selectedIndexes.value)
+    if (next.has(idx)) next.delete(idx)
+    else next.add(idx)
+    selectedIndexes.value = next
+}
+
+const selectedCount = computed(() => selectedIndexes.value.size)
 
 const formattedDate = computed(() => {
     if (!props.ticketedAt) return null
     try {
         return new Date(props.ticketedAt).toLocaleString('en-GB', {
             day: '2-digit', month: 'short', year: 'numeric',
-            hour: '2-digit', minute: '2-digit',
+            hour: '2-digit', minute: '2-digit', hour12: true,
         })
     } catch {
         return props.ticketedAt
@@ -26,6 +66,59 @@ const formattedDate = computed(() => {
 
 function handleClose() {
     emit('close')
+}
+
+function toggleShowAllNumbers() {
+    showAllNumbers.value = !showAllNumbers.value
+}
+
+// Off-screen BookingReceiptDoc instances — one prints every ticket number on a single
+// voucher, the rest each print exactly one ticket number, combined into one print job below.
+const printAllRef = ref(null)
+const singleDocRefs = ref([])
+function bindSingleDocRef(idx) {
+    return (el) => { singleDocRefs.value[idx] = el }
+}
+
+const printingAll = ref(false)
+const printingSingle = ref(false)
+
+async function onPrintAll() {
+    if (!hasReceipt.value || !hasTickets.value || printingAll.value) return
+    printingAll.value = true
+    try {
+        await nextTick()
+        await printAllRef.value?.print()
+    } finally {
+        printingAll.value = false
+    }
+}
+
+async function onPrintSingle() {
+    if (!hasReceipt.value || !hasTickets.value || printingSingle.value || selectedCount.value === 0) return
+    printingSingle.value = true
+    try {
+        await nextTick()
+        const targetIndexes = [...selectedIndexes.value].sort((a, b) => a - b)
+        const htmls = await Promise.all(
+            targetIndexes.map((idx) => singleDocRefs.value[idx]?.getPrintHtml())
+        )
+        const pages = htmls
+            .filter(Boolean)
+            .map((html) => `<div class="ticket-print-page">${html}</div>`)
+            .join('')
+        if (!pages) return
+        openVoucherPrintWindow(
+            pages,
+            `Tickets ${props.pnr ?? ''}`,
+            // Every page carries the same @page margin now, so each ticket only needs to
+            // start on a fresh sheet — no per-document margin juggling.
+            `.ticket-print-page { page-break-after: always; }
+             .ticket-print-page:last-child { page-break-after: auto; }`,
+        )
+    } finally {
+        printingSingle.value = false
+    }
 }
 </script>
 
@@ -76,15 +169,33 @@ function handleClose() {
 
                         <div class="bp-stub-label">E-Ticket Numbers</div>
 
-                        <div v-if="hasTickets" class="bp-numbers">
-                            <div
-                                v-for="(num, idx) in ticketNumbers"
+                        <div
+                            v-if="hasTickets"
+                            class="bp-numbers"
+                            :class="isNumbersGrid ? 'bp-numbers--grid' : 'bp-numbers--single'"
+                        >
+                            <label
+                                v-for="(num, idx) in visibleNumbers"
                                 :key="idx"
                                 class="bp-number-row"
                             >
-                                <i class="fa-solid fa-barcode bp-barcode-ico" />
+                                <input
+                                    type="checkbox"
+                                    class="bp-number-checkbox"
+                                    :checked="isSelected(idx)"
+                                    @change="toggleSelected(idx)"
+                                />
                                 <span class="bp-number">{{ num }}</span>
-                            </div>
+                            </label>
+                            <button
+                                v-if="hiddenNumbersCount > 0"
+                                type="button"
+                                class="bp-numbers-toggle"
+                                :class="{ 'bp-numbers-toggle--grid': isNumbersGrid }"
+                                @click="toggleShowAllNumbers"
+                            >
+                                {{ showAllNumbers ? 'Show less' : `+${hiddenNumbersCount} more` }}
+                            </button>
                         </div>
                         <div v-else class="bp-no-number">
                             Ticket issued but numbers not returned in response.
@@ -95,6 +206,29 @@ function handleClose() {
                             <span>{{ formattedDate }}</span>
                         </div>
 
+                        <div v-if="hasReceipt && hasTickets" class="bp-print-actions">
+                            <button
+                                type="button"
+                                class="bp-print-btn"
+                                :disabled="printingAll"
+                                @click="onPrintAll"
+                            >
+                                <i class="fa-solid fa-print" />
+                                {{ printingAll ? 'Preparing…' : 'Print All Ticket' }}
+                            </button>
+                            <button
+                                type="button"
+                                class="bp-print-btn"
+                                :disabled="printingSingle || selectedCount === 0"
+                                @click="onPrintSingle"
+                            >
+                                <i class="fa-solid fa-copy" />
+                                {{ printingSingle
+                                    ? 'Preparing…'
+                                    : `Print Single Page${selectedCount < ticketNumbers.length ? ` (${selectedCount})` : ''}` }}
+                            </button>
+                        </div>
+
                         <button class="bp-close-btn" @click="handleClose">Close</button>
                     </div>
 
@@ -102,13 +236,28 @@ function handleClose() {
             </div>
         </Transition>
     </Teleport>
+
+    <!-- Off-screen — rendered so BookingReceiptDoc's own A4 layout engine can run, never shown -->
+    <Teleport to="body">
+        <div v-if="visible && hasReceipt" class="ticket-print-offstage" aria-hidden="true">
+            <BookingReceiptDoc ref="printAllRef" :receipt="receipt" :ticket-numbers="ticketNumbers" />
+            <BookingReceiptDoc
+                v-for="(num, idx) in ticketNumbers"
+                :key="num + idx"
+                :ref="bindSingleDocRef(idx)"
+                :receipt="receipt"
+                :ticket-numbers="[num]"
+                :passenger-index="idx"
+            />
+        </div>
+    </Teleport>
 </template>
 
 <style scoped>
 .tm-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.52);
+    background: rgba(0, 0, 0, 0.72);
     z-index: 1060;
     display: flex;
     align-items: center;
@@ -120,7 +269,7 @@ function handleClose() {
 .bp-card {
     display: flex;
     width: 100%;
-    max-width: 580px;
+    max-width: 700px;
     border-radius: 1.25rem;
     overflow: hidden;
     box-shadow: 0 28px 72px rgba(0, 0, 0, 0.32);
@@ -128,7 +277,7 @@ function handleClose() {
 
 /* ── LEFT PANEL ── */
 .bp-left {
-    flex: 0 0 58%;
+    flex: 0 0 44%;
     background: linear-gradient(145deg, #1e1b4b 0%, #312e81 55%, #4338ca 100%);
     padding: 1.75rem 1.75rem 1.5rem;
     color: #fff;
@@ -236,7 +385,7 @@ function handleClose() {
     position: absolute;
     width: 28px;
     height: 28px;
-    background: rgba(0, 0, 0, 0.52); /* matches overlay */
+    background: rgba(0, 0, 0, 0.72); /* matches overlay */
     border-radius: 50%;
     left: -14px;
 }
@@ -251,7 +400,7 @@ function handleClose() {
     padding: 1.5rem 1.4rem 1.25rem 1.6rem;
     display: flex;
     flex-direction: column;
-    gap: 0.85rem;
+    gap: 0.6rem;
     position: relative;
     min-width: 0;
 }
@@ -288,28 +437,44 @@ function handleClose() {
 .bp-numbers {
     display: flex;
     flex-direction: column;
-    gap: 0.45rem;
+    gap: 0.3rem;
+}
+
+.bp-numbers--grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.bp-numbers--single {
+    align-items: flex-start;
+}
+
+.bp-numbers--single .bp-number-row {
+    width: auto;
 }
 
 .bp-number-row {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.7rem;
+    gap: 0.4rem;
+    padding: 0.2rem 0.55rem;
     background: #f5f3ff;
-    border-radius: 0.5rem;
+    border-radius: 0.4rem;
     border: 1px solid #ddd6fe;
     min-width: 0;
+    cursor: pointer;
 }
 
-.bp-barcode-ico {
-    color: #7c3aed;
-    font-size: 1rem;
+.bp-number-checkbox {
     flex-shrink: 0;
+    width: 0.85rem;
+    height: 0.85rem;
+    accent-color: #7c3aed;
+    cursor: pointer;
 }
 
 .bp-number {
-    font-size: 0.84rem;
+    font-size: 0.76rem;
     font-weight: 700;
     color: #312e81;
     font-variant-numeric: tabular-nums;
@@ -327,22 +492,76 @@ function handleClose() {
     padding: 0.25rem 0;
 }
 
+.bp-numbers-toggle {
+    align-self: flex-start;
+    border: none;
+    background: none;
+    padding: 0.15rem 0.1rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #7c3aed;
+    cursor: pointer;
+}
+
+.bp-numbers-toggle:hover { text-decoration: underline; }
+
+.bp-numbers-toggle--grid {
+    grid-column: 1 / -1;
+    align-self: center;
+}
+
 .bp-issued-at {
     display: flex;
     align-items: center;
-    gap: 0.35rem;
-    font-size: 0.71rem;
+    gap: 0.3rem;
+    font-size: 0.65rem;
     color: #94a3b8;
     margin-top: auto;
 }
 
+.bp-print-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.bp-print-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.35rem;
+    border: 1px solid #7c3aed;
+    background: #7c3aed;
+    color: #fff;
+    border-radius: 0.4rem;
+    font-size: 0.74rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.bp-print-btn:hover:not(:disabled) { background: #6d28d9; }
+
+.bp-print-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Rendered off-canvas, never shown — BookingReceiptDoc's A4 layout math still needs real DOM */
+.ticket-print-offstage {
+    position: fixed;
+    left: -99999px;
+    top: 0;
+}
+
 .bp-close-btn {
-    padding: 0.5rem;
+    padding: 0.35rem;
     border: 1px solid #e2e8f0;
     background: #fff;
     color: #475569;
-    border-radius: 0.5rem;
-    font-size: 0.84rem;
+    border-radius: 0.4rem;
+    font-size: 0.74rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.15s;

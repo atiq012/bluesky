@@ -112,7 +112,7 @@ async function fetchTravelerData() {
             form.gender = d.gender || '';
             form.nationality = d.nationality || '';
             form.passportNo = d.passport_number || '';
-            
+
             const expDate = d.passport_expiry_date || d.expiry_date;
             form.passportExpiry = expDate ? moment(expDate).format('YYYY-MM-DD') : '';
             form.email = d.email || '';
@@ -122,16 +122,16 @@ async function fetchTravelerData() {
                 form.passportFiles = [{
                     preview: d.passport_path,
                     originalName: 'Passport Image',
-                    file: { size: d.passport_file_size}
+                    file: { size: d.passport_file_size }
                 }];
             } else {
                 form.passportFiles = [];
             }
         }
     } catch (err) {
-        //console.error('Error fetching traveler data:', err);
+        const backendMessage = err.response?.data?.message || 'Failed to load traveller information.';
         if (window.Notification?.showToast) {
-            window.Notification.showToast('e', 'Failed to load traveler information.');
+            window.Notification.showToast('e', backendMessage);
         }
     } finally {
         isLoading.value = false;
@@ -181,12 +181,27 @@ function validate() {
     return !Object.values(errors).some(Boolean);
 }
 
+// function apiErrorMessage(error) {
+//     const data = error.response?.data;
+//     if (Array.isArray(data?.message)) return data.message.join(' ');
+//     if (Array.isArray(data?.errors)) return data.errors.flat().join(' ');
+//     return data?.message || 'Unable to update the traveller. Please try again.';
+// }
+
 function apiErrorMessage(error) {
     const data = error.response?.data;
-    if (Array.isArray(data?.message)) return data.message.join(' ');
-    if (Array.isArray(data?.errors)) return data.errors.flat().join(' ');
+
+    // Handle errors object returned from Laravel validation
+    if (data?.errors && typeof data.errors === 'object') {
+        const firstKey = Object.keys(data.errors)[0];
+        if (firstKey && data.errors[firstKey]?.length) {
+            return data.errors[firstKey][0];
+        }
+    }
+
     return data?.message || 'Unable to update the traveller. Please try again.';
 }
+
 
 function openSuccessModal() {
     isSuccessModalOpen.value = true;
@@ -248,15 +263,11 @@ async function save() {
 </script>
 
 <template>
-    <AppBreadcrumbs
-        title="Traveller Management"
-        :back-to="{ name: 'TravelerList' }"
-        :breadcrumbs="[
-            { label: 'Dashboard', to: { name: 'Home' } },
-            { label: 'Traveller Management', to: { name: 'TravelerList' } },
-            { label: 'Edit Traveller' },
-        ]"
-    />
+    <AppBreadcrumbs title="Traveller Management" :back-to="{ name: 'TravelerList' }" :breadcrumbs="[
+        { label: 'Dashboard', to: { name: 'Home' } },
+        { label: 'Traveller Management', to: { name: 'TravelerList' } },
+        { label: 'Edit Traveller' },
+    ]" />
 
     <div class="traveler-edit position-relative">
         <div v-if="isLoading" class="text-center py-5">
@@ -293,7 +304,8 @@ async function save() {
                                 <div class="form-row">
                                     <label>Title <span class="text-danger">*</span></label>
                                     <div :class="{ 'select2-error': Boolean(errors.title) }">
-                                        <Select2 v-model="form.title" :options="titleOptions" placeholder="Select Title" />
+                                        <Select2 v-model="form.title" :options="titleOptions"
+                                            placeholder="Select Title" />
                                     </div>
                                     <div v-if="errors.title" class="invalid-feedback d-block">
                                         {{ errors.title }}
@@ -301,41 +313,46 @@ async function save() {
                                 </div>
                                 <div class="form-row">
                                     <label>First Name <span class="text-danger">*</span></label>
-                                    <input v-model="form.firstName" class="form-control" :class="{ 'is-invalid': errors.firstName === true }" 
-                                    placeholder="Enter First Name" style="font-size: 0.9rem;">
+                                    <input v-model="form.firstName" class="form-control"
+                                        :class="{ 'is-invalid': errors.firstName === true }"
+                                        placeholder="Enter First Name" style="font-size: 0.9rem;">
                                     <div class="invalid-feedback">Please enter first name.</div>
                                 </div>
                                 <div class="form-row">
                                     <label>Last Name <span class="text-danger">*</span></label>
-                                    <input v-model="form.lastName" class="form-control" :class="{ 'is-invalid': errors.lastName === true }" 
-                                    placeholder="Enter Last Name" style="font-size: 0.9rem;">
+                                    <input v-model="form.lastName" class="form-control"
+                                        :class="{ 'is-invalid': errors.lastName === true }"
+                                        placeholder="Enter Last Name" style="font-size: 0.9rem;">
                                     <div class="invalid-feedback">Please enter last name.</div>
                                 </div>
                             </div>
                             <div class="col-12 col-md-6 mt-2">
                                 <div class="form-row" :class="{ 'date-field-error': errors.dob === true }">
                                     <label>Date of Birth <span class="text-danger">*</span></label>
-                                    <DobWithAge
-                                        v-model="form.dob"
-                                        :pax-type="derivedPax?.label"
-                                        placeholder="Date of Birth"
-                                    />
-                                    <small v-if="derivedPax" class="text-muted">Passenger type: {{ derivedPax.label }}</small>
-                                    <div v-if="errors.dob === true" class="invalid-feedback d-block">Please select a valid date of birth.</div>
+                                    <DobWithAge v-model="form.dob" :pax-type="derivedPax?.label"
+                                        placeholder="Date of Birth" />
+                                    <small v-if="derivedPax" class="text-muted">Passenger type: {{ derivedPax.label
+                                    }}</small>
+                                    <div v-if="errors.dob === true" class="invalid-feedback d-block">Please select a
+                                        valid date of birth.</div>
                                 </div>
                                 <div class="form-row">
                                     <label>Gender <span class="text-danger">*</span></label>
                                     <div :class="{ 'select2-error': errors.gender === true }">
-                                        <Select2 v-model="form.gender" :options="genderOptions" placeholder="Select Gender" />
+                                        <Select2 v-model="form.gender" :options="genderOptions"
+                                            placeholder="Select Gender" />
                                     </div>
-                                    <div v-if="errors.gender === true" class="invalid-feedback d-block">Please select gender.</div>
+                                    <div v-if="errors.gender === true" class="invalid-feedback d-block">Please select
+                                        gender.</div>
                                 </div>
                                 <div class="form-row">
                                     <label>Nationality <span class="text-danger">*</span></label>
                                     <div :class="{ 'select2-error': errors.nationality === true }">
-                                        <Select2 v-model="form.nationality" :options="nationalityOptions" placeholder="Select Nationality" />
+                                        <Select2 v-model="form.nationality" :options="nationalityOptions"
+                                            placeholder="Select Nationality" />
                                     </div>
-                                    <div v-if="errors.nationality === true" class="invalid-feedback d-block">Please select nationality.</div>
+                                    <div v-if="errors.nationality === true" class="invalid-feedback d-block">Please
+                                        select nationality.</div>
                                 </div>
                             </div>
 
@@ -346,26 +363,28 @@ async function save() {
                                         <span>Travel Document</span>
                                     </div>
                                     <div class="col-12 mt-2">
-                                        <label class="form-label">Passport Number <span class="text-danger">*</span></label>
-                                        <input v-model="form.passportNo" class="form-control" :class="{ 'is-invalid': errors.passportNo === true }" 
-                                        placeholder="Enter Passport Number" style="font-size: 0.9rem;">
+                                        <label class="form-label">Passport Number <span
+                                                class="text-danger">*</span></label>
+                                        <input v-model="form.passportNo" class="form-control"
+                                            :class="{ 'is-invalid': errors.passportNo === true }"
+                                            placeholder="Enter Passport Number" style="font-size: 0.9rem;">
                                         <div class="invalid-feedback">Please enter passport number.</div>
                                     </div>
                                     <div class="col-12 mt-2">
                                         <label class="form-label">Expiry Date <span class="text-danger">*</span></label>
-                                        <AppDatePicker 
-                                            v-model="form.passportExpiry" 
-                                            placeholder="Expiry Date" 
-                                            :min-date="new Date()" 
+                                        <AppDatePicker v-model="form.passportExpiry" placeholder="Expiry Date"
+                                            :min-date="new Date()"
                                             :input-class="errors.passportExpiry === true ? 'form-control is-invalid' : 'form-control'"
-                                            input-style="font-size: 1rem; min-height: 38px;"
-                                        />
-                                        <div v-if="errors.passportExpiry === true" class="invalid-feedback d-block">Please select passport expiry date.</div>
+                                            input-style="font-size: 1rem; min-height: 38px;" />
+                                        <div v-if="errors.passportExpiry === true" class="invalid-feedback d-block">
+                                            Please select passport expiry date.</div>
                                     </div>
                                     <div class="col-12 col-md-8 mt-2">
-                                        <label class="form-label">Passport Image <span class="text-danger">*</span></label>
+                                        <label class="form-label">Passport Image <span
+                                                class="text-danger">*</span></label>
                                         <ImageUploader v-model="form.passportFiles" :max-files="1" />
-                                        <div v-if="errors.passportFiles === true" class="invalid-feedback d-block">Please upload a passport image.</div>
+                                        <div v-if="errors.passportFiles === true" class="invalid-feedback d-block">
+                                            Please upload a passport image.</div>
                                     </div>
                                 </div>
 
@@ -375,18 +394,21 @@ async function save() {
                                         <span>Contact</span>
                                     </div>
                                     <div class="col-12 mt-2">
-                                        <label class="form-label">Email <span v-if="!isChildOrInfant" class="text-danger">*</span></label>
-                                        <input v-model="form.email" type="email" class="form-control" :class="{ 'is-invalid': errors.email === true }" 
-                                        placeholder="Enter Email" style="font-size: 0.9rem;">
+                                        <label class="form-label">Email <span v-if="!isChildOrInfant"
+                                                class="text-danger">*</span></label>
+                                        <input v-model="form.email" type="email" class="form-control"
+                                            :class="{ 'is-invalid': errors.email === true }" placeholder="Enter Email"
+                                            style="font-size: 0.9rem;">
                                         <div class="invalid-feedback">Please enter a valid email address.</div>
                                     </div>
                                     <div class="col-12 mt-2">
                                         <label class="form-label">
-                                            Phone 
+                                            Phone
                                             <span v-if="!isChildOrInfant" class="text-danger">*</span>
                                         </label>
-                                        <input v-model="form.phone" class="form-control" :class="{ 'is-invalid': errors.phone === true }" 
-                                        placeholder="Enter Phone" style="font-size: 0.9rem;">
+                                        <input v-model="form.phone" class="form-control"
+                                            :class="{ 'is-invalid': errors.phone === true }" placeholder="Enter Phone"
+                                            style="font-size: 0.9rem;">
                                         <div class="invalid-feedback">Please enter a valid phone number.</div>
                                     </div>
                                 </div>
@@ -395,7 +417,8 @@ async function save() {
 
                         <div class="mt-4 text-end">
                             <div v-if="submitError" class="text-danger small mb-2">{{ submitError }}</div>
-                            <AppButton variant="update" label="Update" size="md" :loading="isSubmitting" @click="save" />
+                            <AppButton variant="update" label="Update" size="md" :loading="isSubmitting"
+                                @click="save" />
                         </div>
                     </form>
                 </div>
@@ -410,7 +433,8 @@ async function save() {
                         <i class="fa fa-check"></i>
                     </div>
                     <h2>Traveler Updated!</h2>
-                    <p>Traveler profile for <strong>{{ form.title }} {{ form.firstName }} {{ form.lastName }}</strong> has been updated successfully.</p>
+                    <p>Traveler profile for <strong>{{ form.title }} {{ form.firstName }} {{ form.lastName }}</strong>
+                        has been updated successfully.</p>
                 </div>
 
                 <div class="modal-body-section">

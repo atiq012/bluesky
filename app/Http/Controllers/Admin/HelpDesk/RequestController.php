@@ -134,73 +134,276 @@ class RequestController extends BaseController
         return $datePrefix . $sequenceFormatted;
     }
 
+    // public function store(Request $request)
+    // {
+
+    //     $request->validate([
+    //         'requester'    => 'required',
+    //         'priority'     => 'required',
+    //         'request_type' => 'required',
+    //         'mode'         => 'required',
+    //         'level'        => 'required',
+    //         'cate_id'      => 'required',
+    //         'subcate_id'   => 'required',
+    //         'subject'      => 'required|string|max:255',
+    //         'description'  => 'required|string',
+    //         'assets'       => 'nullable|string',
+    //         'file_path'    => 'nullable|file|max:4096', // Max 4MB
+    //     ], [
+    //         'file_path.max' => 'Attachment size must not exceed 4 MB.',
+    //     ]);
+
+    //     try {
+    //         $req_num = $this->generateRequestNumber();
+
+    //         $requestData                 = new HelpdeskRequest;
+    //         $requestData->request_number = $req_num; // Use the generated request number
+    //         $requestData->category_id    = $request->input('cate_id');
+    //         $requestData->subcategory_id = $request->input('subcate_id');
+    //         $requestData->requester_id   = $request->input('requester');
+    //         $requestData->priority       = $request->input('priority');
+    //         $requestData->subject        = $request->input('subject');
+    //         $requestData->description    = $request->input('description');
+    //         $requestData->request_type   = $request->input('request_type');
+    //         $requestData->asset          = $request->input('assets');
+
+    //         $requestData->mode        = $request->input('mode');
+    //         $requestData->level       = $request->input('level');
+    //         $requestData->assignee_id = $request->input('assign_to');
+    //         // Handle file upload if exists
+
+    //         if (($request->hasFile('file_path'))) {
+
+    //             $request_image = $request->file('file_path');
+    //             $image_name    = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
+
+    //             $image_path = public_path('/uploads/helpDesk/');
+    //             if (! File::exists($image_path)) {
+    //                 File::makeDirectory($image_path, 0777, true);
+    //             }
+
+    //             $request_image->move($image_path, $image_name);
+
+    //             $requestData->file_path = '/uploads/helpDesk/' . $image_name;
+    //         }
+    //         $requestData->status     = 'open';
+    //         $requestData->created_by = Auth::user()->id;
+    //         $requestData->save();
+
+    //         $success = 's';
+    //         return $this->SuccessResponse($success, 'Successfully Request Saved.');
+    //     } catch (\Throwable $e) {
+    //         report($e); // Log unexpected server errors
+    //         return response()->json([
+    //             'message' => 'An unexpected server error occurred. Please try again later.'
+    //         ], 500);
+    //     }
+    // }
+
     public function store(Request $request)
     {
-        // dd($request->all());
+        try {
 
-        $request->validate([
-            'requester'    => 'required',
-            'priority'     => 'required',
-            'request_type' => 'required',
-            'mode'         => 'required',
-            'level'        => 'required',
-            'cate_id'      => 'required',
-            'subcate_id'   => 'required',
-            'subject'      => 'required|string|max:255',
-            'description'  => 'required|string',
-            // Optional fields
-            'assets'       => 'nullable|string',
-            'file_path'    => 'nullable|file|max:4096',
-        ]);
+            // Validate request
+            $request->validate([
+                'requester'    => 'required',
+                'priority'     => 'required',
+                'request_type' => 'required',
+                'mode'         => 'required',
+                'level'        => 'required',
+                'cate_id'      => 'required',
+                'subcate_id'   => 'required',
+                'subject'      => 'required|string|max:255',
+                'description'  => 'required|string',
+                'assets'       => 'nullable|string',
+                'file_path'    => 'nullable|file|max:4096',
+            ], [
+                'file_path.max' => 'Attachment size must not exceed 4 MB.',
+            ]);
 
+            // Generate request number
+            $req_num = $this->generateRequestNumber();
 
-        $req_num = $this->generateRequestNumber();
+            // Create helpdesk request
+            $requestData = new HelpdeskRequest;
 
-        $requestData                 = new HelpdeskRequest;
-        $requestData->request_number = $req_num; // Use the generated request number
-        $requestData->category_id    = $request->input('cate_id');
-        $requestData->subcategory_id = $request->input('subcate_id');
-        $requestData->requester_id   = $request->input('requester');
-        $requestData->priority       = $request->input('priority');
-        $requestData->subject        = $request->input('subject');
-        $requestData->description    = $request->input('description');
-        $requestData->request_type   = $request->input('request_type');
-        $requestData->asset          = $request->input('assets');
+            $requestData->request_number = $req_num;
+            $requestData->category_id    = $request->input('cate_id');
+            $requestData->subcategory_id = $request->input('subcate_id');
+            $requestData->requester_id   = $request->input('requester');
+            $requestData->priority       = $request->input('priority');
+            $requestData->subject        = $request->input('subject');
+            $requestData->description    = $request->input('description');
+            $requestData->request_type   = $request->input('request_type');
+            $requestData->asset          = $request->input('assets');
+            $requestData->mode           = $request->input('mode');
+            $requestData->level          = $request->input('level');
+            $requestData->assignee_id    = $request->input('assign_to');
 
-        $requestData->mode        = $request->input('mode');
-        $requestData->level       = $request->input('level');
-        $requestData->assignee_id = $request->input('assign_to');
-        // Handle file upload if exists
+            // Handle file upload if exists
+            if ($request->hasFile('file_path')) {
 
-        if (($request->hasFile('file_path'))) {
+                $requestImage = $request->file('file_path');
 
-            $request_image = $request->file('file_path');
-            $image_name    = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
+                $imageName = str_replace(
+                    ' ',
+                    '',
+                    now()->format('dmY-') . time()
+                ) . '.' . $requestImage->extension();
 
-            $image_path = public_path('/uploads/helpDesk/');
-            if (! File::exists($image_path)) {
-                File::makeDirectory($image_path, 0777, true);
+                $imagePath = public_path('/uploads/helpDesk/');
+
+                // Create directory if it doesn't exist
+                if (!File::exists($imagePath)) {
+                    File::makeDirectory($imagePath, 0777, true);
+                }
+
+                // Move uploaded file
+                $requestImage->move($imagePath, $imageName);
+
+                $requestData->file_path = '/uploads/helpDesk/' . $imageName;
             }
 
-            $request_image->move($image_path, $image_name);
+            $requestData->status     = 'open';
+            $requestData->created_by = Auth::user()->id;
 
-            $requestData->file_path = '/uploads/helpDesk/' . $image_name;
+            // Save request
+            $requestData->save();
+
+            return $this->SuccessResponse(
+                's',
+                'Successfully Request Saved.'
+            );
+        } catch (\Illuminate\Validation\ValidationException $e) {
+
+            // First validation error for toast message
+            $firstMessage = $e->validator->errors()->first()
+                ?: 'Validation failed.';
+
+            return response()->json([
+                'message' => $firstMessage,
+                'errors'  => $e->errors(),
+            ], 422);
+        } catch (\Throwable $e) {
+
+            // Log unexpected server errors
+            report($e);
+
+            return response()->json([
+                'message' => 'An unexpected server error occurred. Please try again later.'
+            ], 500);
         }
-        $requestData->status     = 'open';
-        $requestData->created_by = Auth::user()->id;
-        $requestData->save();
-
-        $success = 's';
-        return $this->SuccessResponse($success, 'Successfully Request Saved.');
     }
+
+    // public function update(Request $request)
+    // {
+    //     // dd($request->all());
+    //     $request->validate([
+    //         'id'           => 'required',
+    //         'requester'    => 'required',
+    //         'priority'     => 'required',
+    //         'request_type' => 'required',
+    //         'mode'         => 'required',
+    //         'level'        => 'required',
+    //         'cate_id'      => 'required',
+    //         'subcate_id'   => 'required',
+    //         'subject'      => 'required|string|max:255',
+    //         'description'  => 'required|string',
+    //         'assets'       => 'nullable|string',
+    //         'file_path'    => 'nullable',
+    //     ], [
+    //         'file_path.max' => 'Attachment size must not exceed 4 MB.',
+    //     ]);
+    //     $id          = $request->input('id');
+    //     $requestData = HelpdeskRequest::find($id);
+    //     if (! $requestData) {
+    //         return response()->json([
+    //             'message' => 'Support request not found or has been deleted.'
+    //         ], 404);
+    //     }
+
+    //     $requestData->category_id    = $request->input('cate_id');
+    //     $requestData->subcategory_id = $request->input('subcate_id');
+    //     $requestData->requester_id   = $request->input('requester');
+    //     $requestData->priority       = $request->input('priority');
+    //     $requestData->subject        = $request->input('subject');
+    //     $requestData->description    = $request->input('description');
+
+    //     $requestData->request_type = $request->input('request_type');
+    //     $requestData->asset        = $request->input('assets');
+
+    //     $requestData->mode        = $request->input('mode');
+    //     $requestData->level       = $request->input('level');
+    //     $requestData->assignee_id = $request->input('assign_to');
+
+    //     // Handle file upload if exists
+    //     if (($request->hasFile('file_path'))) {
+
+    //         $request_image = $request->file('file_path');
+    //         $image_name    = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
+
+    //         $image_path = public_path('/uploads/helpDesk/');
+    //         if (! File::exists($image_path)) {
+    //             File::makeDirectory($image_path, 0777, true);
+    //         }
+
+    //         if (File::exists(public_path($requestData->file_path))) {
+    //             File::delete(public_path($requestData->file_path));
+    //         }
+
+    //         $request_image->move($image_path, $image_name);
+
+    //         $requestData->file_path = '/uploads/helpDesk/' . $image_name;
+    //     }
+    //     $requestData->updated_by = Auth::user()->id;
+
+    //     try {
+    //         $requestData->save();
+
+    //         $success = 's';
+    //         return $this->SuccessResponse($success, 'Successfully Request Updated.');
+    //     } catch (\Throwable $e) {
+    //         report($e);
+    //         return response()->json([
+    //             'message' => 'An unexpected server error occurred while updating the request.'
+    //         ], 500);
+    //     }
+    // }
 
     public function update(Request $request)
     {
-        // dd($request->all());
-        $id          = $request->input('id');
-        $requestData = HelpdeskRequest::find($id);
+        try {
 
-        if ($requestData) {
+            // Validate request
+            $request->validate([
+                'id'           => 'required',
+                'requester'    => 'required',
+                'priority'     => 'required',
+                'request_type' => 'required',
+                'mode'         => 'required',
+                'level'        => 'required',
+                'cate_id'      => 'required',
+                'subcate_id'   => 'required',
+                'subject'      => 'required|string|max:255',
+                'description'  => 'required|string',
+                'assets'       => 'nullable|string',
+                'file_path'    => 'nullable|file|max:4096',
+            ], [
+                'file_path.max' => 'Attachment size must not exceed 4 MB.',
+            ]);
+
+            $id = $request->input('id');
+
+            // Find support request
+            $requestData = HelpdeskRequest::find($id);
+
+            if (!$requestData) {
+                return response()->json([
+                    'message' => 'Support request not found or has been deleted.'
+                ], 404);
+            }
+
+            // Update request data
             $requestData->category_id    = $request->input('cate_id');
             $requestData->subcategory_id = $request->input('subcate_id');
             $requestData->requester_id   = $request->input('requester');
@@ -216,31 +419,66 @@ class RequestController extends BaseController
             $requestData->assignee_id = $request->input('assign_to');
 
             // Handle file upload if exists
-            if (($request->hasFile('file_path'))) {
+            if ($request->hasFile('file_path')) {
 
-                $request_image = $request->file('file_path');
-                $image_name    = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
+                $requestImage = $request->file('file_path');
 
-                $image_path = public_path('/uploads/helpDesk/');
-                if (! File::exists($image_path)) {
-                    File::makeDirectory($image_path, 0777, true);
+                $imageName = str_replace(
+                    ' ',
+                    '',
+                    now()->format('dmY-') . time()
+                ) . '.' . $requestImage->extension();
+
+                // $image_name    = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
+
+                $imagePath = public_path('/uploads/helpDesk/');
+
+                // Create directory if it doesn't exist
+                if (!File::exists($imagePath)) {
+                    File::makeDirectory($imagePath, 0777, true);
                 }
 
-                if (File::exists(public_path($requestData->file_path))) {
+                // Delete old file
+                if (
+                    $requestData->file_path &&
+                    File::exists(public_path($requestData->file_path))
+                ) {
                     File::delete(public_path($requestData->file_path));
                 }
 
-                $request_image->move($image_path, $image_name);
+                // Move new file
+                $requestImage->move($imagePath, $imageName);
 
-                $requestData->file_path = '/uploads/helpDesk/' . $image_name;
+                $requestData->file_path = '/uploads/helpDesk/' . $imageName;
             }
+
             $requestData->updated_by = Auth::user()->id;
+
+            // Save changes
             $requestData->save();
 
-            $success = 's';
-            return $this->SuccessResponse($success, 'Successfully Request Updated.');
-        } else {
-            return $this->ErrorResponse('Request not found', 404);
+            return $this->SuccessResponse(
+                's',
+                'Successfully Request Updated.'
+            );
+        } catch (\Illuminate\Validation\ValidationException $e) {
+
+            // First validation error for toast message
+            $firstMessage = $e->validator->errors()->first()
+                ?: 'Validation failed.';
+
+            return response()->json([
+                'message' => $firstMessage,
+                'errors'  => $e->errors(),
+            ], 422);
+        } catch (\Throwable $e) {
+
+            // Log actual exception for debugging
+            report($e);
+
+            return response()->json([
+                'message' => 'An unexpected server error occurred while updating the request.'
+            ], 500);
         }
     }
 

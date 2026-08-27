@@ -4,7 +4,7 @@ import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
 import { useAuthStore } from "../../../stores/authStore";
 import axiosInstance from "../../../axiosInstance";
 import { ref, onMounted, reactive, watch} from "vue";
-import ImageUploader from '../../common/ImageUploader.vue';
+import ImageCropUpload from '../../common/ImageCropUpload.vue';
 import AppButton from '../../common/AppButton.vue';
 import { useRouter } from 'vue-router';
 
@@ -13,7 +13,8 @@ const props = defineProps(['id']);
 const authStore = useAuthStore();
 const previewImage = ref('');
 const profilePicture = ref(null);
-const profileImages = ref([]);
+const profileImageFile = ref(null);
+const existingImageUrl = ref('');
 
 
 const router = useRouter();
@@ -30,11 +31,11 @@ const form = reactive({
 });
 
 const errors = reactive({
-    name: null, 
-    email: null, 
-    staff_id: null, 
-    phone: null, 
-    dept_name: null, 
+    name: null,
+    email: null,
+    staff_id: null,
+    phone: null,
+    dept_name: null,
 });
 
 watch(() => form.name,      v => { if (v) errors.name = null; });
@@ -43,22 +44,27 @@ watch(() => form.staff_id,  v => { if (v) errors.staff_id = null; });
 watch(() => form.phone,     v => { if (v) errors.phone = null; });
 watch(() => form.dept_name, v => { if (v) errors.dept_name = null; });
 
+// Fields come back from the API as null or as numeric IDs, so never call .trim() on them directly
+function text(value) {
+    return String(value ?? '').trim();
+}
+
 function validate() {
     Object.keys(errors).forEach(k => errors[k] = null);
     const validEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const validPhoneRegex = /^(?:\+?[1-9]\d{7,14}|0\d{7,14})$/;
 
-    if (!form.name.trim()) 
+    if (!text(form.name))
         errors.name = 'Please enter a name.';
-    if (!form.email.trim() || !validEmailRegex.test(form.email.trim())) 
-        errors.email = 'Please enter a valid email address.';    
-    if (!form.staff_id.trim()) 
+    if (!text(form.email) || !validEmailRegex.test(text(form.email)))
+        errors.email = 'Please enter a valid email address.';
+    if (!text(form.staff_id))
         errors.staff_id = 'Please enter a staff ID.';
-    if (!form.phone.trim() || !validPhoneRegex.test(form.phone.trim())) 
+    if (!text(form.phone) || !validPhoneRegex.test(text(form.phone)))
         errors.phone = 'Please enter a valid phone number.';
-    if (!form.dept_name.trim()) 
+    if (!text(form.dept_name))
         errors.dept_name = 'Please enter a department name.';
-    
+
     return !Object.values(errors).some(Boolean);
 }
 
@@ -70,8 +76,9 @@ async function update(props) {
 
     form.user_id = props.id;
 
-    if (profileImages.value.length > 0 && profileImages.value[0].file instanceof File) {
-        form.profile_picture = profileImages.value[0].file;
+    // Only send a picture when a new one was cropped — otherwise the server keeps the existing image
+    if (profileImageFile.value instanceof File) {
+        form.profile_picture = profileImageFile.value;
     }
 
     try {
@@ -86,6 +93,13 @@ async function update(props) {
 
             },
         });
+
+        // Backend can answer 200 with types 'e', so never assume success
+        if (response.data?.types === 'e') {
+            Notification.showToast('e', response.data.message);
+            return;
+        }
+
         Notification.showToast('s', response.data.message);
         router.push({ name: 'UserList' });
 
@@ -110,36 +124,16 @@ async function getUserData(props) {
 
         //console.log('Fetched user data:', userData);
 
-        const name = userData.name;
+        // Nulls from the API would break the v-model inputs and the validators below
+        form.name = userData.name ?? '';
+        form.staff_id = userData.emp_id ?? '';
+        form.email = userData.email ?? '';
+        form.phone = userData.phone ?? '';
+        form.desg = userData.desg_name ?? '';
+        form.dept_name = userData.dept_name ?? '';
 
-        form.name = name;
-        const emp_id = userData.emp_id;
-        form.staff_id = emp_id;
-
-        const email = userData.email;
-        form.email = email;
-
-        const phone = userData.phone;
-        form.phone = phone;
-
-
-        const designation_id = userData.designation_id;
-
-        form.desg = designation_id;
-
-        const dept_id = userData.dept_id;
-
-        form.dept_name = dept_id;
-
-        if (userData.img_path) {
-            profileImages.value = [{
-                preview: userData.img_path,
-                originalName: 'Profile Image',
-                file: { size: userData.profile_file_size || 0}
-            }];
-        } else {
-            profileImages.value = [];
-        }
+        // Existing image shows as the cropper's initial preview until a new one is cropped
+        existingImageUrl.value = userData.img_path || '';
 
     } catch (error) {
         if (window.Notification?.showToast) {
@@ -235,7 +229,17 @@ async function save() {
 
                     <div class="col-lg-3">
                         <label class="form-label">Profile Image</label>
-                        <ImageUploader v-model="profileImages" :max-files="1" preview-size="large" />
+                        <ImageCropUpload
+                            v-model="profileImageFile"
+                            :display-url="existingImageUrl"
+                            shape="circle"
+                            size-class="profile-image-preview"
+                            :max-file-size-mb="2"
+                            :removable="false"
+                            crop-modal-title="Crop Profile Image"
+                        >
+                            {{ profileImageFile ? 'New image ready — click Update to save' : 'Click to change · JPEG, PNG, GIF or WebP · max 2 MB' }}
+                        </ImageCropUpload>
                     </div>
 
 

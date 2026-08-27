@@ -56,6 +56,25 @@ AGENT_UPLOAD_BASE_PATH=/home/devblues/public_html/uploads/agents
 AGENT_UPLOAD_DB_PREFIX=/uploads/agents
 ```
 
+### User profile images
+
+Config file: `config/profile_uploads.php`. Service methods:
+`ImageService::uploadProfileImage()`, `::deleteProfileImageByDbPath()`, `::resolveProfileImagePath()`.
+
+Used by `UserController@store`, `@agntUserstore`, `@update`, `@edit`, `@destroy`.
+DB column: `users.img_path`.
+
+```env
+PROFILE_IMAGE_UPLOAD_BASE_PATH=/home/dev2blue/public_html/uploads/profile_image
+PROFILE_IMAGE_UPLOAD_DB_PREFIX=/uploads/profile_image
+```
+
+Why it matters on live: this app lives at `/home/dev2blue/apps/b2b` but the web-served document
+root is `/home/dev2blue/public_html`. Without the env var, `public_path()` resolves to
+`/home/dev2blue/apps/b2b/public/...`, so the upload reports success but the file is never reachable
+over HTTP — the image renders broken. `fallback_base_paths` keeps files written before this fix
+(and files written by the admin panel, which shares the same DB) resolvable for delete/size lookup.
+
 ### Local `.env` (optional override)
 
 If not set, local fallback already works with `public/uploads/agents`.
@@ -189,6 +208,7 @@ $request->validate([
 1. Set `.env` values:
    - `AGENT_UPLOAD_BASE_PATH`
    - `AGENT_UPLOAD_DB_PREFIX`
+   - `PROFILE_IMAGE_UPLOAD_BASE_PATH`
 2. Ensure upload directory exists and writable
 3. Ensure second domain can read same uploads path
 4. Verify URL from both domains:

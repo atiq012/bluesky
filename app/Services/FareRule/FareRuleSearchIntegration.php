@@ -148,11 +148,15 @@ class FareRuleSearchIntegration
 
     private function contextFromLeg(array $leg, array $brand, ?Agent $agent): FareRuleContext
     {
-        [$base, $totalTaxes] = $this->sumSearchBreakdown($brand['price_breakdown'] ?? []);
+        [$base, $totalTaxes, $taxLines] = $this->sumSearchBreakdown($brand['price_breakdown'] ?? []);
 
         $origin      = strtoupper((string) ($leg['origin'] ?? ''));
         $destination = strtoupper((string) ($leg['destination'] ?? ''));
         $carrier     = strtoupper((string) ($leg['first_carrier_code'] ?? ($leg['segments'][0]['carrier_code'] ?? '')));
+
+        // Catalog Tax[] present → same AIT BD/UT/E5 path as price/confirm (modal match).
+        // Empty Tax[] → tax_lines_exact false → full-gross AIT (conservative).
+        $taxLinesExact = $taxLines !== [];
 
         return $this->contextBuilder->build([
             'carrier'        => $carrier,
@@ -169,14 +173,12 @@ class FareRuleSearchIntegration
             'flight_date'    => $leg['departure_date'] ?? null,
             'base'           => $base,
             'total_taxes'    => $totalTaxes,
-            // Per-code tax data (YQ/YR) doesn't exist at search time (§4.5/§8) — pct_yq/pct_yr
-            // rules correctly resolve to 0 and pricing_provisional is set.
-            'yq'             => 0,
-            'yr'             => 0,
+            'yq'             => $taxLines['YQ'] ?? 0,
+            'yr'             => $taxLines['YR'] ?? 0,
             'segments'       => max(1, count($leg['segments'] ?? [])),
             'currency'       => $brand['currency'] ?? 'BDT',
-            'tax_lines'      => [],
-            'tax_lines_exact' => false,
+            'tax_lines'      => $taxLines,
+            'tax_lines_exact' => $taxLinesExact,
         ], $agent);
     }
 
@@ -259,17 +261,27 @@ class FareRuleSearchIntegration
         return max(1, $total);
     }
 
+    // Returns [base, totalTaxes, taxLinesByCode]. tax_lines from SearchResponseMapper.
     private function sumSearchBreakdown(array $breakdown): array
     {
         $base = 0.0;
         $totalTaxes = 0.0;
+        $taxLines = [];
 
         foreach ($breakdown as $row) {
             $qty = max(1, (int) ($row['quantity'] ?? 1));
             $base       += (float) ($row['baseFare'] ?? 0) * $qty;
             $totalTaxes += (float) ($row['taxes'] ?? 0) * $qty;
+
+            foreach ($row['tax_lines'] ?? [] as $tax) {
+                $code = strtoupper((string) ($tax['code'] ?? ''));
+                if ($code === '') {
+                    continue;
+                }
+                $taxLines[$code] = ($taxLines[$code] ?? 0) + (float) ($tax['amount'] ?? 0) * $qty;
+            }
         }
 
-        return [$base, $totalTaxes];
+        return [$base, $totalTaxes, $taxLines];
     }
 }
