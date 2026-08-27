@@ -260,7 +260,7 @@ const routeSummary = computed(() =>
 const issueDate = computed(() => attempt.value?.ticketed_at || attempt.value?.confirmed_at || null);
 
 function statusLabel(status) {
-    if (status == 'committed') return 'Booked';
+    if (status == 'committed') return 'Booking Confirmed';
     return actionLabel(status);
 }
 
