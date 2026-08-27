@@ -23,7 +23,6 @@ const open = reactive({
     passengers: true,
     fareDetails: true,
     fareRules: true,
-    activity: false,
 });
 function toggleSection(key) {
     open[key] = !open[key];
@@ -73,8 +72,11 @@ function onInputKeyup(e) {
 // ── Passenger Details ───────────────────────────────────────────────
 const PAX_BADGE = { ADT: 'ADT', CNN: 'CHD', KID: 'CHD', INF: 'INF', INS: 'INF' };
 
-const passengers = computed(() =>
-    travelers.value.map((t) => {
+const passengers = computed(() => {
+    const sorted = [...travelers.value].sort((a, b) => (Number(a.sequence) || 0) - (Number(b.sequence) || 0));
+    const ticketNumbers = attempt.value?.ticket_numbers ?? [];
+
+    return sorted.map((t, i) => {
         const phone = t.phone;
         const email = t.email;
         let contact = '—';
@@ -88,10 +90,11 @@ const passengers = computed(() =>
             paxType: PAX_BADGE[t.pax_type] ?? (t.pax_type || 'ADT'),
             dob: t.dob ? formatDate(t.dob) : '—',
             passport: t.passport_no || '—',
+            ticketNo: ticketNumbers[i] || null,
             contact,
         };
-    }),
-);
+    });
+});
 
 // ── Fare Details ────────────────────────────────────────────────────
 const paxBreakdown = computed(() =>
@@ -101,8 +104,22 @@ const paxBreakdown = computed(() =>
         baseFare: Number(bd.base_fare ?? 0) * Number(bd.quantity ?? 1),
         tax: Number(bd.total_taxes ?? 0) * Number(bd.quantity ?? 1),
         total: Number(bd.total_price ?? 0) * Number(bd.quantity ?? 1),
+        taxes: bd.taxes ?? [],
     })),
 );
+
+// ── Tax breakdown modal ────────────────────────────────────────────
+const showTaxModal = ref(false);
+const taxModalData = ref({ type: '', quantity: 1, tax: 0, taxes: [] });
+
+function openTaxBreakdown(bd) {
+    taxModalData.value = { type: bd.type, quantity: bd.quantity, tax: bd.tax, taxes: bd.taxes };
+    showTaxModal.value = true;
+}
+
+function closeTaxModal() {
+    showTaxModal.value = false;
+}
 
 const fareTotals = computed(() => ({
     baseFare: Number(price.value?.base_fare ?? 0),
@@ -261,6 +278,7 @@ const issueDate = computed(() => attempt.value?.ticketed_at || attempt.value?.co
 
 function statusLabel(status) {
     if (status == 'committed') return 'Booking Confirmed';
+
     return actionLabel(status);
 }
 
@@ -295,22 +313,40 @@ function actionLabel(actionType) {
     return String(actionType).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-const activityColumns = [
-    { field: 'action_type', title: 'Action', sort: false },
-    { field: 'user_name', title: 'User', sort: false },
-    { field: 'status_change', title: 'Status', sort: false },
-    { field: 'created_at', title: 'Time', sort: false },
-];
+const ACTIVITY_CONFIG = {
+    proceed_to_booking: { icon: 'fa-solid fa-arrow-right-to-bracket', color: '#6366f1', bg: '#eef2ff', ring: '#c7d2fe' },
+    traveler_added: { icon: 'fa-solid fa-user-plus', color: '#34d399', bg: '#ecfdf5', ring: '#a7f3d0' },
+    ssr_added: { icon: 'fa-solid fa-utensils', color: '#fbbf24', bg: '#fffbeb', ring: '#fde68a' },
+    ancillary_added: { icon: 'fa-solid fa-bag-shopping', color: '#22d3ee', bg: '#ecfeff', ring: '#a5f3fc' },
+    booking_confirmed: { icon: 'fa-solid fa-circle-check', color: '#4ade80', bg: '#f0fdf4', ring: '#bbf7d0' },
+    booking_cancelled: { icon: 'fa-solid fa-ban', color: '#dc2626', bg: '#fef2f2', ring: '#fecaca' },
+    ticket_issued: { icon: 'fa-solid fa-ticket', color: '#a78bfa', bg: '#f5f3ff', ring: '#ddd6fe' },
+    ticket_voided: { icon: 'fa-solid fa-file-slash', color: '#7c3aed', bg: '#f5f3ff', ring: '#c4b5fd' },
+};
 
-const activityRows = computed(() =>
-    activityLogs.value.map((log, i) => ({
-        id: log.id ?? i,
-        action_type: actionLabel(log.action_type),
-        user_name: log.user_name || '—',
-        status_change: `${log.status_before ?? '—'} → ${log.status_after ?? '—'}`,
-        created_at: formatDateTime(log.created_at) || '—',
-    })),
-);
+function activityConfig(actionType) {
+    return ACTIVITY_CONFIG[actionType] ?? { icon: 'fa-solid fa-circle', color: '#64748b', bg: '#f1f5f9', ring: '#e2e8f0' };
+}
+
+function activityMeta(log) {
+    const m = log.metadata ?? {};
+    const parts = [];
+    if (m.traveler_count) parts.push(`${m.traveler_count} traveler(s)`);
+    if (m.meal_count) parts.push(`${m.meal_count} meal SSR`);
+    if (m.wheelchair_count) parts.push(`${m.wheelchair_count} wheelchair SSR`);
+    if (m.ancillary_count) parts.push(`${m.ancillary_count} ancillary item(s)`);
+    if (m.pnr) parts.push(`PNR: ${m.pnr}`);
+    if (m.ticket_numbers?.length) parts.push(m.ticket_numbers.join(', '));
+    return parts.join(' · ');
+}
+
+function activityInitials(name) {
+    if (!name) return '?';
+    return name.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+}
+
+// Backend returns newest-first; the timeline reads oldest-first so step numbers advance forward
+const activityTimeline = computed(() => [...activityLogs.value].reverse());
 </script>
 
 <template>
@@ -363,7 +399,8 @@ const activityRows = computed(() =>
                         </button>
                         <div v-show="open.route" class="ps-section__body">
                             <div class="pnr-route-row">
-                                <div class="pnr-route-text">{{ routeSummary || '—' }}</div>
+                                <div class="pnr-route-text">{{ attempt.agency_name || '—' }}</div>
+                                <!-- <div class="pnr-route-text">{{ routeSummary || '—' }}</div> -->
                                 <button type="button" class="btn-share-link pnr-print-hide" @click="onShare">
                                     <!-- <i class="fa-solid fa-paper-plane" aria-hidden="true" /> {{ shareCopied ? 'Copied' :
                                     'Share' }} -->
@@ -375,10 +412,10 @@ const activityRows = computed(() =>
                             </div>
 
                             <div class="pnr-meta-row">
-                                <div class="pnr-meta-item" v-if="attempt.agency_name">
+                                <!-- <div class="pnr-meta-item" v-if="attempt.agency_name">
                                     <span class="pnr-meta-label">Agency</span>
                                     <span class="pnr-meta-value">{{ attempt.agency_name || '—' }}</span>
-                                </div>
+                                </div> -->
                                 <div class="pnr-meta-item">
                                     <span class="pnr-meta-label">Booking Id</span>
                                     <span class="pnr-meta-value">{{ attempt.booking_code || '—' }}</span>
@@ -511,6 +548,7 @@ const activityRows = computed(() =>
                                             <th>Passenger</th>
                                             <th>Date of Birth</th>
                                             <th>Passport</th>
+                                            <th>Ticket No</th>
                                             <th>Contact</th>
                                         </tr>
                                     </thead>
@@ -529,10 +567,16 @@ const activityRows = computed(() =>
                                             </td>
                                             <td>{{ p.dob }}</td>
                                             <td>{{ p.passport }}</td>
+                                            <td>
+                                                <span v-if="p.ticketNo" class="ps-pax__ticket">
+                                                     {{ p.ticketNo }}
+                                                </span>
+                                                <span v-else>—</span>
+                                            </td>
                                             <td class="ps-pax__contact">{{ p.contact }}</td>
                                         </tr>
                                         <tr v-if="!passengers.length">
-                                            <td colspan="4" class="ps-empty">No passengers recorded.</td>
+                                            <td colspan="5" class="ps-empty">No passengers recorded.</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -565,7 +609,14 @@ const activityRows = computed(() =>
                                                 :class="`ps-fd-row--${paxTone(bd.type)}`">
                                                 <td>{{ bd.type }} × {{ bd.quantity }}</td>
                                                 <td>{{ fmtMoney(bd.baseFare) }}</td>
-                                                <td>{{ fmtMoney(bd.tax) }}</td>
+                                                <td>
+                                                    <button v-if="bd.taxes?.length" type="button"
+                                                        class="ps-fd__tax-btn" @click="openTaxBreakdown(bd)">
+                                                        {{ fmtMoney(bd.tax) }}
+                                                        <i class="fa-solid fa-circle-info" aria-hidden="true" />
+                                                    </button>
+                                                    <span v-else>{{ fmtMoney(bd.tax) }}</span>
+                                                </td>
                                                 <td>{{ fmtMoney(bd.total) }}</td>
                                             </tr>
                                             <tr v-if="!paxBreakdown.length">
@@ -672,41 +723,97 @@ const activityRows = computed(() =>
                             </article>
                         </div>
                     </section>
-
-                    <!-- Activity Log -->
-                    <section class="ps-section pnr-print-hide">
-                        <button type="button" class="ps-section__head" @click="toggleSection('activity')">
-                            <span>Activity Log</span>
-                            <i class="fa-solid" :class="open.activity ? 'fa-chevron-up' : 'fa-chevron-down'"
-                                aria-hidden="true" />
-                        </button>
-
-                        <div v-show="open.activity" class="ps-section__body">
-                            <DataTable table-id="pnr-search-activity-log" :rows="activityRows"
-                                :columns="activityColumns" :striped="false" :loading="false" :sortable="false"
-                                :page-size="10" search-placeholder="Search activity"
-                                empty-state-text="No activity recorded" no-match-text="No matching entries" />
-                        </div>
-                    </section>
                 </div>
 
-                <!-- Fare summary -->
+                <!-- Activity / Booking History -->
                 <div class="col-lg-4 pnr-print-hide">
-                    <div class="ps-summary">
-                        <div class="ps-summary__row"><span><i class="fa-solid fa-file-invoice" aria-hidden="true" />
-                                Total Base
-                                Fare</span><strong>{{ fmtMoney(fareTotals.baseFare) }}</strong></div>
-                        <div class="ps-summary__row"><span><i class="fa-solid fa-landmark" aria-hidden="true" /> Total
-                                Tax</span><strong>{{ fmtMoney(fareTotals.tax) }}</strong></div>
-                        <div class="ps-summary__row"><span><i class="fa-solid fa-receipt" aria-hidden="true" /> Gross
-                                Fare</span>
-                            <!-- <strong>{{ fmtMoney(fareTotals.grossFare) }}</strong> -->
-                            <strong>{{ fmtMoney(fareTotals.tax + fareTotals.baseFare) }}</strong>
+                    <div class="pnr-hist">
+                        <div class="pnr-hist__head">
+                            <span class="pnr-hist__head-icon"><i class="fa-solid fa-clock-rotate-left"
+                                    aria-hidden="true" /></span>
+                            <div>
+                                <div class="pnr-hist__title">Activity Log</div>
+                                <div v-if="attempt.gds_pnr || attempt.airline_pnr" class="pnr-hist__pnr">
+                                    <i class="fa-solid fa-hashtag" aria-hidden="true" /> PNR: {{ attempt.gds_pnr ||
+                                        attempt.airline_pnr }}
+                                </div>
+                            </div>
                         </div>
-                        <div class="ps-summary__divider"></div>
-                        <!-- <div class="ps-summary__row ps-summary__row--payable"><span><i class="fa-solid fa-wallet"
-                                    aria-hidden="true" />
-                                PAX Payable</span><strong>{{ fmtMoney(fareTotals.grossFare) }}</strong></div> -->
+
+                        <div class="pnr-hist__body">
+                            <div v-if="!activityTimeline.length" class="pnr-hist__empty">
+                                <i class="fa-solid fa-inbox" aria-hidden="true" />
+                                <span>No activity recorded yet.</span>
+                            </div>
+
+                            <div v-else class="pnr-hist__timeline">
+                                <div v-for="(log, idx) in activityTimeline" :key="log.id" class="pnr-hist__entry">
+                                    <div class="pnr-hist__connector">
+                                        <div class="pnr-hist__step" :style="{
+                                            background: activityConfig(log.action_type).color,
+                                            boxShadow: `0 0 0 4px ${activityConfig(log.action_type).ring}`,
+                                        }">
+                                            <i :class="activityConfig(log.action_type).icon" class="pnr-hist__step-icon"
+                                                aria-hidden="true" />
+                                            <span class="pnr-hist__step-num">{{ idx + 1 }}</span>
+                                        </div>
+                                        <div v-if="idx < activityTimeline.length - 1" class="pnr-hist__line" :style="{
+                                            background: `linear-gradient(to bottom, ${activityConfig(log.action_type).color}55, ${activityConfig(activityTimeline[idx + 1].action_type).color}55)`,
+                                        }" />
+                                    </div>
+
+                                    <div class="pnr-hist__content">
+                                        <div class="pnr-hist__card">
+                                            <div class="pnr-hist__card-head" :style="{
+                                                background: activityConfig(log.action_type).bg,
+                                                borderBottom: `1px solid ${activityConfig(log.action_type).ring}`,
+                                            }">
+                                                <span class="pnr-hist__badge"
+                                                    :style="{ color: activityConfig(log.action_type).color }">
+                                                    <i :class="activityConfig(log.action_type).icon"
+                                                        aria-hidden="true" />
+                                                    {{ actionLabel(log.action_type) }}
+                                                </span>
+                                                <span class="pnr-hist__time">
+                                                    <i class="fa-regular fa-clock" aria-hidden="true" />
+                                                    {{ formatDateTime(log.created_at) }}
+                                                </span>
+                                            </div>
+
+                                            <div class="pnr-hist__card-body">
+                                                <div v-if="activityMeta(log)" class="pnr-hist__meta">{{
+                                                    activityMeta(log) }}</div>
+
+                                                <div class="pnr-hist__bottom">
+                                                    <div v-if="log.user_name" class="pnr-hist__user">
+                                                        <span class="pnr-hist__avatar"
+                                                            :style="{ background: activityConfig(log.action_type).color }">{{
+                                                                activityInitials(log.user_name) }}</span>
+                                                        <span class="pnr-hist__username">{{ log.user_name }}</span>
+                                                    </div>
+
+                                                    <div v-if="log.status_before || log.status_after"
+                                                        class="pnr-hist__status-flow">
+                                                        <span v-if="log.status_before"
+                                                            class="pnr-hist__status pnr-hist__status--before">{{
+                                                                log.status_before }}</span>
+                                                        <i v-if="log.status_before && log.status_after"
+                                                            class="fa-solid fa-chevron-right pnr-hist__status-arrow"
+                                                            aria-hidden="true" />
+                                                        <span v-if="log.status_after"
+                                                            class="pnr-hist__status pnr-hist__status--after" :style="{
+                                                                background: activityConfig(log.action_type).bg,
+                                                                color: activityConfig(log.action_type).color,
+                                                                borderColor: activityConfig(log.action_type).ring,
+                                                            }">{{ log.status_after }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -721,6 +828,50 @@ const activityRows = computed(() =>
             </div>
         </div>
     </div>
+
+    <Teleport to="body">
+        <Transition name="tax-modal-fade">
+            <div v-if="showTaxModal" class="tax-modal-overlay" @click.self="closeTaxModal">
+                <div class="tax-modal-card">
+                    <div class="tax-modal-head">
+                        <div>
+                            <div class="tax-modal-title">Tax Breakdown</div>
+                            <div class="tax-modal-sub">{{ taxModalData.type }} × {{ taxModalData.quantity }}</div>
+                        </div>
+                        <button type="button" class="tax-modal-close" @click="closeTaxModal">
+                            <i class="fa-solid fa-xmark" aria-hidden="true" />
+                        </button>
+                    </div>
+
+                    <div class="tax-modal-body">
+                        <table v-if="taxModalData.taxes.length" class="tax-modal-table">
+                            <thead>
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Description</th>
+                                    <th>Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(t, ti) in taxModalData.taxes" :key="ti">
+                                    <td>{{ t.code || '—' }}</td>
+                                    <td>{{ t.description || '—' }}</td>
+                                    <td>{{ fmtMoney(t.amount) }}</td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="2">Total Tax × {{ taxModalData.quantity }}</td>
+                                    <td>{{ fmtMoney(taxModalData.tax) }}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                        <div v-else class="ps-empty">No detailed tax breakdown available.</div>
+                    </div>
+                </div>
+            </div>
+        </Transition>
+    </Teleport>
 </template>
 
 <style scoped>
@@ -1392,6 +1543,20 @@ const activityRows = computed(() =>
     white-space: pre-line;
 }
 
+.ps-pax__ticket {
+    /* display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: var(--ps-purple);
+    white-space: nowrap; */
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #000;
+    font-variant-numeric: tabular-nums;
+}
+
 /* ── Fare details ───────────────────────────────────────────────── */
 .ps-fd {
     display: flex;
@@ -1431,6 +1596,29 @@ const activityRows = computed(() =>
     font-weight: 700;
     background: var(--ps-soft);
     border-bottom: none;
+}
+
+.ps-fd__tax-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: var(--ps-primary);
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline dotted;
+}
+
+.ps-fd__tax-btn:hover {
+    color: #0261b3;
+}
+
+.ps-fd__tax-btn i {
+    font-size: 0.72rem;
+    color: var(--ps-muted);
 }
 
 .ps-fd__gross {
@@ -1591,55 +1779,262 @@ const activityRows = computed(() =>
     color: #ef4444;
 }
 
-/* ── Fare summary sidebar ───────────────────────────────────────── */
-.ps-summary {
+/* ── Booking history sidebar ───────────────────────────────────── */
+.pnr-hist {
     position: sticky;
     top: 1rem;
-    background: var(--ps-surface, #fff);
+    background: #f8fafc;
     border: 1px solid var(--ps-border, #e2e8f0);
-    border-radius: 12px;
+    border-radius: 16px;
     box-shadow: var(--ps-shadow, 0 1px 3px rgba(15, 23, 42, 0.06));
-    padding: 1.1rem 1.25rem;
+    overflow: hidden;
+    max-height: calc(100vh - 2rem);
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
 }
 
-.ps-summary__row {
+.pnr-hist__head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.1rem 1.25rem;
+    /* background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%); */
+    background: #e2e8f0;
+    flex-shrink: 0;
+}
+
+.pnr-hist__head-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 0.65rem;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid #2020201f;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #000;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+.pnr-hist__title {
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: #000;
+    letter-spacing: -0.01em;
+}
+
+.pnr-hist__pnr {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.68rem;
+    color: #000;
+    font-weight: 600;
+    margin-top: 0.15rem;
+}
+
+.pnr-hist__body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.25rem 1rem 1.25rem 0.9rem;
+}
+
+.pnr-hist__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    min-height: 160px;
+    font-size: 0.82rem;
+    color: #94a3b8;
+}
+
+.pnr-hist__empty i {
+    font-size: 2rem;
+    color: #cbd5e1;
+}
+
+.pnr-hist__timeline {
+    display: flex;
+    flex-direction: column;
+}
+
+.pnr-hist__entry {
+    display: flex;
+    position: relative;
+}
+
+.pnr-hist__connector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    width: 46px;
+    padding-top: 0.1rem;
+}
+
+.pnr-hist__step {
+    position: relative;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    z-index: 1;
+}
+
+.pnr-hist__step-icon {
+    color: #fff;
+    font-size: 0.8rem;
+}
+
+.pnr-hist__step-num {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 15px;
+    height: 15px;
+    background: #fff;
+    border-radius: 50%;
+    font-size: 0.56rem;
+    font-weight: 800;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+    line-height: 1;
+}
+
+.pnr-hist__line {
+    width: 2px;
+    flex: 1;
+    min-height: 18px;
+    margin: 0.35rem 0;
+    border-radius: 1px;
+}
+
+.pnr-hist__content {
+    flex: 1;
+    min-width: 0;
+    padding-bottom: 1.1rem;
+    padding-left: 0.2rem;
+}
+
+.pnr-hist__card {
+    background: #fff;
+    border: 1px solid #e8ecf0;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.pnr-hist__card-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 0.85rem;
-    color: var(--ps-sub, #475569);
+    gap: 0.5rem;
+    padding: 0.55rem 0.75rem;
+    flex-wrap: wrap;
 }
 
-.ps-summary__row i {
-    color: var(--ps-muted, #64748b);
-    margin-right: 0.35rem;
-}
-
-.ps-summary__row strong {
-    color: var(--ps-text, #0f172a);
+.pnr-hist__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.7rem;
     font-weight: 700;
 }
 
-.ps-summary__divider {
-    height: 1px;
-    background: var(--ps-border, #e2e8f0);
-    margin: 0.15rem 0;
+.pnr-hist__time {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.64rem;
+    color: #94a3b8;
+    white-space: nowrap;
 }
 
-.ps-summary__row--payable {
-    background: var(--ps-seg-tint, #f7f9fe);
-    margin: 0 -1.25rem -1.1rem;
-    padding: 0.9rem 1.25rem;
-    border-radius: 0 0 12px 12px;
-    font-size: 0.95rem;
+.pnr-hist__card-body {
+    padding: 0.6rem 0.75rem 0.7rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
-.ps-summary__row--payable strong {
-    color: var(--ps-primary, #027de2);
-    font-size: 1.15rem;
+.pnr-hist__meta {
+    font-size: 0.72rem;
+    color: #64748b;
+    line-height: 1.5;
+}
+
+.pnr-hist__bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.pnr-hist__user {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.pnr-hist__avatar {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.56rem;
+    font-weight: 800;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.pnr-hist__username {
+    font-size: 0.7rem;
+    color: #475569;
+    font-weight: 600;
+}
+
+.pnr-hist__status-flow {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.pnr-hist__status {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.18rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid;
+}
+
+.pnr-hist__status--before {
+    background: #f1f5f9;
+    color: #64748b;
+    border-color: #e2e8f0;
+}
+
+.pnr-hist__status--after {
+    border-width: 1px;
+    border-style: solid;
+}
+
+.pnr-hist__status-arrow {
+    font-size: 0.52rem;
+    color: #cbd5e1;
 }
 
 /* Tablet Responsive (768px - 1024px) */
@@ -1805,6 +2200,116 @@ const activityRows = computed(() =>
         color: #fff;
     }
 }
+
+/* ── Tax breakdown modal ────────────────────────────────────────── */
+.tax-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 10, 20, 0.6);
+    backdrop-filter: blur(3px);
+    z-index: 1070;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.tax-modal-card {
+    width: 100%;
+    max-width: 460px;
+    max-height: calc(100vh - 2rem);
+    background: #fff;
+    border-radius: 1rem;
+    overflow: hidden;
+    box-shadow: 0 32px 80px rgba(0, 0, 0, 0.28);
+    display: flex;
+    flex-direction: column;
+}
+
+.tax-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+    flex-shrink: 0;
+}
+
+.tax-modal-title {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -0.01em;
+}
+
+.tax-modal-sub {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 600;
+    margin-top: 0.15rem;
+}
+
+.tax-modal-close {
+    width: 30px;
+    height: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    color: rgba(255, 255, 255, 0.75);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s;
+}
+
+.tax-modal-close:hover {
+    background: rgba(255, 255, 255, 0.22);
+    color: #fff;
+}
+
+.tax-modal-body {
+    padding: 1rem 1.25rem 1.25rem;
+    overflow-y: auto;
+}
+
+.tax-modal-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+
+.tax-modal-table thead th {
+    text-align: left;
+    color: #94a3b8;
+    font-size: 0.66rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.5rem 0.4rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.tax-modal-table tbody td {
+    padding: 0.5rem 0.4rem;
+    border-bottom: 1px solid #f1f5f9;
+    color: #0f172a;
+}
+
+.tax-modal-table tfoot td {
+    padding: 0.6rem 0.4rem;
+    font-weight: 700;
+    color: #0f172a;
+    border-top: 1px solid #e2e8f0;
+}
+
+.tax-modal-fade-enter-active { transition: opacity 0.2s ease, transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.tax-modal-fade-leave-active { transition: opacity 0.15s ease; }
+.tax-modal-fade-enter-from { opacity: 0; transform: scale(0.94) translateY(10px); }
+.tax-modal-fade-leave-to { opacity: 0; }
 </style>
 
 <style>

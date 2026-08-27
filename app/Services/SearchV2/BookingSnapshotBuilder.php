@@ -65,18 +65,26 @@ class BookingSnapshotBuilder
                     ?? data_get($price->price_payload, 'products'),
             ] : null,
             'workbench_identifier' => $attempt->workbench_identifier,
-            'travelers'    => $attempt->paxes->map(fn(BookingPax $p) => [
-                'sequence'          => $p->sequence,
-                'pax_type'          => $p->pax_type,
-                'name'              => trim("{$p->title} {$p->first_name} {$p->last_name}"),
-                'dob'               => optional($p->dob)->format('Y-m-d'),
-                'gender'            => $p->gender,
-                'passport_no'       => $p->passport_number,
-                'email'             => $p->email,
-                'phone'             => $p->phone,
-                'meal_preference'   => $p->meal_preference,
-                'wheelchair_needed' => $p->wheelchair_needed,
-            ])->values()->all(),
+            'travelers'    => (function () use ($attempt) {
+                $ticketNosBySequence = $this->ticketNumbersBySequence($attempt);
+                $flatTicketNumbers   = array_values((array) ($attempt->ticket_numbers ?? []));
+
+                return $attempt->paxes->map(fn(BookingPax $p) => [
+                    'sequence'          => $p->sequence,
+                    'pax_type'          => $p->pax_type,
+                    'name'              => trim("{$p->title} {$p->first_name} {$p->last_name}"),
+                    'dob'               => optional($p->dob)->format('Y-m-d'),
+                    'gender'            => $p->gender,
+                    'passport_no'       => $p->passport_number,
+                    'email'             => $p->email,
+                    'phone'             => $p->phone,
+                    'meal_preference'   => $p->meal_preference,
+                    'wheelchair_needed' => $p->wheelchair_needed,
+                    'ticket_no'         => $ticketNosBySequence[$p->sequence]
+                        ?? $flatTicketNumbers[$p->sequence - 1]
+                        ?? null,
+                ])->values()->all();
+            })(),
             'ancillaries'  => $ancillaries,
             'ssr_applied'  => $attempt->sessions->contains(fn($s) => str_starts_with((string) $s->session_type, 'add_ssr')
                 && $s->status === 'success'),
@@ -84,6 +92,43 @@ class BookingSnapshotBuilder
                 && $s->status === 'success'),
             'content_source' => data_get($attempt->selection_json, 'content_source'),
         ];
+    }
+
+    // Maps sequence => ticket number using the ticket_commit response's TravelerIdentifierRef
+    // ("travelerRefId_{sequence}"), since booking_attempts.ticket_numbers stores only a flat list
+    private function ticketNumbersBySequence(BookingAttempt $attempt): array
+    {
+        $session = $attempt->sessions
+            ->where('session_type', 'ticket_commit')
+            ->where('status', 'success')
+            ->sortByDesc('id')
+            ->first();
+
+        if (!$session) {
+            return [];
+        }
+
+        $receipts = data_get($session->response_payload, 'ReservationResponse.Reservation.Receipt', []);
+        if (!is_array($receipts)) {
+            return [];
+        }
+
+        $bySequence = [];
+        foreach ($receipts as $receipt) {
+            if (($receipt['@type'] ?? '') !== 'ReceiptPayment') {
+                continue;
+            }
+            foreach ($receipt['Document'] ?? [] as $doc) {
+                $number = $doc['Number'] ?? $doc['number'] ?? null;
+                $ref    = $doc['TravelerIdentifierRef']['value'] ?? null;
+                if (!$number || !$ref || !preg_match('/(\d+)$/', $ref, $m)) {
+                    continue;
+                }
+                $bySequence[(int) $m[1]] = (string) $number;
+            }
+        }
+
+        return $bySequence;
     }
 
     public function buildPostCommit(BookingAttempt $attempt, array $commitBody, array $parsed): array
