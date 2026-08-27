@@ -34,6 +34,7 @@ class GroupController extends BaseController
                 'group_requests.group_type',
                 'group_requests.preferred_flight',
                 'group_requests.created_at',
+                'group_requests.updated_at',
                 'group_requests.group_code',
                 'group_requests.origin',
                 'group_requests.destination',
@@ -108,6 +109,7 @@ class GroupController extends BaseController
             ->groupBy('group_requests.created_by')
             ->groupBy('group_requests.updated_by')
             ->groupBy('group_requests.created_at')
+            ->groupBy('group_requests.updated_at')
             ->groupBy('group_requests.adult_traveler')
             ->groupBy('group_requests.child_traveler')
             ->groupBy('group_requests.infant_traveler')
@@ -214,7 +216,7 @@ class GroupController extends BaseController
 
             // Audit
             'created_by'              => auth()->id(),
-            'updated_by'              => auth()->id(),
+            // 'updated_by'              => auth()->id(),
         ]);
 
         // Multi-city segments

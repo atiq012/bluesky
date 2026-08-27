@@ -33,7 +33,7 @@ const tripType = ref('oneway');
 
 const tripTypes = [
     { value: 'oneway', label: 'One Way' },
-    { value: 'roundway', label: 'Round Way' },
+    { value: 'roundway', label: 'Round Trip' },
     { value: 'multicity', label: 'Multi City' },
 ];
 

@@ -43,7 +43,7 @@ const columns = [
     { field: 'kam', title: 'KAM' },
     { field: 'status', title: 'Status' },
     { field: 'created_col', title: 'Created By', sort: false },
-    // { field: 'updated_col', title: 'Updated By', sort: false },
+    { field: 'updated_col', title: 'Updated By', sort: false },
     { field: 'action', title: 'Action' },
 ];
 
@@ -61,13 +61,13 @@ function groupIdDisplay(row) {
 }
 
 function wayTypeConfig(wayType) {
-    console.log(wayType);
+
     const wayTypeR = '';
     if (wayType === 'multicity') {
                 return { cls: 'way-badge multi-city', label: 'Multi City' };
     }
     else if (wayType === 'roundway') {
-        return { cls: 'way-badge way-round', label: 'Round Way' };
+        return { cls: 'way-badge way-round', label: 'Round Trip' };
     } else {
         return { cls: 'way-badge way-one', label: 'One Way' };
 
@@ -517,7 +517,7 @@ async function handleEticketGenerated(data) {
                     </template>
                     <!-- Status -->
                     <template #status="{ value: row }">
-                        <div class="status-cell d-flex flex-column">
+                        <!-- <div class="status-cell d-flex flex-column">
                             <span v-if="row.opstatus == null" :class="['rounded-pill', statusConfig(row.status).cls]">
                                 <i :class="[statusConfig(row.status).icon, 'me-1 tiny']"></i>
                                 {{ statusConfig(row.status).label }}
@@ -530,6 +530,26 @@ async function handleEticketGenerated(data) {
                             <span v-if="row.opstatus=='PAX Partially Uploaded'" class="cell-link small mt-2">
                                 <i class="fa fa-info-circle "></i> {{ row.total_traveler - row.pax_count }} PAX Remaining
                             </span>
+                        </div> -->
+                        <div class="fare-cell">
+                            <div class="status-cell">
+                                <span v-if="row.opstatus == null"
+                                    :class="['rounded-pill', statusConfig(row.status).cls]">
+                                    <i :class="[statusConfig(row.status).icon, 'me-1 tiny']"></i>
+                                    {{ statusConfig(row.status).label }}
+                                </span>
+                                <span v-else :class="['rounded-pill', statusConfig(row.opstatus).cls]">
+                                    <i :class="[statusConfig(row.opstatus).icon, 'me-1 tiny']"></i>
+                                    {{ statusConfig(row.opstatus).label }}
+                                </span>
+
+                            </div>
+                            <div class="cell-link" v-if="row.opstatus == null">{{
+                                moment(row.updated_at).format('DD-MMM-YYYY h:mm A') }}
+                            </div>
+                            <div class="cell-link" v-else>{{ moment(row.opupdated_at).format('DD-MMM-YYYY h:mm A') }}
+                            </div>
+
                         </div>
                     </template>
 
@@ -540,9 +560,9 @@ async function handleEticketGenerated(data) {
                     </template>
 
                     <!-- Updated By -->
-                    <!-- <template #updated_col="{ value: row }">
+                    <template #updated_col="{ value: row }">
                         <CreatedInfo :name="row?.updatedby || row?.updatedby" :date="row?.updated_at" />
-                    </template> -->
+                    </template>
 
                     <!-- Action -->
                     <template #action="{ value: row }">
