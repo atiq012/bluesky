@@ -422,7 +422,7 @@ async function handleEticketGenerated(data) {
                                 <i class="fa-solid fa-plane-departure me-1 table-icon"></i>
                                 {{ row.airline_code }}
                             </div>
-                            <div class="cell-link">PNR : {{ row.pnr || '-' }}</div>
+                            <div class="cell-link" v-if="row.pnr">PNR : {{ row.pnr || '-' }}</div>
 
                         </div>
                     </template>
@@ -513,7 +513,12 @@ async function handleEticketGenerated(data) {
                     <template #kam="{ value: row }">
 
                         <CreatedInfo :name="row?.assigned_to_kam" :date="row?.assigned_date" />
-
+                        <div class="cell-link" v-if="row.kam_email">
+                            <i class="fa fa-envelope me-1"></i> {{ row.kam_email }}
+                        </div>
+                        <div class="cell-link" v-if="row.kam_phone">
+                            <i class="fa fa-phone me-1"></i> {{ row.kam_phone }}
+                        </div>
                     </template>
                     <!-- Status -->
                     <template #status="{ value: row }">

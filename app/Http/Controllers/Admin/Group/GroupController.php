@@ -22,6 +22,7 @@ class GroupController extends BaseController
             ->where('group_requests.agent_code', Auth::user()->agent->agent_code)
             ->leftJoin('users as u', 'u.id', '=', 'group_requests.created_by')
             ->leftJoin('users as u2', 'u2.id', '=', 'group_requests.updated_by')
+            ->leftJoin('users as u3', 'u3.id', '=', 'group_requests.assigned_to')
             ->leftJoin('agents as a', 'a.agent_code', '=', 'group_requests.agent_code')
             ->leftJoin('group_request_segments', 'group_requests.id', '=', 'group_request_segments.group_request_id')
             ->leftJoin('group_p_a_x_infos as pax', 'group_requests.id', '=', 'pax.group_id')
@@ -53,6 +54,8 @@ class GroupController extends BaseController
                 'group_requests.total_traveler',
                 'group_requests.status',
                 'group_requests.airline_code',
+                'u3.phone as kam_phone',
+                'u3.email as kam_email',
                 // Add all other columns you need explicitly
                 'u.name as createdby',
                 'u2.name as updatedby',
@@ -117,6 +120,8 @@ class GroupController extends BaseController
             ->groupBy('group_requests.status')
             ->groupBy('group_requests.airline_code')
             ->groupBy('u.name')
+            ->groupBy('u3.phone')
+            ->groupBy('u3.email')
             ->groupBy('u2.name')
             ->groupBy('a.name')
             ->groupBy('op.status')
