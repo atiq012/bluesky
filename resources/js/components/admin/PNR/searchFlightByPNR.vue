@@ -111,6 +111,7 @@ const paxBreakdown = computed(() =>
 // ── Tax breakdown modal ────────────────────────────────────────────
 const showTaxModal = ref(false);
 const taxModalData = ref({ type: '', quantity: 1, tax: 0, taxes: [] });
+const taxPerPax = computed(() => taxModalData.value.tax / taxModalData.value.quantity);
 
 function openTaxBreakdown(bd) {
     taxModalData.value = { type: bd.type, quantity: bd.quantity, tax: bd.tax, taxes: bd.taxes };
@@ -860,6 +861,10 @@ const activityTimeline = computed(() => [...activityLogs.value].reverse());
                                 </tr>
                             </tbody>
                             <tfoot>
+                                <tr>
+                                    <td colspan="2">Total Tax (Per PAX)</td>
+                                    <td>{{ fmtMoney(taxPerPax) }}</td>
+                                </tr>
                                 <tr>
                                     <td colspan="2">Total Tax × {{ taxModalData.quantity }}</td>
                                     <td>{{ fmtMoney(taxModalData.tax) }}</td>
