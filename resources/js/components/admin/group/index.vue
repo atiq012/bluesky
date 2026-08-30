@@ -580,7 +580,7 @@ async function handleEticketGenerated(data) {
                             @pax-upload="handlePAXUpload"
                             @uploaded-pax="handleUploadedPAX"
                             @generate-eticket="handleGenerateETicket"
-                            @delete="handleDelete"/>
+                            @delete="handleDelete" deleteLabel="Decline" />
                     </template>
                 </AppDataTable>
             </div>

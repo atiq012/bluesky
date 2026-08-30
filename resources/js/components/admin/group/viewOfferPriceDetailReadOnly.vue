@@ -33,6 +33,8 @@ async function getAllDataOfGroup(id) {
 
         data.value = groupData;
         offerData.value = offer;
+        console.log(offerData.value);
+
     } catch (error) {
         console.error('Failed to fetch group data:', error);
         Notification.showToast('error', error.response?.data?.message || 'Failed to load group data');
@@ -65,38 +67,53 @@ function formatPaymentDate(val) {
     return moment(val).format('DD-MMM-YYYY | hh:mm A');
 }
 
-// Computed totals from offer data
+// Base fare adjusted for markup (Flat/Percent), service charge, and totals
+function calcMarkedUpBaseFare(rawBase) {
+    const base = Number(rawBase) || 0;
+    const markupValue = Number(offerData.value?.markup_value) || 0;
+    if (!markupValue) return base;
+    if (offerData.value?.markup_type === 'Percent') {
+        return base * (1 + markupValue / 100);
+    }
+    return base + markupValue;
+}
+
+function calcServiceCharge(markedUpBase) {
+    const value = Number(offerData.value?.service_charge_value) || 0;
+    if (offerData.value?.service_charge_type === 'Flat') return value;
+    return (markedUpBase * value) / 100;
+}
+
+const adultBaseFare = computed(() => calcMarkedUpBaseFare(offerData.value?.adult_base_fare));
+const childBaseFare = computed(() => calcMarkedUpBaseFare(offerData.value?.child_base_fare));
+const infantBaseFare = computed(() => calcMarkedUpBaseFare(offerData.value?.infant_base_fare));
+
+const adultServiceCharge = computed(() => calcServiceCharge(adultBaseFare.value));
+const childServiceCharge = computed(() => calcServiceCharge(childBaseFare.value));
+const infantServiceCharge = computed(() => calcServiceCharge(infantBaseFare.value));
+
 const adultTotal = computed(() => {
     if (!offerData.value) return 0;
-    const f = {
-        baseFare: Number(offerData.value.adult_base_fare) || 0,
-        tax: Number(offerData.value.adult_tax) || 0,
-        ait: Number(offerData.value.adult_ait) || 0,
-        maxPax: Number(offerData.value.adult_max_pax) || 0,
-    };
-    return (f.baseFare + f.tax + f.ait) * f.maxPax;
+    const tax = Number(offerData.value.adult_tax) || 0;
+    const ait = Number(offerData.value.adult_ait) || 0;
+    const maxPax = Number(offerData.value.adult_max_pax) || 0;
+    return (adultBaseFare.value + tax + ait + adultServiceCharge.value) * maxPax;
 });
 
 const childTotal = computed(() => {
     if (!offerData.value) return 0;
-    const f = {
-        baseFare: Number(offerData.value.child_base_fare) || 0,
-        tax: Number(offerData.value.child_tax) || 0,
-        ait: Number(offerData.value.child_ait) || 0,
-        maxPax: Number(offerData.value.child_max_pax) || 0,
-    };
-    return (f.baseFare + f.tax + f.ait) * f.maxPax;
+    const tax = Number(offerData.value.child_tax) || 0;
+    const ait = Number(offerData.value.child_ait) || 0;
+    const maxPax = Number(offerData.value.child_max_pax) || 0;
+    return (childBaseFare.value + tax + ait + childServiceCharge.value) * maxPax;
 });
 
 const infantTotal = computed(() => {
     if (!offerData.value) return 0;
-    const f = {
-        baseFare: Number(offerData.value.infant_base_fare) || 0,
-        tax: Number(offerData.value.infant_tax) || 0,
-        ait: Number(offerData.value.infant_ait) || 0,
-        maxPax: Number(offerData.value.infant_max_pax) || 0,
-    };
-    return (f.baseFare + f.tax + f.ait) * f.maxPax;
+    const tax = Number(offerData.value.infant_tax) || 0;
+    const ait = Number(offerData.value.infant_ait) || 0;
+    const maxPax = Number(offerData.value.infant_max_pax) || 0;
+    return (infantBaseFare.value + tax + ait + infantServiceCharge.value) * maxPax;
 });
 
 const estTotalFare = computed(() => offerData.value?.est_total_fare || 0);
@@ -440,8 +457,7 @@ async function handleDecline() {
                                             <div class="fare-fields">
                                                 <div class="fare-field">
                                                     <label>Base Fare :</label>
-                                                    <span class="fare-value">{{ formatCurrency(offerData.adult_base_fare, currency)
-                                                    }}</span>
+                                                    <span class="fare-value">{{ formatCurrency(adultBaseFare, currency) }}</span>
                                                 </div>
                                                 <div class="fare-field">
                                                     <label>TAX :</label>
@@ -450,6 +466,10 @@ async function handleDecline() {
                                                 <div class="fare-field">
                                                     <label>AIT :</label>
                                                     <span class="fare-value">{{ offerData.adult_ait || '0' }}</span>
+                                                </div>
+                                                <div class="fare-field">
+                                                    <label>Service Charge :</label>
+                                                    <span class="fare-value">{{ formatCurrency(adultServiceCharge, currency) }}</span>
                                                 </div>
                                                 <div class="fare-field">
                                                     <label>Max PAX :</label>
@@ -465,8 +485,7 @@ async function handleDecline() {
                                             <div class="fare-fields">
                                                 <div class="fare-field">
                                                     <label>Base Fare :</label>
-                                                    <span class="fare-value">{{ formatCurrency(offerData.child_base_fare, currency)
-                                                    }}</span>
+                                                    <span class="fare-value">{{ formatCurrency(childBaseFare, currency) }}</span>
                                                 </div>
                                                 <div class="fare-field">
                                                     <label>TAX :</label>
@@ -475,6 +494,10 @@ async function handleDecline() {
                                                 <div class="fare-field">
                                                     <label>AIT :</label>
                                                     <span class="fare-value">{{ offerData.child_ait || '0' }}</span>
+                                                </div>
+                                                <div class="fare-field">
+                                                    <label>Service Charge :</label>
+                                                    <span class="fare-value">{{ formatCurrency(childServiceCharge, currency) }}</span>
                                                 </div>
                                                 <div class="fare-field">
                                                     <label>Max PAX :</label>
@@ -490,8 +513,7 @@ async function handleDecline() {
                                             <div class="fare-fields">
                                                 <div class="fare-field">
                                                     <label>Base Fare :</label>
-                                                    <span class="fare-value">{{ formatCurrency(offerData.infant_base_fare, currency)
-                                                    }}</span>
+                                                    <span class="fare-value">{{ formatCurrency(infantBaseFare, currency) }}</span>
                                                 </div>
                                                 <div class="fare-field">
                                                     <label>TAX :</label>
@@ -500,6 +522,10 @@ async function handleDecline() {
                                                 <div class="fare-field">
                                                     <label>AIT :</label>
                                                     <span class="fare-value">{{ offerData.infant_ait || '0' }}</span>
+                                                </div>
+                                                <div class="fare-field">
+                                                    <label>Service Charge :</label>
+                                                    <span class="fare-value">{{ formatCurrency(infantServiceCharge, currency) }}</span>
                                                 </div>
                                                 <div class="fare-field">
                                                     <label>Max PAX :</label>

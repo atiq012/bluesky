@@ -109,7 +109,7 @@ const visibleCount = computed(() => [
     props.showFundsReady, props.showGiveAdvance, props.showAuthorize,
     props.showPaymentHistory, props.showReturn, props.showDownloadRequest,
     props.showDownloadResponse, props.showIssueTicket, props.showCancelBooking,
-    props.showHistory, props.showVoidTicket,
+    props.showHistory, props.showVoidTicket,props.deleteLabel
 ].filter(Boolean).length);
 
 const colsPerRow = computed(() => {
