@@ -498,7 +498,7 @@ async function handleDecline() {
                                                 <div class="fare-field">
                                                     <label>Service Charge :</label>
                                                     <span class="fare-value" v-if="offerData.child_max_pax > 0">{{ formatCurrency(childServiceCharge, currency) }}</span>
-                                                    <span v-else>0</span>
+                                                    <span class="fare-value" v-else>0</span>
                                                 </div>
                                                 <div class="fare-field">
                                                     <label>Max PAX :</label>
@@ -527,7 +527,7 @@ async function handleDecline() {
                                                 <div class="fare-field">
                                                     <label>Service Charge :</label>
                                                     <span class="fare-value" v-if="offerData.infant_max_pax > 0">{{ formatCurrency(infantServiceCharge, currency) }}</span>
-                                                    <span v-else>0</span>
+                                                    <span class="fare-value" v-else>0</span>
                                                 </div>
                                                 <div class="fare-field">
                                                     <label>Max PAX :</label>
