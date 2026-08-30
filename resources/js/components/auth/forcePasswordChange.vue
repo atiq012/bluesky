@@ -1,6 +1,7 @@
 <script setup>
 import { reactive, ref, watch } from "vue";
 import { useAuthStore } from "../../stores/authStore";
+import { performLogout } from "../../Helpers/logout";
 const authStore = useAuthStore();
 import ProgressBar from "vue-3-simple-progress-bar";
 
@@ -125,8 +126,7 @@ function resetPassword() {
             ButtonName.value = "Reset Password";
             console.log(res.data);
             Notification.showToast("s", res.data.message);
-            authStore.logout();
-            router.push({ name: "Login" });
+            void performLogout();
         })
         .catch((eEes) => {
             loading.value = false;
@@ -137,8 +137,7 @@ function resetPassword() {
 }
 
 function BackLogin() {
-    authStore.logout();
-    router.push({ name: "Login" });
+    void performLogout();
 }
 
 function isGood(password) {

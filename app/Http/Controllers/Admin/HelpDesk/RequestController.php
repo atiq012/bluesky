@@ -233,7 +233,7 @@ class RequestController extends BaseController
             $requestData->requester_id   = $request->input('requester');
             $requestData->priority       = $request->input('priority');
             $requestData->subject        = $request->input('subject');
-            $requestData->description    = $request->input('description');
+            $requestData->description    = clean_rich_html($request->input('description'));
             $requestData->request_type   = $request->input('request_type');
             $requestData->asset          = $request->input('assets');
             $requestData->mode           = $request->input('mode');
@@ -409,7 +409,7 @@ class RequestController extends BaseController
             $requestData->requester_id   = $request->input('requester');
             $requestData->priority       = $request->input('priority');
             $requestData->subject        = $request->input('subject');
-            $requestData->description    = $request->input('description');
+            $requestData->description    = clean_rich_html($request->input('description'));
 
             $requestData->request_type = $request->input('request_type');
             $requestData->asset        = $request->input('assets');

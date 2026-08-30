@@ -3,6 +3,7 @@ import { computed } from "vue";
 import { storeToRefs } from "pinia";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "../../stores/authStore";
+import { performLogout } from "../../Helpers/logout";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -21,8 +22,7 @@ const qrValue = computed(() => {
 });
 
 function BackLogin() {
-    authStore.logout();
-    router.push({ name: "Login" });
+    void performLogout();
 }
 
 function goOTP() {

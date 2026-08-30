@@ -8,6 +8,7 @@ import AppTooltip from '../../../common/AppTooltip.vue';
 import ActionIconButton from '../../../common/ActionIconButton.vue';
 import * as XLSX from "xlsx";
 import moment from "moment";
+import { escapeHtml, escapeCsvFormula } from "../../../../Helpers/escapeHtml";
 
 const router = useRouter();
 const rData = ref([]);
@@ -120,7 +121,8 @@ function statusConfig(status) {
 }
 
 function fareBreakdownHtml(row) {
-    const currency = row.currency || 'BDT';
+    const currency = escapeHtml(row.currency || 'BDT');
+    const paymentLabel = escapeHtml(row.payment_sequence || 'This Payment');
     const adultBase = (Number(row.adult_base_fare) || 0) * (Number(row.adult_traveler) || 0);
     const childBase = (Number(row.child_base_fare) || 0) * (Number(row.child_traveler) || 0);
     const adultTaxRate = (Number(row.adult_tax) || 0) + (Number(row.adult_ait) || 0);
@@ -141,7 +143,7 @@ function fareBreakdownHtml(row) {
     }
     html += `<div class="fb-divider"></div>`;
     html += `<div class="fb-row fb-total-row fb-strong"><span>Total Fare</span><span>${currency} ${formatAmount(row.est_total_fare)}</span></div>`;
-    html += `<div class="fb-row"><span>${row.payment_sequence || 'This Payment'}</span><span class="fb-blue">${currency} ${formatAmount(row.paid_amount)}</span></div>`;
+    html += `<div class="fb-row"><span>${paymentLabel}</span><span class="fb-blue">${currency} ${formatAmount(row.paid_amount)}</span></div>`;
     html += `<div class="fb-row fb-due-row fb-strong"><span>Due</span><span class="fb-red">${currency} ${formatAmount(row.due_amount)}</span></div>`;
     html += `</div>`;
 
@@ -340,16 +342,16 @@ async function doRestore(item) {
 // Export
 function exportRows() {
     return filteredData.value.map(r => ({
-        'TRN ID': r.trn_id,
-        'Payment Date': r.created_at ? moment(r.created_at).format('DD-MMM-YYYY hh:mm A') : '',
-        'Agency': r.agent_name,
-        'Agency Code': r.agent_code,
+        'TRN ID': escapeCsvFormula(r.trn_id),
+        'Payment Date': escapeCsvFormula(r.created_at ? moment(r.created_at).format('DD-MMM-YYYY hh:mm A') : ''),
+        'Agency': escapeCsvFormula(r.agent_name),
+        'Agency Code': escapeCsvFormula(r.agent_code),
         'Amount': Number(r.paid_amount) || 0,
-        'Payment Sequence': r.payment_sequence,
-        'Group Code': r.group_code,
-        'PNR': r.pnr,
-        'Status': statusConfig(r.status).label,
-        'Transacted By': r.transacted_by,
+        'Payment Sequence': escapeCsvFormula(r.payment_sequence),
+        'Group Code': escapeCsvFormula(r.group_code),
+        'PNR': escapeCsvFormula(r.pnr),
+        'Status': escapeCsvFormula(statusConfig(r.status).label),
+        'Transacted By': escapeCsvFormula(r.transacted_by),
     }));
 }
 
@@ -374,7 +376,7 @@ function exportPdf() {
     const win = window.open('', '_blank');
     if (!win) return;
     const tableRows = data.map(row =>
-        `<tr>${headers.map(h => `<td>${row[h] ?? ''}</td>`).join('')}</tr>`
+        `<tr>${headers.map(h => `<td>${escapeHtml(row[h] ?? '')}</td>`).join('')}</tr>`
     ).join('');
     win.document.write(`
         <html>
@@ -390,7 +392,7 @@ function exportPdf() {
         <body>
             <h4>Group Payments</h4>
             <table>
-                <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+                <thead><tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead>
                 <tbody>${tableRows}</tbody>
             </table>
         </body>

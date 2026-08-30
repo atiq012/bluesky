@@ -43,7 +43,8 @@
         },
         "files": [
             "app/Helpers/Helpers.php",
-            "app/Helpers/hashids.php"
+            "app/Helpers/hashids.php",
+            "app/Helpers/html.php"
         ]
     },
     "autoload-dev": {

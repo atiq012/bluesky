@@ -21,10 +21,10 @@ async function getUserData(props) {
         $('#desg_id').trigger('change');
 
         const name = response.data[0].name;
-        $("#name").html(name);
+        $("#name").text(name);
 
         const emp_id = response.data[0].emp_id;
-        $("#staff_id").html(emp_id);
+        $("#staff_id").text(emp_id);
 
         const phone = response.data[0].phone;
         $('#phone').val(phone);

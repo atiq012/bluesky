@@ -5,6 +5,7 @@ import { useAuthStore } from "../../../stores/authStore";
 import axiosInstance from "../../../axiosInstance";
 import { ref, onMounted, reactive } from "vue";
 import moment from "moment";
+import { escapeHtml, safeUrl } from "../../../Helpers/escapeHtml";
 const props = defineProps(['ids']);
 const previewImage = ref('');
 const form = reactive({
@@ -49,47 +50,47 @@ async function getAgentData(props) {
 
         if (status == 'Pending') {
             $("#status_color").addClass("text-warning bg-light-warning");
-            $('#cstatus').html(status);
+            $('#cstatus').text(status);
         } else if (status == 'Approved') {
             $("#status_color").addClass("text-success bg-light-success");
-            $('#cstatus').html(status);
+            $('#cstatus').text(status);
         } else if (status == 'Hold') {
             $("#status_color").addClass("text-warning bg-light-warning");
-            $('#cstatus').html(status);
+            $('#cstatus').text(status);
         }
         else if (status == 'Recommended') {
             $("#status_color").addClass("text-info bg-light-info");
-            $('#cstatus').html(status);
+            $('#cstatus').text(status);
         }
         else if (status == 'Reject') {
             $("#status_color").addClass("text-danger bg-light-danger");
-            $('#cstatus').html(status);
+            $('#cstatus').text(status);
         }
 
-        $(".agency_name").html(agency_name);
-        $(".email").html(email);
-        $(".est_date").html(moment(est_date).format('DD-MMM-YYYY'));
-        $(".ownerdob").html(moment(dob).format('DD-MMM-YYYY'));
-        $(".address").html(address);
-        $(".phone").html(phone);
-        $(".country").html(country);
-        $(".city").html(city);
-        $(".zone").html(zone);
-        $(".agent_code").html(agent_code);
-        $(".postal_code").html(postal_code);
-        $(".reg_number").html(reg_number);
-        $(".fax").html(fax);
-        $(".ca_number").html(ca_number);
-        $(".trade_licence").html(trade_licence);
-        $(".iata_number").html(iata_number);
-        $(".hajj_agency_number").html(hajj_agency_number);
-        $(".owner_name").html(owner_name);
-        $(".owner_designation").html(owner_designation);
-        $(".owner_nid").html(owner_nid);
-        $(".owner_email").html(owner_email);
-        $(".owner_phone").html(owner_phone);
-        $(".kam_name").html(kam_name);
-        $(".remarks").html(remarks);
+        $(".agency_name").text(agency_name);
+        $(".email").text(email);
+        $(".est_date").text(moment(est_date).format('DD-MMM-YYYY'));
+        $(".ownerdob").text(moment(dob).format('DD-MMM-YYYY'));
+        $(".address").text(address);
+        $(".phone").text(phone);
+        $(".country").text(country);
+        $(".city").text(city);
+        $(".zone").text(zone);
+        $(".agent_code").text(agent_code);
+        $(".postal_code").text(postal_code);
+        $(".reg_number").text(reg_number);
+        $(".fax").text(fax);
+        $(".ca_number").text(ca_number);
+        $(".trade_licence").text(trade_licence);
+        $(".iata_number").text(iata_number);
+        $(".hajj_agency_number").text(hajj_agency_number);
+        $(".owner_name").text(owner_name);
+        $(".owner_designation").text(owner_designation);
+        $(".owner_nid").text(owner_nid);
+        $(".owner_email").text(owner_email);
+        $(".owner_phone").text(owner_phone);
+        $(".kam_name").text(kam_name);
+        $(".remarks").text(remarks);
 
     } catch (error) {
         console.log(error);
@@ -121,7 +122,15 @@ async function getAgentAllImage(props) {
             else if (value.attachment_type == 'tin_img') {
                 title = 'TIN';
             }
-            $("#agent_images").append('<li class="list-group-item d-flex justify-content-between align-items-center flex-wrap"><h6 style="font-size: 14px;" class="mb-0">' + title + '</h6><span class="text-secondary"><img height="40" width="40" src="' + value.attachment_path + '" alt=""></span></li>');
+            const imgPath = safeUrl(value.attachment_path);
+            const titleEsc = escapeHtml(title);
+            $("#agent_images").append(
+                '<li class="list-group-item d-flex justify-content-between align-items-center flex-wrap">' +
+                '<h6 style="font-size: 14px;" class="mb-0">' + titleEsc + '</h6>' +
+                '<span class="text-secondary">' +
+                (imgPath ? '<img height="40" width="40" src="' + imgPath + '" alt="">' : '') +
+                '</span></li>'
+            );
         });
 
     } catch (error) {
