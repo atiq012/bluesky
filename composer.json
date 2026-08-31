@@ -9,7 +9,6 @@
     "license": "MIT",
     "require": {
         "php": "^8.1",
-        "ably/ably-php": "^1.0",
         "devfaysal/laravel-bangladesh-geocode": "^2.2",
         "guzzlehttp/guzzle": "^7.7",
         "hashids/hashids": "^5.0",
@@ -18,8 +17,9 @@
         "laravel/sanctum": "^3.3",
         "laravel/tinker": "^2.8",
         "lcobucci/clock": "^3.3",
-        "predis/predis": "^2.0",
         "pragmarx/google2fa": "^8.0",
+        "predis/predis": "^2.0",
+        "pusher/pusher-php-server": "^7.3",
         "spatie/laravel-activitylog": "^4.9",
         "tightenco/ziggy": "^2.3",
         "tymon/jwt-auth": "^2.1",

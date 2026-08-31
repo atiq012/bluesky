@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 import Echo from 'laravel-echo';
-import Ably from 'ably';
+import Pusher from 'pusher-js';
 import axiosInstance from '../axiosInstance';
 import Notification from '../Helpers/Notification.js';
 
@@ -16,8 +16,8 @@ export const fareRulesDegraded = ref(false);
 
 const DEFAULT_POLL_MS = 10000;
 
-function getAblyKey() {
-    return import.meta.env.VITE_ABLY_KEY || '';
+function getPusherKey() {
+    return import.meta.env.VITE_PUSHER_APP_KEY || '';
 }
 
 function getBroadcastChannel() {
@@ -30,16 +30,22 @@ function getPollIntervalMs() {
 }
 
 function getEcho() {
-    const key = getAblyKey();
+    const key = getPusherKey();
     if (!key) {
         return null;
     }
 
     if (!echoInstance) {
-        window.Ably = Ably;
+        window.Pusher = Pusher;
         echoInstance = new Echo({
-            broadcaster: 'ably',
+            broadcaster: 'pusher',
             key,
+            cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
+            wsHost: import.meta.env.VITE_PUSHER_HOST,
+            wsPort: Number(import.meta.env.VITE_PUSHER_PORT ?? 443),
+            wssPort: Number(import.meta.env.VITE_PUSHER_PORT ?? 443),
+            forceTLS: import.meta.env.VITE_PUSHER_SCHEME === 'https',
+            enabledTransports: ['ws', 'wss'],
         });
     }
 
@@ -60,7 +66,7 @@ function notifyAndRefresh(onUpdated) {
     onUpdated?.();
 }
 
-function subscribeAbly(onUpdated) {
+function subscribePusher(onUpdated) {
     const echo = getEcho();
     if (!echo) {
         return null;
@@ -113,7 +119,7 @@ function startPolling(onUpdated, shouldRefresh) {
     return () => window.clearInterval(timerId);
 }
 
-// Search page only — Ably when configured, otherwise poll cache stamp.
+// Search page only — Pusher when configured, otherwise poll cache stamp.
 export function subscribeDynamicRulePricingUpdates({ onUpdated, shouldRefresh } = {}) {
     subscriberCount += 1;
 
@@ -121,12 +127,12 @@ export function subscribeDynamicRulePricingUpdates({ onUpdated, shouldRefresh } 
         return activeUnsubscribe;
     }
 
-    const ablyUnsub = subscribeAbly(onUpdated);
-    // Always poll — Ably can fail silently (stale build, bad key, network).
+    const pusherUnsub = subscribePusher(onUpdated);
+    // Always poll — Pusher can fail silently (stale build, bad key, network).
     const pollUnsub = startPolling(onUpdated, shouldRefresh);
 
     activeUnsubscribe = () => {
-        ablyUnsub?.();
+        pusherUnsub?.();
         pollUnsub?.();
 
         subscriberCount = Math.max(0, subscriberCount - 1);

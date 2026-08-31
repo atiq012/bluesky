@@ -4,10 +4,10 @@ return [
     // Safety TTL only — primary invalidation is version bump on rule save/delete.
     'cache_ttl_seconds' => (int) env('DYNAMIC_RULES_CACHE_TTL', 86400),
 
-    // Ably toast on search page when rules change (requires ABLY_KEY + VITE_ABLY_KEY).
+    // Pusher toast on search page when rules change (requires PUSHER_APP_KEY + VITE_PUSHER_APP_KEY).
     'broadcast_enabled' => (bool) env('DYNAMIC_RULES_BROADCAST_ENABLED', true),
     'broadcast_channel' => env('DYNAMIC_RULES_BROADCAST_CHANNEL', 'dynamic-rules'),
-    // Poll cache stamp on search page when VITE_ABLY_KEY is missing (seconds).
+    // Poll cache stamp on search page when VITE_PUSHER_APP_KEY is missing (seconds).
     'poll_interval_seconds' => max((int) env('DYNAMIC_RULES_POLL_INTERVAL', 10), 5),
 
     // Default AIT when rule does not override (0.3% = QR example).
