@@ -2,19 +2,19 @@
 
 namespace App\Services;
 
-use Ably\AblyRest;
 use Illuminate\Support\Facades\Log;
+use Pusher\Pusher;
 
-class AblyService
+class PusherService
 {
-    private ?AblyRest $client = null;
+    private ?Pusher $client = null;
 
     // Public channel publish for realtime list invalidation (see docs/REALTIME_CRUD_EVENTS.md)
     public function publishToPublic(string $channelName, string $event, array $data): bool
     {
-        $key = config('services.ably.key');
+        $key = config('broadcasting.connections.pusher.key');
         if ($key === null || $key === '') {
-            Log::warning('Ably publish skipped: ABLY_KEY not configured.', [
+            Log::warning('Pusher publish skipped: PUSHER_APP_KEY not configured.', [
                 'channel' => $channelName,
                 'event' => $event,
             ]);
@@ -23,11 +23,11 @@ class AblyService
         }
 
         try {
-            $this->client()->channels->get($channelName)->publish($event, $data);
+            $this->client()->trigger($channelName, $event, $data);
 
             return true;
         } catch (\Throwable $e) {
-            Log::error('Ably publish failed.', [
+            Log::error('Pusher publish failed.', [
                 'channel' => $channelName,
                 'event' => $event,
                 'message' => $e->getMessage(),
@@ -37,10 +37,15 @@ class AblyService
         }
     }
 
-    private function client(): AblyRest
+    private function client(): Pusher
     {
         if ($this->client === null) {
-            $this->client = new AblyRest(config('services.ably.key'));
+            $this->client = new Pusher(
+                config('broadcasting.connections.pusher.key'),
+                config('broadcasting.connections.pusher.secret'),
+                config('broadcasting.connections.pusher.app_id'),
+                config('broadcasting.connections.pusher.options', [])
+            );
         }
 
         return $this->client;

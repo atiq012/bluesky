@@ -1,6 +1,7 @@
 <script setup>
 import { reactive, ref, watch } from "vue";
 import { useAuthStore } from "../../stores/authStore";
+import { performLogout } from "../../Helpers/logout";
 const authStore = useAuthStore();
 
 import { useRouter } from 'vue-router';
@@ -110,8 +111,7 @@ function resetPassword() {
 }
 
 function BackLogin() {
-    authStore.logout();
-    router.push({ name: "Login" });
+    void performLogout();
 }
 
 watch(form, (newValue, oldValue) => {

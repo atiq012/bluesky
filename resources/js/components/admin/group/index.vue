@@ -56,6 +56,13 @@ function formatAmount(value) {
     return Number.isFinite(n) ? n.toLocaleString('en-BD', { maximumFractionDigits: 0 }) : '0';
 }
 
+function splitPipeLines(value) {
+    return String(value ?? '')
+        .split(/\s*\|\s*/)
+        .map((part) => part.trim())
+        .filter(Boolean);
+}
+
 function groupIdDisplay(row) {
     return row.idd || 'GRP-' + String(Math.floor(Math.random() * 10000)).padStart(4, '0');
 }
@@ -432,8 +439,9 @@ async function handleEticketGenerated(data) {
                         <div class="sector-cell">
                             <div class="cell-main">
 
-                                <div v-if="row.request_type == 'multicity'"
-                                    v-html="row.route_display.replaceAll(' | ', '<br>').replaceAll('|', '<br>')"></div>
+                                <div v-if="row.request_type == 'multicity'" class="cell-multiline">
+                                    {{ splitPipeLines(row.route_display).join('\n') }}
+                                </div>
 
                                 <div v-else-if="row.request_type == 'oneway'">
                                     {{ row.origin }} - {{ row.destination }}
@@ -451,8 +459,13 @@ async function handleEticketGenerated(data) {
                     <!-- Departure & Return Date -->
                     <template #dates="{ value: row }">
                         <div class="cell-main" v-if="row.request_type == 'multicity'">
-                            <div v-if="row.request_type == 'multicity'"
-                                v-html="`<i class='fa-regular fa-calendar me-1' style='font-size: 0.65rem;'></i>${row.route_date_display.replaceAll(' | ', `<br> <i class='fa-regular fa-calendar me-1' style='font-size: 0.65rem;'></i>`).replaceAll('|', `<br> <i class='fa-regular fa-calendar me-1' style='font-size: 0.65rem;'></i>`)}`">
+                            <div
+                                v-for="(line, lineIdx) in splitPipeLines(row.route_date_display)"
+                                :key="lineIdx"
+                                :class="{ 'mt-1': lineIdx > 0 }"
+                            >
+                                <i class="fa-regular fa-calendar me-1" style="font-size: 0.65rem;"></i>
+                                {{ line }}
                             </div>
                         </div>
                         <div class="cell-main" v-else-if="row.request_type == 'oneway'">
@@ -490,8 +503,17 @@ async function handleEticketGenerated(data) {
                             <div class="cell-main amount-text">
                                 {{ row.opCurrency }} {{ formatAmount(row.opEstimateNetPayable) }}
                             </div>
-                            <div class="cell-main cell-link" v-if="row.payment_info" v-html="`<i class='fa-solid fa-scale-balanced me-1' style='font-size: 0.65rem;'></i>${row.payment_info.replaceAll(' | ', `<br> <i class='fa-solid fa-scale-balanced me-1' style='font-size: 0.65rem;'></i>`).replaceAll('|', `<br> <i class='fa-solid fa-scale-balanced me-1' style='font-size: 0.65rem;'></i>`)}`">
-                            </div>
+                            <template v-if="row.payment_info">
+                                <div
+                                    v-for="(line, payIdx) in splitPipeLines(row.payment_info)"
+                                    :key="payIdx"
+                                    class="cell-main cell-link"
+                                    :class="{ 'mt-1': payIdx > 0 }"
+                                >
+                                    <i class="fa-solid fa-scale-balanced me-1" style="font-size: 0.65rem;"></i>
+                                    {{ line }}
+                                </div>
+                            </template>
                         </div>
                         <div v-else>
                             -
@@ -833,6 +855,10 @@ async function handleEticketGenerated(data) {
     font-weight: 600;
     color: #33415c;
     line-height: 1.35;
+}
+
+.cell-multiline {
+    white-space: pre-line;
 }
 
 .cell-sub {

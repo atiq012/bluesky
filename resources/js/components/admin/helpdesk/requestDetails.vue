@@ -3,6 +3,7 @@ import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
 import axiosInstance from "../../../axiosInstance";
 import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from "vue";
 import moment from "moment";
+import { purifyHtml } from "../../../Helpers/purifyHtml";
 import Quill from 'quill';
 import 'quill/dist/quill.core.css';
 import 'quill/dist/quill.snow.css';
@@ -543,7 +544,7 @@ onBeforeUnmount(() => {
 
                 <!-- Details tab -->
                 <div v-show="activeTab === 'details'">
-                    <div class="rd-details-box mb-3" v-html="ticketData.description"></div>
+                    <div class="rd-details-box mb-3" v-html="purifyHtml(ticketData.description)"></div>
 
                     <!-- <div class="rd-dropzone mb-3 text-center">
                         <i class="fa-solid fa-paperclip me-1"></i>
@@ -592,7 +593,7 @@ onBeforeUnmount(() => {
                                 <span class="fw-semibold">{{ note.authorName }}</span>
                                 <span class="rd-note-date">{{ note.date }}</span>
                             </div>
-                            <div class="rd-note-body" v-html="note.note"></div>
+                            <div class="rd-note-body" v-html="purifyHtml(note.note)"></div>
                         </div>
                     </div>
                 </div>
@@ -728,7 +729,7 @@ onBeforeUnmount(() => {
                 </div>
 
                 <!-- <label class="hd-section-label mb-2">Details</label>
-                    <div class="ticket-details hd-details-box mb-2" v-html="ticketData.description"></div>
+                    <div class="ticket-details hd-details-box mb-2" v-html="purifyHtml(ticketData.description)"></div>
 
                     <div v-if="ticketData.attachmentsCount">
                         <button type="button" class="hd-attachment-chip">
@@ -755,7 +756,7 @@ onBeforeUnmount(() => {
 
                         <!-- Message Bubble -->
                         <div class="hd-msg-bubble" :class="msg.align === 'out' ? 'hd-bubble-out' : 'hd-bubble-in'"
-                            v-html="msg.note"></div>
+                            v-html="purifyHtml(msg.note)"></div>
 
                         <!-- Sender Info BELOW the bubble (for Outgoing / "out" messages) -->
                         <div v-if="msg.align === 'out'" class="hd-msg-meta justify-content-end mt-1">

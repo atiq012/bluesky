@@ -12,8 +12,8 @@ class BroadcastServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Ably driver crashes on boot when ABLY_KEY is empty — fall back until configured.
-        if (config('broadcasting.default') === 'ably' && blank(config('broadcasting.connections.ably.key'))) {
+        // Pusher driver crashes on boot when PUSHER_APP_KEY is empty — fall back until configured.
+        if (config('broadcasting.default') === 'pusher' && blank(config('broadcasting.connections.pusher.key'))) {
             config(['broadcasting.default' => 'log']);
         }
 

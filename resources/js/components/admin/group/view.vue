@@ -368,7 +368,7 @@ function goBack() {
                             <h6 class="policy-title">{{ policy.title }}</h6>
                         </div>
                         <ul class="policy-list">
-                            <li v-for="(item, iIdx) in policy.items" :key="iIdx" v-html="item"></li>
+                            <li v-for="(item, iIdx) in policy.items" :key="iIdx">{{ item }}</li>
                         </ul>
                     </div>
                 </div>

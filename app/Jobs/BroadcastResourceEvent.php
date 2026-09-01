@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Services\AblyService;
+use App\Services\PusherService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -19,8 +19,8 @@ class BroadcastResourceEvent implements ShouldQueue
         public array $payload,
     ) {}
 
-    public function handle(AblyService $ably): void
+    public function handle(PusherService $pusher): void
     {
-        $ably->publishToPublic($this->channelName, $this->event, $this->payload);
+        $pusher->publishToPublic($this->channelName, $this->event, $this->payload);
     }
 }

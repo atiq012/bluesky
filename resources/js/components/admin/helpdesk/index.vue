@@ -6,6 +6,7 @@ import Buttons from 'datatables.net-buttons';
 import axiosInstance from "../../../axiosInstance";
 import { ref, onMounted, reactive, onBeforeUnmount, computed, watch, nextTick } from "vue";
 import moment from "moment";
+import { purifyHtml } from "../../../Helpers/purifyHtml";
 
 // editor
 import Quill from 'quill';
@@ -870,7 +871,7 @@ defineExpose({
                     </div>
 
                     <!-- <label class="hd-section-label mb-2">Details</label>
-                    <div class="ticket-details hd-details-box mb-2" v-html="ticketData.description"></div>
+                    <div class="ticket-details hd-details-box mb-2" v-html="purifyHtml(ticketData.description)"></div>
 
                     <div v-if="ticketData.attachmentsCount">
                         <button type="button" class="hd-attachment-chip">
@@ -897,7 +898,7 @@ defineExpose({
 
                             <!-- 2. Message Bubble -->
                             <div class="hd-msg-bubble" :class="msg.align === 'out' ? 'hd-bubble-out' : 'hd-bubble-in'"
-                                v-html="msg.note"></div>
+                                v-html="purifyHtml(msg.note)"></div>
 
                             <!-- 3. Sender Info BELOW the bubble (for Outgoing / "out" messages) -->
                             <div v-if="msg.align === 'out'" class="hd-msg-meta justify-content-end mt-1">

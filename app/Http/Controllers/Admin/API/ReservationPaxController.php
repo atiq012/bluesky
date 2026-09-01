@@ -111,8 +111,8 @@ class ReservationPaxController extends BaseController
     public function uploadFiles(Request $request, int $id)
     {
         $request->validate([
-            'passport_image' => ['nullable', 'image', 'max:1024'],
-            'visa_image'     => ['nullable', 'image', 'max:1024'],
+            'passport_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:1024'],
+            'visa_image'     => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:1024'],
         ]);
 
         $pax = BookingPax::find($id);

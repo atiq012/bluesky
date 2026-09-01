@@ -11,7 +11,7 @@ class FareRuleCacheController extends BaseController
         private readonly FareRuleCache $fareRuleCache,
     ) {}
 
-    // Search page polls this when Ably is down — no rule CRUD on agency portal.
+    // Search page polls this when Pusher is down — no rule CRUD on agency portal.
     public function cacheStamp()
     {
         [$version, $stamp] = $this->fareRuleCache->versionAndStamp();

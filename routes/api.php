@@ -33,6 +33,7 @@ use App\Http\Controllers\Admin\Group\OfferPriceController;
 use App\Http\Controllers\Admin\HelpDesk\CategoryController;
 use App\Http\Controllers\Admin\HelpDesk\RequestController;
 use App\Http\Controllers\Admin\HelpDesk\RequestDetailsController;
+use App\Http\Middleware\SanitizeInput;
 use App\Http\Controllers\Admin\IssuedBankMFS\IssuedBankMFSController;
 use App\Http\Controllers\Admin\OfficeLocation\LocationController;
 use App\Http\Controllers\Admin\PaymentAccount\PaymentAccountSController;
@@ -289,8 +290,8 @@ Route::middleware(['auth:api'])->group(function () {
     //Helpdesk
     Route::get('/getHelpdeskRequesters', [UserController::class, 'getHelpdeskRequesters']);
     Route::get('getAllRequests', [RequestController::class, 'index'])->name('request.getAllRequests');
-    Route::post('/request/save', [RequestController::class, 'store'])->name('request.store');
-    Route::post('/request/update', [RequestController::class, 'update'])->name('request.update');
+    Route::post('/request/save', [RequestController::class, 'store'])->name('request.store')->withoutMiddleware(SanitizeInput::class);
+    Route::post('/request/update', [RequestController::class, 'update'])->name('request.update')->withoutMiddleware(SanitizeInput::class);
     Route::post('/editRequest', [RequestController::class, 'edit'])->name('request.editRequest');
     Route::post('/assignRequest', [RequestController::class, 'assignRequest'])->name('request.assignRequest');
     Route::post('/statusChange', [RequestController::class, 'statusChange'])->name('request.statusChange');
