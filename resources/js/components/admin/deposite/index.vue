@@ -313,7 +313,7 @@ useRealtimeList('deposits', getListValues, { actorIdKey: 'actor_id' });
 
                     <template #action="{ value: row }">
                         <ActionButtons :item="row" :show-view="true" :show-edit="false" :show-delete="false"
-                            :show-cancel-booking="row.status === 'Requested'" cancel-booking-label="Cancel Request"
+                            :show-cancel-booking="row.status === 'Requested'" showCancelLabel="Cancel Request"
                             @view="openDepositDetails" @cancel-booking="openCancelModal" />
                     </template>
                 </DataTable>

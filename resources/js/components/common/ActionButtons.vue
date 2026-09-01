@@ -42,6 +42,7 @@ const props = defineProps({
     showVoidTicket: { type: Boolean, default: false },
     showDownloadRequest: { type: Boolean, default: false },
     showDownloadResponse: { type: Boolean, default: false },
+    showCancelLabel: { type: String, default: '' },
     downloadRequestLabel: { type: String, default: 'Request' },
     downloadResponseLabel: { type: String, default: 'Response' },
     moreLabel: { type: String, default: '' },
@@ -146,7 +147,7 @@ const simpleActions = computed(() => {
         { key: 'download-request', show: props.showDownloadRequest, label: props.downloadRequestLabel, icon: 'fa-solid fa-file-arrow-up', btnClass: 'action-btn-download-request' },
         { key: 'download-response', show: props.showDownloadResponse, label: props.downloadResponseLabel, icon: 'fa-solid fa-file-arrow-down', btnClass: 'action-btn-download-response' },
         { key: 'issue-ticket', show: props.showIssueTicket, label: 'Issue Ticket', icon: 'fa-solid fa-ticket', btnClass: 'action-btn-issue-ticket', disabled: props.issueTicketDisabled },
-        { key: 'cancel-booking', show: props.showCancelBooking, label: 'Cancel Booking', icon: 'fa-solid fa-ban', btnClass: 'action-btn-cancel-booking', disabled: props.cancelBookingDisabled },
+        { key: 'cancel-booking', show: props.showCancelBooking, label: props.showCancelLabel ||'Cancel Booking', icon: 'fa-solid fa-ban', btnClass: 'action-btn-cancel-booking', disabled: props.cancelBookingDisabled },
         { key: 'history', show: props.showHistory, label: 'History', icon: 'fa-solid fa-clock-rotate-left', btnClass: 'action-btn-history' },
         { key: 'void-ticket', show: props.showVoidTicket, label: 'Void Ticket', icon: 'fa-solid fa-file-circle-xmark', btnClass: 'action-btn-void-ticket' },
     ];

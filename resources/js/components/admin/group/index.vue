@@ -83,7 +83,7 @@ function statusConfig(status) {
         case 'Price offer':
             return { cls: 'status-pill status-price-offer', icon: 'fa-solid fa-circle', label: 'Price Offer' };
         case 'Offer confirmed':
-            return { cls: 'status-pill status-price-offer', icon: 'fa-solid fa-circle', label: 'Offer Confirmed' };
+            return { cls: 'status-pill status-offer-confirmed', icon: 'fa-solid fa-circle', label: 'Offer Confirmed' };
         case 'Assigned':
             return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'Assigned' };
         case 'PNR Shared':
@@ -950,6 +950,11 @@ async function handleEticketGenerated(data) {
     background: #f2fffb;
     border: 1px solid #e8f4c5;
 }
+.status-offer-confirmed {
+    color: #c845c6;
+    background: #fcf2ff;
+    border: 1px solid #e9c5f4;
+}
 
 .status-other {
     color: #586c8f;
@@ -1034,6 +1039,11 @@ async function handleEticketGenerated(data) {
 
 [data-bs-theme="dark"] .status-price-offer {
     color: #d2f871;
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+[data-bs-theme="dark"] .status-offer-confirmed {
+    color: #f871ed;
     background: rgba(239, 68, 68, 0.15);
     border-color: rgba(239, 68, 68, 0.3);
 }
