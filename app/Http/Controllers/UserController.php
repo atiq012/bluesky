@@ -17,6 +17,9 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password as Pass;
 use Yajra\DataTables\DataTables;
 
+use App\Mail\User\AgentUserCreatedMail;
+use Illuminate\Support\Facades\Mail;
+
 
 class UserController extends BaseController
 {
@@ -198,6 +201,18 @@ class UserController extends BaseController
             ], 422);
         }
 
+        $newStaffId = trim((string) $request->staff_id);
+        $duplicateStaff = User::where('emp_id', $newStaffId)
+            ->where('agent_id', $auth->agent_id)
+            ->exists();
+        if ($duplicateStaff) {
+            return response()->json([
+                'message' => 'Staff ID "' . $newStaffId . '" is already assigned to another user in this agency.',
+                'errors'  => ['staff_id' => ['Staff ID is already in use for this agency.']],
+                'types'   => 'e',
+            ], 422);
+        }
+
         $department = Department::where('name', trim($request->dept_name))->first();
         if (! $department) {
             $department            = new Department;
@@ -218,74 +233,123 @@ class UserController extends BaseController
                 $designation->save();
             }
         }
+        try {
 
-        $user                 = new User;
-        $user->name           = $request->name;
-        $user->email          = $request->email;
-        $user->emp_id         = $request->staff_id;
-        $user->phone          = $request->phone;
-        $user->dept_id        = $department->id;
-        $user->designation_id = $designation ? $designation->id : null;
-        // $user->office_loc_id = $request->off_loct;
-        // $user->report_to = $request->report_to;
-        // $user->user_role = $request->role_id;
-        $user->agent_id = $auth->agent_id;
+            $user                 = new User;
+            $user->name           = $request->name;
+            $user->email          = $request->email;
+            $user->emp_id         = $request->staff_id;
+            $user->phone          = $request->phone;
+            $user->dept_id        = $department->id;
+            $user->designation_id = $designation ? $designation->id : null;
+            // $user->office_loc_id = $request->off_loct;
+            // $user->report_to = $request->report_to;
+            // $user->user_role = $request->role_id;
+            $user->agent_id = $auth->agent_id;
 
-        if ($request->hasFile('profile_picture')) {
+            if ($request->hasFile('profile_picture')) {
 
-            $request_image = $request->file('profile_picture');
-            $image_name    = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
+                $request_image = $request->file('profile_picture');
+                $image_name    = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
 
-            $image_path = public_path('/uploads/profile_image/');
-            if (! File::exists($image_path)) {
-                File::makeDirectory($image_path, 0777, true);
+                $image_path = public_path('/uploads/profile_image/');
+                if (! File::exists($image_path)) {
+                    File::makeDirectory($image_path, 0777, true);
+                }
+
+                $request_image->move($image_path, $image_name);
+                $user->img_path = '/uploads/profile_image/' . $image_name;
+            } else {
+                $profilePicturePath = null;
             }
 
-            $request_image->move($image_path, $image_name);
-            $user->img_path = '/uploads/profile_image/' . $image_name;
-        } else {
-            $profilePicturePath = null;
+            // Random per-user password instead of a shared hardcoded one; it only reaches the
+            // user through the welcome mail below.
+            $generatedPassword = Str::password(10);
+
+            $user->type       = 2;
+            $user->is_active  = 1; // active
+            $user->status     = 1; // active
+            $user->created_by = $auth->id;
+            $user->password   = Hash::make($generatedPassword);
+            // Already expired so the first login forces a password change.
+            $user->password_updated_at  = now();
+            $user->password_max_expired = 0;
+            // $user->agent_id = $auth->agent_id;
+            $user->save();
+
+            $mailSent = $this->sendAgentUserCreatedMail(
+                user: $user,
+                createdBy: $auth,
+                department: $department->name,
+                designation: $designation?->name,
+                password: $generatedPassword,
+            );
+
+            // return response()->json([
+            //     'message' => 'Successfully User Saved. Login details are being emailed to the user.',
+            //     'types'   => 's',
+            // ]);
+            return response()->json([
+                'user_message'  => 'User saved successfully.',
+                'email_message' => $mailSent
+                    ? 'Login details have been emailed to the user.'
+                    : 'User saved, but welcome email could not be sent due to email server error.',
+                'types'     => 's',
+                'mail_sent' => $mailSent,
+            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            report($e);
+            return response()->json([
+                'message' => 'A database error occurred while saving the user.',
+                'types'   => 'e',
+            ], 422);
+        } catch (\Throwable $e) {
+            report($e);
+            return response()->json([
+                'message' => 'An unexpected server error occurred. Please try again.',
+                'types'   => 'e',
+            ], 500);
         }
-
-        // Random per-user password instead of a shared hardcoded one; it only reaches the
-        // user through the welcome mail below.
-        $generatedPassword = Str::password(10);
-
-        $user->type       = 2;
-        $user->is_active  = 1; // active
-        $user->status     = 1; // active
-        $user->created_by = $auth->id;
-        $user->password   = Hash::make($generatedPassword);
-        // Already expired so the first login forces a password change.
-        $user->password_updated_at  = now();
-        $user->password_max_expired = 0;
-        // $user->agent_id = $auth->agent_id;
-        $user->save();
-
-        $this->sendAgentUserCreatedMail(
-            user: $user,
-            createdBy: $auth,
-            department: $department->name,
-            designation: $designation?->name,
-            password: $generatedPassword,
-        );
-
-        return response()->json([
-            'message' => 'Successfully User Saved. Login details are being emailed to the user.',
-            'types'   => 's',
-        ]);
     }
 
     // Welcome mail must never delay or break user creation: on the sync driver the job is
     // deferred until after the HTTP response is flushed, so the SMTP round trip never
     // blocks the save. Any real queue driver hands it to a worker instead.
-    private function sendAgentUserCreatedMail(User $user, User $createdBy, string $department, ?string $designation, string $password): void
+    private function sendAgentUserCreatedMail(User $user, User $createdBy, string $department, ?string $designation, string $password): bool
     {
+        // try {
+        //     $agencyName = Agent::where('id', $user->agent_id)->value('name');
+
+        //     $pending = SendAgentUserCreatedMailJob::dispatch(
+        //         recipientEmail: $user->email,
+        //         userName: $user->name,
+        //         agencyName: (string) ($agencyName ?: 'your agency'),
+        //         username: $user->email,
+        //         phone: (string) $user->phone,
+        //         department: $department,
+        //         designation: (string) ($designation ?? ''),
+        //         defaultPassword: $password,
+        //         portalUrl: rtrim((string) config('app.url'), '/'),
+        //         createdByName: (string) $createdBy->name,
+        //     );
+
+        //     // if (config('queue.default') === 'sync') {
+        //     //     $pending->afterResponse();
+        //     // }
+        //     return true;
+        // } catch (\Throwable $e) {
+        //     Log::error('Agent user created mail dispatch failed', [
+        //         'user_id' => $user->id,
+        //         'email'   => $user->email,
+        //         'error'   => $e->getMessage(),
+        //     ]);
+        //     return false;
+        // }
+
         try {
             $agencyName = Agent::where('id', $user->agent_id)->value('name');
-
-            $pending = SendAgentUserCreatedMailJob::dispatch(
-                recipientEmail: $user->email,
+            Mail::to($user->email)->send(new AgentUserCreatedMail(
                 userName: $user->name,
                 agencyName: (string) ($agencyName ?: 'your agency'),
                 username: $user->email,
@@ -295,17 +359,17 @@ class UserController extends BaseController
                 defaultPassword: $password,
                 portalUrl: rtrim((string) config('app.url'), '/'),
                 createdByName: (string) $createdBy->name,
-            );
+            ));
 
-            if (config('queue.default') === 'sync') {
-                $pending->afterResponse();
-            }
+            return true;
         } catch (\Throwable $e) {
-            Log::error('Agent user created mail dispatch failed', [
+            Log::error('Agent user created mail send failed', [
                 'user_id' => $user->id,
-                'email'   => $user->email,
-                'error'   => $e->getMessage(),
+                'email' => $user->email,
+                'error' => $e->getMessage(),
             ]);
+
+            return false;
         }
     }
 
@@ -390,69 +454,137 @@ class UserController extends BaseController
         // dd($request->all());
         $auth = User::where('email', $request->useEmail)->first();
 
+        if (!$auth) {
+            return response()->json(['message' => 'Unable to identify the requesting user.', 'types' => 'e'], 401);
+        }
+
         $user = User::where('id', $request->user_id)->where('agent_id', auth()->user()->agent_id)->first();
         if (! $user) {
             return response()->json(['message' => 'User not found.', 'types' => 'e'], 404);
         }
 
-        // Mirror create: resolve department/designation by name (create row if missing)
-        if ($request->filled('dept_name')) {
-            $department = Department::where('name', trim($request->dept_name))->first();
-            if (! $department) {
-                $department             = new Department;
-                $department->name       = trim($request->dept_name);
-                $department->status     = 1;
-                $department->created_by = $auth->id;
-                $department->save();
-            }
-            $user->dept_id = $department->id;
+        $request->merge(['email' => strtolower(trim((string) $request->email))]);
+        $validator = validator($request->all(), [
+            'name'      => 'required|string|max:100',
+            'phone'     => 'required|string|max:20',
+            'email'     => [
+                'required',
+                'string',
+                'max:150',
+                'email:rfc,filter',
+                'regex:/^[A-Za-z0-9]+([._%+\-][A-Za-z0-9]+)*@[A-Za-z0-9]+([.\-][A-Za-z0-9]+)*\.[A-Za-z]{2,}$/',
+            ],
+            'staff_id'  => 'required|string|max:50',
+            'dept_name' => 'required|string|max:100',
+        ], [
+            'email.email' => 'Please enter a valid email address.',
+            'email.regex' => 'Please enter a valid email address.',
+        ]);
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => $validator->errors()->first(),
+                'errors'  => $validator->errors()->toArray(),
+                'types'   => 'e',
+            ], 422);
         }
 
-        if ($request->filled('desg')) {
-            $designation = Designation::where('name', trim($request->desg))->first();
-            if (! $designation) {
-                $designation             = new Designation;
-                $designation->name       = trim($request->desg);
-                $designation->status     = 1;
-                $designation->created_by = $auth->id;
-                $designation->save();
-            }
-            $user->designation_id = $designation->id;
-        } elseif ($request->has('desg') && trim((string) $request->desg) === '') {
-            $user->designation_id = null;
+        $duplicateEmail = User::where('email', $request->email)
+            ->where('id', '!=', $user->id)
+            ->exists();
+        if ($duplicateEmail) {
+            return response()->json([
+                'message' => 'This email address is already in use by another user.',
+                'errors'  => ['email' => ['This email address is already in use.']],
+                'types'   => 'e',
+            ], 422);
         }
 
-        $user->name          = $request->name ? $request->name : $user->name;
-        $user->phone         = $request->phone ? $request->phone : $user->phone;
-        $user->email         = $request->email ? $request->email : $user->email;
-        $user->emp_id        = $request->staff_id ? $request->staff_id : $user->emp_id;
-        $user->office_loc_id = $request->off_loct ? $request->off_loct : $user->office_loc_id;
-        $user->report_to     = $request->report_to ? $request->report_to : $user->report_to;
-        $user->user_role     = $request->role_id ? $request->role_id : $user->user_role;
 
-        if ($request->hasFile('profile_picture')) {
-
-            $request_image = $request->file('profile_picture');
-            $image_name    = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
-
-            $image_path = public_path('/uploads/profile_image/');
-            if (! File::exists($image_path)) {
-                File::makeDirectory($image_path, 0777, true);
-            }
-
-            $request_image->move($image_path, $image_name);
-            $user->img_path = '/uploads/profile_image/' . $image_name;
-        } else {
-            $profilePicturePath = null;
+        $newStaffId = trim((string) $request->staff_id);
+        $duplicateStaff = User::where('emp_id', $newStaffId)
+            ->where('agent_id', $auth->agent_id)
+            ->where('id', '!=', $user->id)
+            ->exists();
+        if ($duplicateStaff) {
+            return response()->json([
+                'message' => 'Staff ID "' . $newStaffId . '" is already assigned to another user in this agency.',
+                'errors'  => ['staff_id' => ['Staff ID is already in use for this agency.']],
+                'types'   => 'e',
+            ], 422);
         }
 
-        // $user->type = 1;
-        // $user->is_active = 1;
-        // $user->status = 1;
-        $user->updated_by = $auth->id;
+        try {
+            // Mirror create: resolve department/designation by name (create row if missing)
+            if ($request->filled('dept_name')) {
+                $department = Department::where('name', trim($request->dept_name))->first();
+                if (! $department) {
+                    $department             = new Department;
+                    $department->name       = trim($request->dept_name);
+                    $department->status     = 1;
+                    $department->created_by = $auth->id;
+                    $department->save();
+                }
+                $user->dept_id = $department->id;
+            }
 
-        $user->save();
-        return response()->json(['message' => 'Successfully User Upadete.', 'types' => 's']);
+            if ($request->filled('desg')) {
+                $designation = Designation::where('name', trim($request->desg))->first();
+                if (! $designation) {
+                    $designation             = new Designation;
+                    $designation->name       = trim($request->desg);
+                    $designation->status     = 1;
+                    $designation->created_by = $auth->id;
+                    $designation->save();
+                }
+                $user->designation_id = $designation->id;
+            } elseif ($request->has('desg') && trim((string) $request->desg) === '') {
+                $user->designation_id = null;
+            }
+
+            $user->name          = $request->name ? $request->name : $user->name;
+            $user->phone         = $request->phone ? $request->phone : $user->phone;
+            $user->email         = $request->email ? $request->email : $user->email;
+            $user->emp_id        = $request->staff_id ? $request->staff_id : $user->emp_id;
+            $user->office_loc_id = $request->off_loct ? $request->off_loct : $user->office_loc_id;
+            $user->report_to     = $request->report_to ? $request->report_to : $user->report_to;
+            $user->user_role     = $request->role_id ? $request->role_id : $user->user_role;
+
+            if ($request->hasFile('profile_picture')) {
+
+                $request_image = $request->file('profile_picture');
+                $image_name    = str_replace(' ', '', (now()->format('dmY-') . time())) . '.' . $request_image->extension();
+
+                $image_path = public_path('/uploads/profile_image/');
+                if (! File::exists($image_path)) {
+                    File::makeDirectory($image_path, 0777, true);
+                }
+
+                $request_image->move($image_path, $image_name);
+                $user->img_path = '/uploads/profile_image/' . $image_name;
+            } else {
+                $profilePicturePath = null;
+            }
+
+            // $user->type = 1;
+            // $user->is_active = 1;
+            // $user->status = 1;
+            $user->updated_by = $auth->id;
+
+            $user->save();
+            return response()->json(['message' => 'Successfully User Upadete.', 'types' => 's']);
+        } catch (\Illuminate\Database\QueryException $e) {
+            report($e);
+            return response()->json([
+                'message' => 'A database error occurred while updating the user. Staff ID or Email may already exist.',
+                'types'   => 'e',
+            ], 422);
+        } catch (\Throwable $e) {
+            report($e);
+            return response()->json([
+                'message' => 'An unexpected server error occurred. Please try again.',
+                'types'   => 'e',
+            ], 500);
+        }
     }
 
     public function statusUpdate(Request $request)

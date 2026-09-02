@@ -1,90 +1,123 @@
 <script setup>
-import AppBreadcrumbs from '../../common/AppBreadcrumbs.vue';
+import AppBreadcrumbs from "../../common/AppBreadcrumbs.vue";
 
 import { useAuthStore } from "../../../stores/authStore";
 import axiosInstance from "../../../axiosInstance";
 
-import { ref, onMounted, reactive, watch} from "vue";
-import AppButton from '../../common/AppButton.vue';
-import ImageCropUpload from '../../common/ImageCropUpload.vue';
-import { useRouter } from 'vue-router';
-
+import { ref, onMounted, reactive, watch } from "vue";
+import AppButton from "../../common/AppButton.vue";
+import ImageCropUpload from "../../common/ImageCropUpload.vue";
+import { useRouter } from "vue-router";
+import Notification from "../../../Helpers/Notification";
 
 const authStore = useAuthStore();
 //**** create function start
 const form = reactive({
-    useEmail: authStore.email, name: '', email: "", staff_id: '',
-    profile_picture: '',
-    phone: '', dept_name: '', desg: '',
+    useEmail: authStore.email,
+    name: "",
+    email: "",
+    staff_id: "",
+    profile_picture: "",
+    phone: "",
+    dept_name: "",
+    desg: "",
 });
 
 const errors = reactive({
-    name: null, 
-    email: null, 
-    staff_id: null, 
-    phone: null, 
-    dept_name: null, 
-    
+    name: null,
+    email: null,
+    staff_id: null,
+    phone: null,
+    dept_name: null,
 });
 
 const router = useRouter();
 function goBack() {
-    router.push({ name: 'UserList' });
+    router.push({ name: "UserList" });
 }
 
 const submitting = ref(false);
 const profileImageFile = ref(null);
+const previewImage = ref("");
+const profilePicture = ref(null);
 
-watch(() => form.name,      v => { if (v)        errors.name = null; });
-watch(() => form.email,     v => { if (v)        errors.email = null; });
-watch(() => form.staff_id,  v => { if (v)        errors.staff_id = null; });
-watch(() => form.phone,     v => { if (v)        errors.phone = null; });
-watch(() => form.dept_name, v => { if (v)        errors.dept_name = null; });
+watch(
+    () => form.name,
+    (v) => {
+        if (v) errors.name = null;
+    }
+);
+watch(
+    () => form.email,
+    (v) => {
+        if (v) errors.email = null;
+    }
+);
+watch(
+    () => form.staff_id,
+    (v) => {
+        if (v) errors.staff_id = null;
+    }
+);
+watch(
+    () => form.phone,
+    (v) => {
+        if (v) errors.phone = null;
+    }
+);
+watch(
+    () => form.dept_name,
+    (v) => {
+        if (v) errors.dept_name = null;
+    }
+);
 watch(profileImageFile, (file) => {
     form.profile_picture = file || null;
 });
 
-
 // Mirrors the backend rule in UserController::agntUserstore — keep both in sync.
-const validEmailRegex = /^[A-Za-z0-9]+([._%+-][A-Za-z0-9]+)*@[A-Za-z0-9]+([.-][A-Za-z0-9]+)*\.[A-Za-z]{2,}$/;
+const validEmailRegex =
+    /^[A-Za-z0-9]+([._%+-][A-Za-z0-9]+)*@[A-Za-z0-9]+([.-][A-Za-z0-9]+)*\.[A-Za-z]{2,}$/;
 
 function emailError(raw) {
-    const value = (raw || '').trim();
+    const value = (raw || "").trim();
 
-    if (!value) return 'Please enter an email address.';
-    if (/\s/.test(value)) return 'Email address cannot contain spaces.';
-    if (value.length > 150) return 'Email address cannot be longer than 150 characters.';
-    if ((value.match(/@/g) || []).length !== 1) return 'Email address must contain exactly one @ symbol.';
-    if (value.includes('..')) return 'Email address cannot contain consecutive dots.';
+    if (!value) return "Please enter an email address.";
+    if (/\s/.test(value)) return "Email address cannot contain spaces.";
+    if (value.length > 150)
+        return "Email address cannot be longer than 150 characters.";
+    if ((value.match(/@/g) || []).length !== 1)
+        return "Email address must contain exactly one @ symbol.";
+    if (value.includes(".."))
+        return "Email address cannot contain consecutive dots.";
 
-    const [local, domain] = value.split('@');
+    const [local, domain] = value.split("@");
 
-    if (!local) return 'Please enter the part before the @ symbol.';
-    if (local.length > 64) return 'The part before @ cannot be longer than 64 characters.';
-    if (!domain) return 'Please enter the domain after the @ symbol.';
-    if (!domain.includes('.')) return 'Domain must include a dot, e.g. example.com';
-    if (!validEmailRegex.test(value)) return 'Please enter a valid email address.';
+    if (!local) return "Please enter the part before the @ symbol.";
+    if (local.length > 64)
+        return "The part before @ cannot be longer than 64 characters.";
+    if (!domain) return "Please enter the domain after the @ symbol.";
+    if (!domain.includes("."))
+        return "Domain must include a dot, e.g. example.com";
+    if (!validEmailRegex.test(value))
+        return "Please enter a valid email address.";
 
     return null;
 }
 
 function validate(type) {
     // Reset all
-    Object.keys(errors).forEach(k => errors[k] = null);
+    Object.keys(errors).forEach((k) => (errors[k] = null));
     const validPhoneRegex = /^(?:\+?[1-9]\d{7,14}|0\d{7,14})$/;
 
-
-    if (!form.name.trim())
-        errors.name = 'Please enter a name.';
+    if (!form.name.trim()) errors.name = "Please enter a name.";
     errors.email = emailError(form.email);
-    if (!form.staff_id.trim())
-        errors.staff_id = 'Please enter a staff ID.';
-    if (!form.phone.trim() || !validPhoneRegex.test(form.phone.trim())) 
-        errors.phone = 'Please enter a valid phone number.';
-    if (!form.dept_name.trim()) 
-        errors.dept_name = 'Please enter a department name.';
-    
-    
+    if (!form.staff_id.trim()) errors.staff_id = "Please enter a staff ID.";
+    if (!form.phone.trim() || !validPhoneRegex.test(form.phone.trim()))
+        errors.phone = "Please enter a valid phone number.";
+    if (!form.dept_name.trim())
+        errors.dept_name = "Please enter a department name.";
+
     return !Object.values(errors).some(Boolean);
 }
 
@@ -92,13 +125,13 @@ function validate(type) {
 function applyServerErrors(payload) {
     const bag = payload?.errors;
 
-    if (!bag || typeof bag !== 'object') {
+    if (!bag || typeof bag !== "object") {
         return false;
     }
 
     let shown = false;
 
-    Object.keys(errors).forEach(field => {
+    Object.keys(errors).forEach((field) => {
         const message = Array.isArray(bag[field]) ? bag[field][0] : bag[field];
 
         if (message) {
@@ -118,49 +151,76 @@ async function save() {
     submitting.value = true;
     // console.log(form);
     try {
-        
         // const response = await axiosInstance.post("/external-user/save", form);
         const authStore = useAuthStore();
         const accessToken = authStore.decryptWithAES(authStore.token);
-        const response = await axios.post('/api/agent-external-user/save', form, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-                Authorization: "Bearer " + accessToken,
-                Accept: "application/json",
-
-            },
+        // const response = await axiosInstance.post(
+        //     "/api/agent-external-user/save",
+        //     form,
+        //     {
+        //         headers: {
+        //             "Content-Type": "multipart/form-data",
+        //             Authorization: "Bearer " + accessToken,
+        //             Accept: "application/json",
+        //         },
+        //     }
+        // );
+        const response = await axiosInstance.post('agent-external-user/save', form, {
+            headers: { 'Content-Type': 'multipart/form-data' },
         });
-
+        console.log("Full response:", response);
+        console.log("response.data:", response.data);
+        console.log("typeof response.data:", typeof response.data);
         // Backend answers 200 with types 'e' in some paths, so never assume success.
-        if (response.data?.types === 'e') {
+        if (response.data?.types === "e") {
             applyServerErrors(response.data);
-            Notification.showToast('e', response.data.message);
+            Notification.showToast("e", response.data.message);
             return;
         }
 
-        document.getElementById("addUserform").reset();
-        //previewImage.value = '';
+        const formElement = document.getElementById("addUserform");
+
+        if (formElement) {
+            formElement.reset();
+        }
+        // console.log(formElement, "I am after formElement");
+
+        previewImage.value = "";
         profileImageFile.value = null;
+        console.log(response.data.message);
+        // Notification.showToast('s', response.data.message);
+        // if(response.data?.types === 's'){
+        //     console.log("found type s");
+        //     // Notification.showToast('s', response.data?.message);
+        //  Notification.showToast('s', response.data.message);
 
-        Notification.showToast('s', response.data.message);
-        router.push({ name: 'UserList' });
+        // }
 
+        const res = response.data;
+        Notification.showToast('s', res.user_message);
 
-    } catch (error) {
-        // Duplicate email / validation failures come back as 422 with a per-field errors bag.
-        if (error?.response?.status === 422 && applyServerErrors(error.response.data)) {
-            Notification.showToast('e', error.response.data.message);
-            return;
+        if (res.mail_sent) {
+            Notification.showToast('s', res.email_message);
+        } else {
+            Notification.showToast('e', res.email_message);
         }
 
-        ErrorCatch.CatchError(error);
-
+        // Notification.showToast('s', response.data.message);
+        router.push({ name: "UserList" });
+    } catch (error) {
+        const data = error?.response?.data;
+        const status = error?.response?.status;
+        const msg = data?.message || "An error occurred while saving the user.";
+        // Map backend field errors back onto the form inline
+        if (status === 422 && data?.errors) {
+            if (data.errors.staff_id) errors.staff_id = data.errors.staff_id[0];
+            if (data.errors.email) errors.email = data.errors.email[0];
+        }
+        Notification.showToast("e", msg);
     } finally {
         submitting.value = false;
     }
 }
-const previewImage = ref('');
-const profilePicture = ref(null);
 
 const handleFileChange = (event) => {
     form.profile_picture = event.target.files[0];
@@ -171,7 +231,7 @@ const handleFileChange = (event) => {
     reader.onload = (e) => {
         previewImage.value = e.target.result;
     };
-}
+};
 
 // triggers the hidden file input when the upload box or "Choose File" link is clicked
 function triggerFileInput() {
@@ -180,22 +240,17 @@ function triggerFileInput() {
 </script>
 
 <template>
-        <AppBreadcrumbs
-        title="User Managemnet"
-        :back-to="{ name: 'UserList' }"
-        :breadcrumbs="[
-            { label: 'Dashboard', to: { name: 'Home' } },
-            { label: 'User List', to: { name: 'UserList' } },
-            { label: 'Create New User' },
-        ]"
-    />
+    <AppBreadcrumbs title="User Managemnet" :back-to="{ name: 'UserList' }" :breadcrumbs="[
+        { label: 'Dashboard', to: { name: 'Home' } },
+        { label: 'User List', to: { name: 'UserList' } },
+        { label: 'Create New User' },
+    ]" />
 
     <div class="card user-create-card">
         <div class="card-header bg-white">
             <h5 class="m-0 p-0 card-title-accent">&nbsp; Create New User</h5>
         </div>
         <form id="addUserform">
-
             <div class="card-body p-4">
                 <div class="row g-4">
                     <!-- Profile Image -->
@@ -220,14 +275,13 @@ function triggerFileInput() {
 
                     <div class="col-lg-3">
                         <label class="form-label">Profile Image</label>
-                        <ImageCropUpload
-                            v-model="profileImageFile"
-                            shape="circle"
-                            size-class="profile-image-preview"
-                            :max-file-size-mb="2"
-                            crop-modal-title="Crop Profile Image"
-                        >
-                            {{ profileImageFile ? 'Click to change · drag to reposition while cropping' : 'JPEG, PNG, GIF or WebP · max 2 MB' }}
+                        <ImageCropUpload v-model="profileImageFile" shape="circle" size-class="profile-image-preview"
+                            :max-file-size-mb="2" crop-modal-title="Crop Profile Image">
+                            {{
+                                profileImageFile
+                                    ? "Click to change · drag to reposition while cropping"
+                                    : "JPEG, PNG, GIF or WebP · max 2 MB"
+                            }}
                         </ImageCropUpload>
                     </div>
 
@@ -239,9 +293,10 @@ function triggerFileInput() {
                                     <span class="text-danger">*</span>
                                 </label>
                                 <input type="text" class="form-control custom-input" id="name"
-                                    placeholder="Enter Your Name" v-model="form.name" :class="{ 'is-invalid': errors.name }">
+                                    placeholder="Enter Your Name" v-model="form.name"
+                                    :class="{ 'is-invalid': errors.name }" />
                                 <div v-if="errors.name" class="invalid-feedback d-block">
-                                    {{ errors.name }}   
+                                    {{ errors.name }}
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -249,7 +304,8 @@ function triggerFileInput() {
                                     <span class="text-danger">*</span>
                                 </label>
                                 <input type="text" class="form-control custom-input" id="staff_id"
-                                    placeholder="Enter Your Staff ID" v-model="form.staff_id" :class="{ 'is-invalid': errors.staff_id }">
+                                    placeholder="Enter Your Staff ID" v-model="form.staff_id"
+                                    :class="{ 'is-invalid': errors.staff_id }" />
                                 <div v-if="errors.staff_id" class="invalid-feedback d-block">
                                     {{ errors.staff_id }}
                                 </div>
@@ -260,7 +316,8 @@ function triggerFileInput() {
                                     <span class="text-danger">*</span>
                                 </label>
                                 <input type="email" class="form-control custom-input" id="email"
-                                    placeholder="Enter Your Email" v-model="form.email" :class="{ 'is-invalid': errors.email }">
+                                    placeholder="Enter Your Email" v-model="form.email"
+                                    :class="{ 'is-invalid': errors.email }" />
                                 <div v-if="errors.email" class="invalid-feedback d-block">
                                     {{ errors.email }}
                                 </div>
@@ -270,7 +327,8 @@ function triggerFileInput() {
                                     <span class="text-danger">*</span>
                                 </label>
                                 <input type="text" class="form-control custom-input" id="phone"
-                                    placeholder="Enter Your Phone Number" v-model="form.phone" :class="{ 'is-invalid': errors.phone }">
+                                    placeholder="Enter Your Phone Number" v-model="form.phone"
+                                    :class="{ 'is-invalid': errors.phone }" />
                                 <div v-if="errors.phone" class="invalid-feedback d-block">
                                     {{ errors.phone }}
                                 </div>
@@ -281,8 +339,9 @@ function triggerFileInput() {
                                     <span class="text-danger">*</span>
                                 </label>
                                 <input type="text" class="form-control custom-input" id="deptment_id1"
-                                    placeholder="Enter Department Name" v-model="form.dept_name" :class="{ 'is-invalid': errors.dept_name }">
-                                
+                                    placeholder="Enter Department Name" v-model="form.dept_name"
+                                    :class="{ 'is-invalid': errors.dept_name }" />
+
                                 <div v-if="errors.dept_name" class="invalid-feedback d-block">
                                     {{ errors.dept_name }}
                                 </div>
@@ -290,7 +349,7 @@ function triggerFileInput() {
                             <div class="col-md-6">
                                 <label for="desg_id1" class="form-label">Designation</label>
                                 <input type="text" class="form-control custom-input" id="desg_id1"
-                                    placeholder="Enter Your Designation" v-model="form.desg_id">
+                                    placeholder="Enter Your Designation" v-model="form.desg_id" />
                             </div>
                         </div>
                     </div>
@@ -298,7 +357,7 @@ function triggerFileInput() {
             </div>
 
             <div class="card-footer bg-white mb-3 gap-3 d-flex justify-content-end">
-                <AppButton variant="cancel" @click="goBack"/>
+                <AppButton variant="cancel" @click="goBack" />
                 <AppButton variant="save" label="Save" :loading="submitting" @click="save()" />
                 <!-- <button type="button" @click="save()" class="btn btn-save px-4 float-end ms-2 mb-3">Save</button> -->
                 <!-- <button type="button" class="btn btn-back px-4 float-end mb-3" @click="$router.go(-1)">Back</button> -->
