@@ -5,6 +5,7 @@ import Footer from './layout/Footer.vue'
 import axiosInstance from "../axiosInstance"
 
 import { useAuthStore } from '../stores/authStore';
+import { performLogout } from '../Helpers/logout';
 import { onMounted, watchEffect, watch, computed, ref, onBeforeMount } from 'vue';
 const authStore = useAuthStore();
 import { useRouter } from 'vue-router';
@@ -44,12 +45,10 @@ watchEffect(async () => {
                         );
                         authStore.refreshToken(res.data.data.expires_in_sec);
                     } else {
-                        authStore.logout();
-                        router.push({ name: 'Login' })
+                        void performLogout();
                     }
                 } else {
-                    authStore.logout();
-                    router.push({ name: 'Login' })
+                    void performLogout();
                 }
 
             }

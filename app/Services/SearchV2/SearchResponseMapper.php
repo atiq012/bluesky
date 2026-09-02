@@ -105,8 +105,8 @@ class SearchResponseMapper
         $blocked = $this->restrictionResolver->getBlockedCodes($agencyId);
         if (!empty($blocked)) {
             $flights = array_values(array_filter($flights, function ($flight) use ($blocked) {
-                $outCode = $flight['outbound']['first_carrier_code'] ?? '';
-                $inCode  = $flight['inbound']['first_carrier_code'] ?? '';
+                $outCode = strtoupper((string) ($flight['outbound']['first_carrier_code'] ?? ''));
+                $inCode  = strtoupper((string) data_get($flight, 'inbound.first_carrier_code', ''));
                 return !isset($blocked[$outCode]) && ($inCode === '' || !isset($blocked[$inCode]));
             }));
         }
@@ -670,6 +670,21 @@ class SearchResponseMapper
 
             $type = ($ptc === 'CNN' && $i === $lastCnnIndex) ? 'Kids' : ($ptcMap[$ptc] ?? $ptc);
 
+            // Catalog Tax[] already carries BD/UT/E5 — keep for AIT deduct (same as price path).
+            // `taxes` stays a float so search UI / sumBaseAndTaxes keep working.
+            $taxRows = $amount['Taxes']['Tax'] ?? [];
+            $taxLines = [];
+            foreach ($taxRows as $t) {
+                $code = strtoupper(trim((string) ($t['taxCode'] ?? '')));
+                if ($code === '') {
+                    continue;
+                }
+                $taxLines[] = [
+                    'code'   => $code,
+                    'amount' => (float) ($t['value'] ?? 0),
+                ];
+            }
+
             $result[] = [
                 'type'              => $type,
                 'passengerTypeCode' => $ptc,
@@ -677,6 +692,7 @@ class SearchResponseMapper
                 'baseFare'          => (float) ($amount['Base'] ?? 0),
                 'taxes'             => (float) ($amount['Taxes']['TotalTaxes'] ?? 0),
                 'totalPrice'        => (float) ($amount['Total'] ?? 0),
+                'tax_lines'         => $taxLines,
             ];
         }
 

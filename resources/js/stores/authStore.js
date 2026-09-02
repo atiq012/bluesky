@@ -92,7 +92,9 @@ export const useAuthStore = defineStore(
                 }
 
                 if (ProvideTimeSecends < 0) {
-                    logout();
+                    clearInterval(intervalId);
+                    // Store avoids importing logout helper (circular); app.js handles full logout.
+                    window.dispatchEvent(new Event("bluesky:logout-request"));
                 }
             }, 1000);
         }

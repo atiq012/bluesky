@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 
 class ImageService
 {
@@ -67,6 +68,96 @@ class ImageService
         }
 
         return false;
+    }
+
+    // Profile images use their own config base path — same reason as agents: on live the
+    // web root sits outside the app directory, so public_path() is not web-reachable.
+    public function uploadProfileImage(UploadedFile $image, ?string $oldDbPath = null): string
+    {
+        $basePath = $this->profileBasePath();
+        $dbPrefix = rtrim((string) config('profile_uploads.db_public_prefix', '/uploads/profile_image'), '/');
+
+        $this->ensureWritableDirectory($basePath);
+
+        $ext = $this->resolveUploadedImageExtension($image);
+        $filename = str_replace(' ', '', now()->format('dmY-') . time()) . '_' . Str::lower(Str::random(6)) . '.' . $ext;
+        $image->move($basePath, $filename);
+
+        $newDbPath = $dbPrefix . '/' . $filename;
+
+        if ($oldDbPath && ltrim($oldDbPath, '/') !== ltrim($newDbPath, '/')) {
+            $this->deleteProfileImageByDbPath($oldDbPath);
+        }
+
+        return $newDbPath;
+    }
+
+    public function deleteProfileImageByDbPath(?string $dbPath): bool
+    {
+        foreach ($this->profileImageCandidatePaths($dbPath) as $candidate) {
+            if (File::isFile($candidate) && File::delete($candidate)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function resolveProfileImagePath(?string $dbPath): ?string
+    {
+        foreach ($this->profileImageCandidatePaths($dbPath) as $candidate) {
+            if (File::isFile($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    public function profileBasePath(): string
+    {
+        return rtrim((string) config('profile_uploads.base_path', public_path('uploads/profile_image')), '/');
+    }
+
+    public function resolveUploadedImageExtension(UploadedFile $file): string
+    {
+        $ext = strtolower((string) $file->getClientOriginalExtension());
+        if ($ext === '' || $ext === 'bin') {
+            $ext = strtolower((string) $file->extension());
+        }
+
+        return match ($ext) {
+            'jpeg' => 'jpg',
+            'jpg', 'png', 'gif', 'webp' => $ext,
+            default => match (strtolower((string) $file->getMimeType())) {
+                'image/png' => 'png',
+                'image/gif' => 'gif',
+                'image/webp' => 'webp',
+                default => 'jpg',
+            },
+        };
+    }
+
+    // @return list<string>
+    private function profileImageCandidatePaths(?string $dbPath): array
+    {
+        if (! $dbPath) {
+            return [];
+        }
+
+        $relative = ltrim(trim($dbPath), '/');
+        $filename = basename($relative);
+
+        $candidates = [
+            public_path($relative),
+            $this->profileBasePath() . '/' . $filename,
+        ];
+
+        foreach ((array) config('profile_uploads.fallback_base_paths', []) as $fallbackBase) {
+            $candidates[] = rtrim((string) $fallbackBase, '/') . '/' . $filename;
+        }
+
+        return array_values(array_unique($candidates));
     }
 
     public function resolveAttachmentTypeByField(string $fieldKey): string

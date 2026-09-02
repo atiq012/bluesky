@@ -2,6 +2,7 @@
 import { ref } from "vue";
 import VOtpInput from "vue3-otp-input";
 import { useAuthStore } from "../../stores/authStore";
+import { performLogout } from "../../Helpers/logout";
 const authStore = useAuthStore();
 
 import { useRouter } from 'vue-router';
@@ -15,8 +16,7 @@ const ButtonName = ref("");
 ButtonName.value = "Confirm";
 
 function BackLogin() {
-    authStore.logout();
-    router.push({ name: "Login" });
+    void performLogout();
 }
 
 

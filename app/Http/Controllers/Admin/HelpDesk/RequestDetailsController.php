@@ -45,7 +45,7 @@ class RequestDetailsController extends BaseController
             // Insert the note
             $noteId = DB::table('request_details')->insertGetId([
                 'request_id'        => $request->ticketId,
-                'note'              => $request->note,
+                'note'              => clean_rich_html($request->note),
                 'from_user_id'      => auth()->id(),
                 'to_user_id'        => $to_user_id->assignee_id,
                 'send_notification' => $request->send_as_notification ?? false,

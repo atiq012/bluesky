@@ -76,8 +76,9 @@ class FareRuleCalculator
                 $deductible += (float) ($ctx->taxLines[$code] ?? 0);
             }
         }
-        // Not exact (search time) — deduction is skipped, i.e. taxed on the full gross.
+        // Not exact / empty Tax[] — deduction skipped, taxed on full gross.
         // Conservative: never understates the price shown (§8).
+        // Search catalog usually ships Tax[] → tax_lines_exact true → same AIT as price.
 
         $grossForAit = $supplierFare - $deductible;
         $aitRate = (float) config('FareRules.engine.ait_rate');

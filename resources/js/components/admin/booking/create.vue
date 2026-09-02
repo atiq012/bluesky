@@ -267,7 +267,7 @@ const adultTitleOptions = [
 const childTitleOptions = [
     titleDefaultOption,
     { value: 'Mstr', label: 'Mstr.' },
-    { value: 'Ms', label: 'Ms.' },
+    { value: 'Miss', label: 'Miss' },
 ]
 function titleOptionsFor(type) {
     return (type === 'Child' || type === 'Infant') ? childTitleOptions : adultTitleOptions
@@ -355,34 +355,41 @@ function isDobValidForType(dobStr, paxType, travelDate) {
 
 const isTravelerFormValid = computed(() => {
     const travelDate = bookingStore.form?.dep_date ?? ''
+    const forms = travelerForms.value
+    // Exactly one primary contact must be selected
+    const primaryCount = forms.filter((f) => f?.isPrimaryContact).length
+    if (primaryCount !== 1) return false
+
     return travelers.value.every((t, i) => {
-        const f = travelerForms.value[i]
+        const f = forms[i]
         if (!f) return false
-        const base = f.title && f.firstName?.trim() && f.lastName?.trim()
+        const baseOk = f.title && f.firstName?.trim() && f.lastName?.trim()
             && isDobValidForType(f.dob, t.type, travelDate)
             && f.gender && f.nationality
-            && f.passportNo?.trim() && f.expiryDate && f.email?.trim() && f.phone?.trim()
-        if (!base) return false
-        // primary contact (first adult) must have email + phone
-        if (t.isPrimaryContact) return f.email?.trim() && f.phone?.trim()
+            && f.passportNo?.trim() && f.expiryDate
+        if (!baseOk) return false
+        // Email + phone mandatory only for selected Primary Contact
+        if (f.isPrimaryContact) {
+            return Boolean(f.email?.trim() && f.phone?.trim())
+        }
         return true
     })
 })
 
 const devTestData = {
     Adult: [
-        { title: 'Mr',   firstName: 'Md',     middleName: 'Shakaouth', lastName: 'Hossain', dob: '01-Jan-1988', gender: 'Male',   passportNo: 'BS456789', expiryDate: '05-Jun-2030', email: 'shakaouth.hossain@galaxybd.com', phone: '01787688855' },
+        { title: 'Mr',   firstName: 'Md Shakaouth', middleName: '', lastName: 'Hossain', dob: '01-Jan-1988', gender: 'Male',   passportNo: 'BS456789', expiryDate: '05-Jun-2030', email: 'shakaouth.hossain@galaxybd.com', phone: '01787688855' },
         { title: 'Mr',   firstName: 'Rafiq',  middleName: '',          lastName: 'Islam',   dob: '20-Mar-1985', gender: 'Male',   passportNo: 'BS456790', expiryDate: '05-Jun-2030', email: 'rafiq.islam@galaxybd.com', phone: '01787688856' },
         { title: 'Mr',   firstName: 'Kamal',  middleName: '',          lastName: 'Ahmed',   dob: '10-Jul-1992', gender: 'Male',   passportNo: 'BS456791', expiryDate: '05-Jun-2030', email: 'kamal.ahmed@galaxybd.com', phone: '01787688857' },
     ],
     Child: [
         { title: 'Mstr', firstName: 'Shohebur', middleName: '', lastName: 'Rahman', dob: '01-Jun-2015', gender: 'Male', passportNo: 'BS34534', expiryDate: '06-Jun-2030', email: 'shohebur.rahman@galaxybd.com', phone: '01714567899' },
-        { title: 'Ms', firstName: 'Nadia', middleName: '', lastName: 'Akter', dob: '15-Apr-2017', gender: 'Female', passportNo: 'BS34535', expiryDate: '06-Jun-2030', email: 'nadia.akter@galaxybd.com', phone: '01714567900' },
+        { title: 'Miss', firstName: 'Nadia', middleName: '', lastName: 'Akter', dob: '15-Apr-2017', gender: 'Female', passportNo: 'BS34535', expiryDate: '06-Jun-2030', email: 'nadia.akter@galaxybd.com', phone: '01714567900' },
         { title: 'Mstr', firstName: 'Arif', middleName: '', lastName: 'Karim', dob: '01-Jun-2023', gender: 'Male', passportNo: 'BS34536', expiryDate: '06-Jun-2030', email: 'arif.karim@galaxybd.com', phone: '01714567901' },
-        { title: 'Ms', firstName: 'Maya', middleName: '', lastName: 'Chowdhury', dob: '10-Sep-2022', gender: 'Female', passportNo: 'BS34537', expiryDate: '06-Jun-2030', email: 'maya.chowdhury@galaxybd.com', phone: '01714567902' },
+        { title: 'Miss', firstName: 'Maya', middleName: '', lastName: 'Chowdhury', dob: '10-Sep-2022', gender: 'Female', passportNo: 'BS34537', expiryDate: '06-Jun-2030', email: 'maya.chowdhury@galaxybd.com', phone: '01714567902' },
     ],
     Infant: [
-        { title: 'Ms', firstName: 'Shahira', middleName: '', lastName: 'Sadik', dob: '01-Jun-2025', gender: 'Female', passportNo: 'SB12345', expiryDate: '13-Jun-2030', email: 'shahira.sadik@galaxybd.com', phone: '01714567903' },
+        { title: 'Miss', firstName: 'Shahira', middleName: '', lastName: 'Sadik', dob: '01-Jun-2025', gender: 'Female', passportNo: 'SB12345', expiryDate: '13-Jun-2030', email: 'shahira.sadik@galaxybd.com', phone: '01714567903' },
         { title: 'Mstr', firstName: 'Rafi', middleName: '', lastName: 'Khan', dob: '10-Aug-2025', gender: 'Male', passportNo: 'SB12346', expiryDate: '13-Jun-2030', email: 'rafi.khan@galaxybd.com', phone: '01714567904' },
     ],
 }
@@ -398,7 +405,7 @@ function fillTestData() {
             ...f,
             title:       f.title       || data.title       || 'Mr',
             firstName:   f.firstName   || data.firstName   || 'Guest',
-            middleName:  f.middleName  ?? data.middleName  ?? '',
+            middleName:  '',
             lastName:    f.lastName    || data.lastName    || 'Traveler',
             dob:         f.dob         || data.dob         || '01-Jan-1990',
             gender:      f.gender      || data.gender      || 'Male',
@@ -750,6 +757,12 @@ onUnmounted(() => {
                                                                         Auto Fill
                                                                     </button>
                                                                 </div>
+                                                                <div class="mt-2 p-2 passport-notice">
+                                                                    <i class="fa fa-info-circle passport-notice__icon"></i>
+                                                                    <span class="passport-notice__text">
+                                                                        Enter the name exactly as printed on the passport. Given Name = passport "Given Name(s)" (including middle name, if any), Surname = passport "Surname". Any mismatch may block check-in or immigration.
+                                                                    </span>
+                                                                </div>
                                                             </div>
                                                             <div class="col-12 col-md-6 mt-2">
                                                                 <div class="d-flex align-items-center gap-2">
@@ -759,21 +772,15 @@ onUnmounted(() => {
                                                                     </div>
                                                                 </div>
                                                                 <div class="d-flex align-items-center gap-2 mt-1">
-                                                                    <label class="form-label mb-0 text-nowrap personal-detail-label">First Name <span class="text-danger">*</span></label>
+                                                                    <label class="form-label mb-0 text-nowrap personal-detail-label">Given Name <span class="text-danger">*</span></label>
                                                                     <div class="flex-grow-1">
-                                                                        <input v-model="travelerForms[ti].firstName" type="text" class="form-control" placeholder="Enter First Name">
+                                                                        <input v-model="travelerForms[ti].firstName" type="text" class="form-control" placeholder="Given name(s) as in passport">
                                                                     </div>
                                                                 </div>
                                                                 <div class="d-flex align-items-center gap-2 mt-1">
-                                                                    <label class="form-label mb-0 text-nowrap personal-detail-label">Middle Name</label>
+                                                                    <label class="form-label mb-0 text-nowrap personal-detail-label">Surname <span class="text-danger">*</span></label>
                                                                     <div class="flex-grow-1">
-                                                                        <input v-model="travelerForms[ti].middleName" type="text" class="form-control" placeholder="Enter Middle Name">
-                                                                    </div>
-                                                                </div>
-                                                                <div class="d-flex align-items-center gap-2 mt-1">
-                                                                    <label class="form-label mb-0 text-nowrap personal-detail-label">Last Name <span class="text-danger">*</span></label>
-                                                                    <div class="flex-grow-1">
-                                                                        <input v-model="travelerForms[ti].lastName" type="text" class="form-control" placeholder="Enter Last Name">
+                                                                        <input v-model="travelerForms[ti].lastName" type="text" class="form-control" placeholder="Surname as in passport">
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -854,11 +861,17 @@ onUnmounted(() => {
                                                                 </div>
                                                                 <div class="row">
                                                                     <div class="col-8 mt-2">
-                                                                        <label class="form-label">Email <span class="text-danger">*</span></label>
+                                                                        <label class="form-label">
+                                                                            Email
+                                                                            <span v-if="travelerForms[ti]?.isPrimaryContact" class="text-danger">*</span>
+                                                                        </label>
                                                                         <input v-model="travelerForms[ti].email" type="text" class="form-control" placeholder="Enter Email">
                                                                     </div>
                                                                     <div class="col-4 mt-2">
-                                                                        <label class="form-label">Phone <span class="text-danger">*</span></label>
+                                                                        <label class="form-label">
+                                                                            Phone
+                                                                            <span v-if="travelerForms[ti]?.isPrimaryContact" class="text-danger">*</span>
+                                                                        </label>
                                                                         <input v-model="travelerForms[ti].phone" type="text" class="form-control" placeholder="Enter Phone">
                                                                     </div>
                                                                 </div>
@@ -2110,6 +2123,27 @@ onUnmounted(() => {
     align-items: center;
 }
 
+.passport-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    background-color: rgba(255, 250, 238, 1);
+    border-radius: 5px;
+    line-height: 1.45;
+}
+
+.passport-notice__icon {
+    color: rgba(240, 180, 27, 1);
+    font-size: 12px;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.passport-notice__text {
+    font-size: 12px;
+    color: rgba(119, 95, 35, 1);
+}
+
 /* ── Dark mode overrides ──────────────────────────────────────── */
 [data-bs-theme="dark"] .booking-step-section {
     background: var(--bs-card-bg) !important;
@@ -2123,6 +2157,9 @@ onUnmounted(() => {
 }
 [data-bs-theme="dark"] .passport-notice__text {
     color: #fcd34d !important;
+}
+[data-bs-theme="dark"] .passport-notice__icon {
+    color: #f0b41b !important;
 }
 [data-bs-theme="dark"] .ancillary-coverage-select {
     background: rgba(114, 57, 234, 0.12);

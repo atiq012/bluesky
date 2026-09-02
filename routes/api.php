@@ -8,10 +8,8 @@ use App\Http\Controllers\Admin\API\APIController;
 use App\Http\Controllers\Admin\API\BookingActivityLogController;
 use App\Http\Controllers\Admin\API\BookingAttemptAdminController;
 use App\Http\Controllers\Admin\API\BookingAttemptController;
-use App\Http\Controllers\Admin\Company\CompanyController;
 use App\Http\Controllers\Admin\API\DynamicRuleCacheController;
 use App\Http\Controllers\Admin\API\FareRuleCacheController;
-use App\Http\Controllers\Admin\Policy\PolicyController;
 use App\Http\Controllers\Admin\API\PriceV2Controller;
 use App\Http\Controllers\Admin\API\ReservationPaxController;
 use App\Http\Controllers\Admin\API\SearchV2Controller;
@@ -24,6 +22,7 @@ use App\Http\Controllers\Admin\API\TpV2VoidController;
 use App\Http\Controllers\Admin\API\TravelportFareRulesController;
 use App\Http\Controllers\Admin\ApiManagement\APIManagementController;
 use App\Http\Controllers\Admin\Area\AreaController;
+use App\Http\Controllers\Admin\Company\CompanyController;
 use App\Http\Controllers\Admin\Department\DepartmentController;
 use App\Http\Controllers\Admin\Deposit\DepositController;
 use App\Http\Controllers\Admin\Designation\DesignationController;
@@ -31,21 +30,24 @@ use App\Http\Controllers\Admin\Group\GroupController;
 use App\Http\Controllers\Admin\Group\GroupPAXController;
 use App\Http\Controllers\Admin\Group\GroupPaymentController;
 use App\Http\Controllers\Admin\Group\OfferPriceController;
+use App\Http\Controllers\Admin\HelpDesk\CategoryController;
+use App\Http\Controllers\Admin\HelpDesk\RequestController;
+use App\Http\Controllers\Admin\HelpDesk\RequestDetailsController;
+use App\Http\Middleware\SanitizeInput;
 use App\Http\Controllers\Admin\IssuedBankMFS\IssuedBankMFSController;
 use App\Http\Controllers\Admin\OfficeLocation\LocationController;
 use App\Http\Controllers\Admin\PaymentAccount\PaymentAccountSController;
+use App\Http\Controllers\Admin\PNR\PNRSearchController;
+use App\Http\Controllers\Admin\Policy\PolicyController;
 use App\Http\Controllers\Admin\Role\RolePermissionController;
 use App\Http\Controllers\Admin\Traveler\TravelerController;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\UserController;
 use App\Http\Controllers\Dashboard\DashboardController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Admin\HelpDesk\RequestController;
-use App\Http\Controllers\Admin\HelpDesk\CategoryController;
-use App\Http\Controllers\Admin\HelpDesk\RequestDetailsController;
 
 Route::post('login', [AuthController::class, 'login'])->name('login');
 Route::post('register', [AuthController::class, 'register'])->name('register');
@@ -230,7 +232,9 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('/PricingRequestBody', [APIController::class, 'PricingRequestBody'])->name('PricingRequestBody');
 
     // Search V2
-    Route::post('/v2/search', [SearchV2Controller::class, 'search'])->middleware('throttle:search-v2')->name('search.v2');
+    Route::post('/v2/search', [SearchV2Controller::class, 'search'])
+        ->middleware(['throttle:search-v2', 'agent.api.access:travelport_v2'])
+        ->name('search.v2');
     Route::get('/v2/search/latest-snapshot', [SearchV2Controller::class, 'latestSnapshot'])->name('search.v2.latestSnapshot');
     Route::get('/flight-search-logs', [SearchV2Controller::class, 'getFlightSearchLogs'])->name('search.v2.logs');
     Route::post('/flight-search-log/view', [SearchV2Controller::class, 'viewFlightSearchLog'])->name('search.v2.logs.view');
@@ -245,7 +249,9 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('/editPolicy', [PolicyController::class, 'edit'])->name('settings.policy.edit');
 
     // Price V2
-    Route::post('/v2/price', [PriceV2Controller::class, 'price'])->name('price.v2');
+    Route::post('/v2/price', [PriceV2Controller::class, 'price'])
+        ->middleware('agent.api.access:travelport_v2')
+        ->name('price.v2');
     Route::post('/flight-price-log/view', [PriceV2Controller::class, 'viewPriceLog'])->name('price.v2.log.view');
 
     // Reservation V2
@@ -279,11 +285,13 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('/v2/booking/sessions/{id}/request-download', [BookingAttemptAdminController::class, 'downloadSessionRequest'])->name('booking.v2.sessions.request-download');
     Route::get('/v2/booking/sessions/{id}/response-download', [BookingAttemptAdminController::class, 'downloadSessionResponse'])->name('booking.v2.sessions.response-download');
 
+    // Flight PNR search (GDS PNR or Airline PNR)
+    Route::get('/v2/pnr/search', [PNRSearchController::class, 'search'])->name('pnr.v2.search');
     //Helpdesk
     Route::get('/getHelpdeskRequesters', [UserController::class, 'getHelpdeskRequesters']);
     Route::get('getAllRequests', [RequestController::class, 'index'])->name('request.getAllRequests');
-    Route::post('/request/save', [RequestController::class, 'store'])->name('request.store');
-    Route::post('/request/update', [RequestController::class, 'update'])->name('request.update');
+    Route::post('/request/save', [RequestController::class, 'store'])->name('request.store')->withoutMiddleware(SanitizeInput::class);
+    Route::post('/request/update', [RequestController::class, 'update'])->name('request.update')->withoutMiddleware(SanitizeInput::class);
     Route::post('/editRequest', [RequestController::class, 'edit'])->name('request.editRequest');
     Route::post('/assignRequest', [RequestController::class, 'assignRequest'])->name('request.assignRequest');
     Route::post('/statusChange', [RequestController::class, 'statusChange'])->name('request.statusChange');

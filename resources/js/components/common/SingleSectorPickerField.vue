@@ -6,6 +6,7 @@ const props = defineProps({
     modelValue: { type: String, default: '' },
     options: { type: Array, default: () => [] },
     label: { type: String, default: '' },
+    star: { type: String, default: '' },
     entityName: { type: String, default: 'item' },
     disabled: { type: Boolean, default: false },
     blockedOptions: { type: Array, default: () => [] },
@@ -64,7 +65,7 @@ function applyPicker() {
 
 <template>
     <div class="single-picker">
-        <label v-if="label" class="field-label mb-1">{{ label }}</label>
+        <label v-if="label" class="field-label mb-1">{{ label }} <span v-if="star" class="required-star">{{ star }}</span></label>
 
         <div class="single-picker-box" :class="{ 'single-picker-box--empty': !hasSelection }">
             <template v-if="!hasSelection">
@@ -247,7 +248,9 @@ function applyPicker() {
     justify-content: center;
     padding: 16px;
 }
-
+.required-star {
+    color: #ef4444;
+}
 .single-modal {
     width: min(480px, 100%);
     height: min(80vh, 640px);

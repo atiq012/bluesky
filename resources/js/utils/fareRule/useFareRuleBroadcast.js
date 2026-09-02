@@ -1,5 +1,5 @@
 import Echo from 'laravel-echo';
-import Ably from 'ably';
+import Pusher from 'pusher-js';
 import axiosInstance from '../../axiosInstance';
 import Notification from '../../Helpers/Notification.js';
 
@@ -9,8 +9,8 @@ let echoInstance = null;
 let subscriberCount = 0;
 let activeUnsubscribe = null;
 
-function getAblyKey() {
-    return import.meta.env.VITE_ABLY_KEY || '';
+function getPusherKey() {
+    return import.meta.env.VITE_PUSHER_APP_KEY || '';
 }
 
 function getBroadcastChannel() {
@@ -23,16 +23,22 @@ function getPollIntervalMs() {
 }
 
 function getEcho() {
-    const key = getAblyKey();
+    const key = getPusherKey();
     if (!key) {
         return null;
     }
 
     if (!echoInstance) {
-        window.Ably = Ably;
+        window.Pusher = Pusher;
         echoInstance = new Echo({
-            broadcaster: 'ably',
+            broadcaster: 'pusher',
             key,
+            cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
+            wsHost: import.meta.env.VITE_PUSHER_HOST,
+            wsPort: Number(import.meta.env.VITE_PUSHER_PORT ?? 443),
+            wssPort: Number(import.meta.env.VITE_PUSHER_PORT ?? 443),
+            forceTLS: import.meta.env.VITE_PUSHER_SCHEME === 'https',
+            enabledTransports: ['ws', 'wss'],
         });
     }
 
@@ -54,7 +60,7 @@ function notifyAndRefresh(onUpdated) {
     onUpdated?.();
 }
 
-function subscribeAbly(onUpdated) {
+function subscribePusher(onUpdated) {
     const echo = getEcho();
     if (!echo) {
         return null;
@@ -105,7 +111,7 @@ function startPolling(onUpdated, shouldRefresh) {
     return () => window.clearInterval(timerId);
 }
 
-// Search page only — Ably when configured, otherwise poll cache stamp.
+// Search page only — Pusher when configured, otherwise poll cache stamp.
 export function subscribeFareRuleUpdates({ onUpdated, shouldRefresh } = {}) {
     subscriberCount += 1;
 
@@ -113,21 +119,21 @@ export function subscribeFareRuleUpdates({ onUpdated, shouldRefresh } = {}) {
         return activeUnsubscribe;
     }
 
-    // Echo's Ably connector can throw synchronously during construction (bad key, broadcaster
+    // Echo's Pusher connector can throw synchronously during construction (bad key, broadcaster
     // misconfiguration, missing peer dep) rather than failing async — a throw here must not take
     // the poll fallback down with it, since that fallback is the whole point of having one (§11.9:
-    // "if Ably... fails, the poll... That ordering is deliberate").
-    let ablyUnsub = null;
+    // "if Pusher... fails, the poll... That ordering is deliberate").
+    let pusherUnsub = null;
     try {
-        ablyUnsub = subscribeAbly(onUpdated);
+        pusherUnsub = subscribePusher(onUpdated);
     } catch {
-        ablyUnsub = null;
+        pusherUnsub = null;
     }
-    // Always poll — Ably can fail silently (stale build, bad key, network).
+    // Always poll — Pusher can fail silently (stale build, bad key, network).
     const pollUnsub = startPolling(onUpdated, shouldRefresh);
 
     activeUnsubscribe = () => {
-        ablyUnsub?.();
+        pusherUnsub?.();
         pollUnsub?.();
 
         subscriberCount = Math.max(0, subscriberCount - 1);

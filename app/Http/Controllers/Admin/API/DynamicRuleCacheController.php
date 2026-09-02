@@ -12,7 +12,7 @@ class DynamicRuleCacheController extends BaseController
         private readonly DynamicRuleCache $dynamicRuleCache,
     ) {}
 
-    // Search page polls this when Ably is down — no rule CRUD on agency portal.
+    // Search page polls this when Pusher is down — no rule CRUD on agency portal.
     public function cacheStamp()
     {
         // Fare-rule-engine plan §12.2 — once `dynamic_rules` is dropped in BlueSky, pin this to a

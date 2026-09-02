@@ -25,13 +25,6 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'confirm']);
 
-const displayMessage = computed(() => {
-    if (props.message) return props.message;
-    return props.itemName
-        ? `Are you sure you want to delete "<strong>${props.itemName}</strong>"? This action cannot be undone.`
-        : 'Are you sure you want to delete this? This action cannot be undone.';
-});
-
 const iconStyles = computed(() => {
     const preset = ICON_VARIANTS[props.iconVariant] || ICON_VARIANTS.delete;
     return {
@@ -78,7 +71,13 @@ function onConfirm() {
                 </span>
                 <h5 class="modal-title mb-0 fw-semibold">{{ title }}</h5>
             </div>
-            <p class="text-muted mb-4" v-html="displayMessage"></p>
+            <p v-if="message" class="text-muted mb-4">{{ message }}</p>
+            <p v-else-if="itemName" class="text-muted mb-4">
+                Are you sure you want to delete "<strong>{{ itemName }}</strong>"? This action cannot be undone.
+            </p>
+            <p v-else class="text-muted mb-4">
+                Are you sure you want to delete this? This action cannot be undone.
+            </p>
             <div class="d-flex gap-2">
                 <AppButton variant="cancel" :block="true" @click="close" />
                 <AppButton

@@ -43,7 +43,7 @@ const columns = [
     { field: 'kam', title: 'KAM' },
     { field: 'status', title: 'Status' },
     { field: 'created_col', title: 'Created By', sort: false },
-    // { field: 'updated_col', title: 'Updated By', sort: false },
+    { field: 'updated_col', title: 'Updated By', sort: false },
     { field: 'action', title: 'Action' },
 ];
 
@@ -56,18 +56,25 @@ function formatAmount(value) {
     return Number.isFinite(n) ? n.toLocaleString('en-BD', { maximumFractionDigits: 0 }) : '0';
 }
 
+function splitPipeLines(value) {
+    return String(value ?? '')
+        .split(/\s*\|\s*/)
+        .map((part) => part.trim())
+        .filter(Boolean);
+}
+
 function groupIdDisplay(row) {
     return row.idd || 'GRP-' + String(Math.floor(Math.random() * 10000)).padStart(4, '0');
 }
 
 function wayTypeConfig(wayType) {
-    console.log(wayType);
+
     const wayTypeR = '';
     if (wayType === 'multicity') {
                 return { cls: 'way-badge multi-city', label: 'Multi City' };
     }
     else if (wayType === 'roundway') {
-        return { cls: 'way-badge way-round', label: 'Round Way' };
+        return { cls: 'way-badge way-round', label: 'Round Trip' };
     } else {
         return { cls: 'way-badge way-one', label: 'One Way' };
 
@@ -83,7 +90,7 @@ function statusConfig(status) {
         case 'Price offer':
             return { cls: 'status-pill status-price-offer', icon: 'fa-solid fa-circle', label: 'Price Offer' };
         case 'Offer confirmed':
-            return { cls: 'status-pill status-price-offer', icon: 'fa-solid fa-circle', label: 'Offer Confirmed' };
+            return { cls: 'status-pill status-offer-confirmed', icon: 'fa-solid fa-circle', label: 'Offer Confirmed' };
         case 'Assigned':
             return { cls: 'status-pill status-assigned', icon: 'fa-solid fa-circle', label: 'Assigned' };
         case 'PNR Shared':
@@ -422,7 +429,7 @@ async function handleEticketGenerated(data) {
                                 <i class="fa-solid fa-plane-departure me-1 table-icon"></i>
                                 {{ row.airline_code }}
                             </div>
-                            <div class="cell-link">PNR : {{ row.pnr || '-' }}</div>
+                            <div class="cell-link" v-if="row.pnr">PNR : {{ row.pnr || '-' }}</div>
 
                         </div>
                     </template>
@@ -432,8 +439,9 @@ async function handleEticketGenerated(data) {
                         <div class="sector-cell">
                             <div class="cell-main">
 
-                                <div v-if="row.request_type == 'multicity'"
-                                    v-html="row.route_display.replaceAll(' | ', '<br>').replaceAll('|', '<br>')"></div>
+                                <div v-if="row.request_type == 'multicity'" class="cell-multiline">
+                                    {{ splitPipeLines(row.route_display).join('\n') }}
+                                </div>
 
                                 <div v-else-if="row.request_type == 'oneway'">
                                     {{ row.origin }} - {{ row.destination }}
@@ -451,8 +459,13 @@ async function handleEticketGenerated(data) {
                     <!-- Departure & Return Date -->
                     <template #dates="{ value: row }">
                         <div class="cell-main" v-if="row.request_type == 'multicity'">
-                            <div v-if="row.request_type == 'multicity'"
-                                v-html="`<i class='fa-regular fa-calendar me-1' style='font-size: 0.65rem;'></i>${row.route_date_display.replaceAll(' | ', `<br> <i class='fa-regular fa-calendar me-1' style='font-size: 0.65rem;'></i>`).replaceAll('|', `<br> <i class='fa-regular fa-calendar me-1' style='font-size: 0.65rem;'></i>`)}`">
+                            <div
+                                v-for="(line, lineIdx) in splitPipeLines(row.route_date_display)"
+                                :key="lineIdx"
+                                :class="{ 'mt-1': lineIdx > 0 }"
+                            >
+                                <i class="fa-regular fa-calendar me-1" style="font-size: 0.65rem;"></i>
+                                {{ line }}
                             </div>
                         </div>
                         <div class="cell-main" v-else-if="row.request_type == 'oneway'">
@@ -490,8 +503,17 @@ async function handleEticketGenerated(data) {
                             <div class="cell-main amount-text">
                                 {{ row.opCurrency }} {{ formatAmount(row.opEstimateNetPayable) }}
                             </div>
-                            <div class="cell-main cell-link" v-if="row.payment_info" v-html="`<i class='fa-solid fa-scale-balanced me-1' style='font-size: 0.65rem;'></i>${row.payment_info.replaceAll(' | ', `<br> <i class='fa-solid fa-scale-balanced me-1' style='font-size: 0.65rem;'></i>`).replaceAll('|', `<br> <i class='fa-solid fa-scale-balanced me-1' style='font-size: 0.65rem;'></i>`)}`">
-                            </div>
+                            <template v-if="row.payment_info">
+                                <div
+                                    v-for="(line, payIdx) in splitPipeLines(row.payment_info)"
+                                    :key="payIdx"
+                                    class="cell-main cell-link"
+                                    :class="{ 'mt-1': payIdx > 0 }"
+                                >
+                                    <i class="fa-solid fa-scale-balanced me-1" style="font-size: 0.65rem;"></i>
+                                    {{ line }}
+                                </div>
+                            </template>
                         </div>
                         <div v-else>
                             -
@@ -513,11 +535,16 @@ async function handleEticketGenerated(data) {
                     <template #kam="{ value: row }">
 
                         <CreatedInfo :name="row?.assigned_to_kam" :date="row?.assigned_date" />
-
+                        <div class="cell-link" v-if="row.kam_email">
+                            <i class="fa fa-envelope me-1"></i> {{ row.kam_email }}
+                        </div>
+                        <div class="cell-link" v-if="row.kam_phone">
+                            <i class="fa fa-phone me-1"></i> {{ row.kam_phone }}
+                        </div>
                     </template>
                     <!-- Status -->
                     <template #status="{ value: row }">
-                        <div class="status-cell d-flex flex-column">
+                        <!-- <div class="status-cell d-flex flex-column">
                             <span v-if="row.opstatus == null" :class="['rounded-pill', statusConfig(row.status).cls]">
                                 <i :class="[statusConfig(row.status).icon, 'me-1 tiny']"></i>
                                 {{ statusConfig(row.status).label }}
@@ -530,6 +557,26 @@ async function handleEticketGenerated(data) {
                             <span v-if="row.opstatus=='PAX Partially Uploaded'" class="cell-link small mt-2">
                                 <i class="fa fa-info-circle "></i> {{ row.total_traveler - row.pax_count }} PAX Remaining
                             </span>
+                        </div> -->
+                        <div class="fare-cell">
+                            <div class="status-cell">
+                                <span v-if="row.opstatus == null"
+                                    :class="['rounded-pill', statusConfig(row.status).cls]">
+                                    <i :class="[statusConfig(row.status).icon, 'me-1 tiny']"></i>
+                                    {{ statusConfig(row.status).label }}
+                                </span>
+                                <span v-else :class="['rounded-pill', statusConfig(row.opstatus).cls]">
+                                    <i :class="[statusConfig(row.opstatus).icon, 'me-1 tiny']"></i>
+                                    {{ statusConfig(row.opstatus).label }}
+                                </span>
+
+                            </div>
+                            <div class="cell-link" v-if="row.opstatus == null">{{
+                                moment(row.updated_at).format('DD-MMM-YYYY h:mm A') }}
+                            </div>
+                            <div class="cell-link" v-else>{{ moment(row.opupdated_at).format('DD-MMM-YYYY h:mm A') }}
+                            </div>
+
                         </div>
                     </template>
 
@@ -540,9 +587,9 @@ async function handleEticketGenerated(data) {
                     </template>
 
                     <!-- Updated By -->
-                    <!-- <template #updated_col="{ value: row }">
+                    <template #updated_col="{ value: row }">
                         <CreatedInfo :name="row?.updatedby || row?.updatedby" :date="row?.updated_at" />
-                    </template> -->
+                    </template>
 
                     <!-- Action -->
                     <template #action="{ value: row }">
@@ -555,7 +602,7 @@ async function handleEticketGenerated(data) {
                             @pax-upload="handlePAXUpload"
                             @uploaded-pax="handleUploadedPAX"
                             @generate-eticket="handleGenerateETicket"
-                            @delete="handleDelete"/>
+                            @delete="handleDelete" deleteLabel="Decline" />
                     </template>
                 </AppDataTable>
             </div>
@@ -810,6 +857,10 @@ async function handleEticketGenerated(data) {
     line-height: 1.35;
 }
 
+.cell-multiline {
+    white-space: pre-line;
+}
+
 .cell-sub {
     margin-top: 3px;
     font-size: 11px;
@@ -925,6 +976,11 @@ async function handleEticketGenerated(data) {
     background: #f2fffb;
     border: 1px solid #e8f4c5;
 }
+.status-offer-confirmed {
+    color: #c845c6;
+    background: #fcf2ff;
+    border: 1px solid #e9c5f4;
+}
 
 .status-other {
     color: #586c8f;
@@ -1009,6 +1065,11 @@ async function handleEticketGenerated(data) {
 
 [data-bs-theme="dark"] .status-price-offer {
     color: #d2f871;
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+[data-bs-theme="dark"] .status-offer-confirmed {
+    color: #f871ed;
     background: rgba(239, 68, 68, 0.15);
     border-color: rgba(239, 68, 68, 0.3);
 }

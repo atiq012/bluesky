@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use App\Models\Agent\Agent;
+use App\Models\User;
 use App\Services\SearchV2\SearchResponseMapper;
 use App\Services\FareRule\FareRuleSearchIntegration;
 
@@ -130,11 +131,19 @@ class TravelportSearchService
         if (!$userId) {
             return null;
         }
+        // Sub-users link via users.agent_id; agents.user_id is owner-only
         $id = (int) Cache::remember(
-            "user_agency_id:{$userId}",
+            // v2: old key cached 0 for sub-users (agents.user_id only)
+            "user_agency_id:v2:{$userId}",
             600,
-            fn() =>
-            Agent::where('user_id', $userId)->value('id') ?? 0
+            function () use ($userId) {
+                $agentId = User::whereKey($userId)->value('agent_id');
+                if ($agentId) {
+                    return (int) $agentId;
+                }
+
+                return Agent::where('user_id', $userId)->value('id') ?? 0;
+            }
         );
         return $id ?: null;
     }

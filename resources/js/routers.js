@@ -33,7 +33,6 @@ const manualticketing = () => import('./components/admin/ticketing/manual_ticket
 
 // PNR
 const flightPNR = () => import('./components/admin/PNR/searchFlightByPNR.vue')
-const checkFlightPNR = () => import('./components/admin/PNR/checkFlightByPNR.vue')
 
 // agent
 const AgentList = () => import('./components/admin/agent/index.vue')
@@ -164,7 +163,6 @@ const routes = [
 
     //flightPNR
     { path: '/search-flight-by-pnr', component: flightPNR, name: 'flightPNR', meta: { auth: true } },
-    { path: '/check-flight-pnr', component: checkFlightPNR, name: 'checkFlightPNR', meta: { auth: true } },
 
     // agent
     { path: '/agent-list', component: AgentList, name: 'AgentList', meta: { auth: true } },

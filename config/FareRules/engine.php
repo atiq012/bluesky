@@ -1,7 +1,7 @@
 <?php
 
 return [
-    // AIT — NBR s.52JJ. 0.03% of (supplier fare − deductible tax codes).
+    // AIT — NBR s.52JJ. 0.3% of (supplier fare − deductible tax codes).
     'ait_rate'                 => (float) env('FARE_RULES_AIT_RATE', 0.003),
     'ait_deductible_tax_codes' => ['BD', 'UT', 'E5'],
 

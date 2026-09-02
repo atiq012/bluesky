@@ -89,15 +89,15 @@ onMounted(() => {
                                 <i class='bx bx-radio-circle'></i> Booking & Ticketing
                             </router-link>
                         </li>
+                        <li>
+                            <router-link v-wave :to="{ name: 'flightPNR' }">
+                                <i class='bx bx-radio-circle'></i> Flight PNR
+                            </router-link>
+                        </li>
                         <li
                             :class="{ 'mm-active': ['bookingAttemptList', 'bookingAttemptDetail'].includes(route.name) }">
                             <router-link v-wave :to="{ name: 'bookingAttemptList' }">
                                 <i class='bx bx-radio-circle'></i> Booking Attempts
-                            </router-link>
-                        </li>
-                        <li>
-                            <router-link v-wave :to="{ name: 'flightPNR' }">
-                                <i class='bx bx-radio-circle'></i> Flight PNR
                             </router-link>
                         </li>
                     </ul>

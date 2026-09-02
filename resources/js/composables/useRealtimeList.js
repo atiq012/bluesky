@@ -1,5 +1,5 @@
 import { onMounted, onUnmounted } from 'vue';
-import * as Ably from 'ably';
+import Pusher from 'pusher-js';
 import { useAuthStore } from '../stores/authStore';
 
 const REALTIME_EVENTS = ['Created', 'Updated', 'Deleted'];
@@ -20,16 +20,23 @@ function resolveCurrentUserId() {
     }
 }
 
-function createAblyClient() {
-    const key = import.meta.env.VITE_ABLY_KEY;
+function createPusherClient() {
+    const key = import.meta.env.VITE_PUSHER_APP_KEY;
     if (!key) {
         return null;
     }
 
-    return new Ably.Realtime({ key, echoMessages: false });
+    return new Pusher(key, {
+        cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
+        wsHost: import.meta.env.VITE_PUSHER_HOST,
+        wsPort: Number(import.meta.env.VITE_PUSHER_PORT ?? 443),
+        wssPort: Number(import.meta.env.VITE_PUSHER_PORT ?? 443),
+        forceTLS: import.meta.env.VITE_PUSHER_SCHEME === 'https',
+        enabledTransports: ['ws', 'wss'],
+    });
 }
 
-// Subscribe to Ably public channel; refetch list on Created/Updated/Deleted unless actor is current user.
+// Subscribe to Pusher public channel; refetch list on Created/Updated/Deleted unless actor is current user.
 export function useRealtimeList(channelKey, onInvalidate, options = {}) {
     if (!channelKey || typeof onInvalidate !== 'function') {
         return;
@@ -39,12 +46,8 @@ export function useRealtimeList(channelKey, onInvalidate, options = {}) {
     let client = null;
     let channel = null;
 
-    const onMessage = (message) => {
-        if (!message?.name) {
-            return;
-        }
-
-        const payload = message.data ?? {};
+    const onMessage = (eventName, payload) => {
+        payload = payload ?? {};
 
         if (actorIdKey) {
             const actorId = payload[actorIdKey];
@@ -55,7 +58,7 @@ export function useRealtimeList(channelKey, onInvalidate, options = {}) {
             }
         }
 
-        onInvalidate(message.name, payload);
+        onInvalidate(eventName, payload);
     };
 
     const subscribe = () => {
@@ -63,27 +66,28 @@ export function useRealtimeList(channelKey, onInvalidate, options = {}) {
             return;
         }
 
-        client = createAblyClient();
+        client = createPusherClient();
         if (!client) {
             return;
         }
 
-        channel = client.channels.get(channelKey);
+        channel = client.subscribe(channelKey);
         REALTIME_EVENTS.forEach((eventName) => {
-            channel.subscribe(eventName, onMessage);
+            channel.bind(eventName, (payload) => onMessage(eventName, payload));
         });
     };
 
     const cleanup = () => {
         if (channel) {
             REALTIME_EVENTS.forEach((eventName) => {
-                channel.unsubscribe(eventName, onMessage);
+                channel.unbind(eventName);
             });
             channel = null;
         }
 
         if (client) {
-            client.close();
+            client.unsubscribe(channelKey);
+            client.disconnect();
             client = null;
         }
     };
