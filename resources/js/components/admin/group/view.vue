@@ -343,6 +343,10 @@ function goBack() {
                                     <span class="info-label">Details Requirements</span>
                                     <span class="info-value details-text">{{ data.details_requirements || data.detailsRequirements || 'No details provided.' }}</span>
                                 </div>
+                                <div class="info-item full-width" style="background:#ff000014;" v-if="data.decline_note">
+                                    <span class="info-label text-danger">Decline Note</span>
+                                    <span class="info-value details-text">{{ data.decline_note }}</span>
+                                </div>
                             </div>
                         </div>
 

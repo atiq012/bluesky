@@ -547,7 +547,7 @@ class GroupController extends BaseController
 
         $group = GroupRequest::find($id);
 
-        if (! $group) {
+        if (!$group) {
             return $this->ErrorResponse('Group not found.', 'Group not found.');
         }
 

@@ -113,6 +113,8 @@ function statusConfig(status) {
             return { cls: 'status-pill status-active', icon: 'fa-solid fa-circle', label: 'Approved' };
         case 'Request Cancelled':
             return { cls: 'status-pill status-expired', icon: 'fa-solid fa-circle', label: 'Request Cancelled' };
+        case 'Offer Declined':
+            return { cls: 'status-pill status-offer-decline', icon: 'fa-solid fa-circle', label: 'Offer Declined' };
         default:
             return { cls: 'status-pill status-active', icon: 'fa-solid fa-circle', label: 'Active' };
     }
@@ -120,11 +122,11 @@ function statusConfig(status) {
 
 function canDelete(row) {
     if (row.opstatus == null) {
-        if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'Accepted' ) {
+        if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'Accepted' || row.status == 'Offer Declined') {
             return false
         }
     } else {
-        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus =='Paid' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'PAX Uploaded' || row.opstatus == 'PAX Partially Uploaded' || row.opstatus == 'Ticketed') {
+        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus =='Paid' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'PAX Uploaded' || row.opstatus == 'PAX Partially Uploaded' || row.opstatus == 'Ticketed' || row.opstatus == 'Offer Declined') {
             return false
         }
         return true;
@@ -133,11 +135,11 @@ function canDelete(row) {
 
 function groupAssignDetails(row) { // can accept offer
     if (row.opstatus == null) {
-        if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'Accepted' || row.status == 'New Request') {
+        if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'Accepted' || row.status == 'New Request' || row.status == 'Offer Declined') {
             return false;
         }
     } else {
-        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus =='Paid' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'PAX Uploaded' || row.opstatus == 'PAX Partially Uploaded' || row.opstatus == 'Ticketed') {
+        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus =='Paid' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'PAX Uploaded' || row.opstatus == 'PAX Partially Uploaded' || row.opstatus == 'Ticketed' || row.opstatus == 'Offer Declined') {
             return false;
         }
         return true;
@@ -146,11 +148,11 @@ function groupAssignDetails(row) { // can accept offer
 
 function groupPAXUpload(row) { // can accept offer
     if (row.opstatus == null) {
-        if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'Accepted' || row.status == 'New Request') {
+        if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'Accepted' || row.status == 'New Request' || row.status == 'Offer Declined') {
             return false;
         }
     } else {
-        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'PAX Uploaded' || row.opstatus == 'Price offer' || row.opstatus == 'Ticketed') {
+        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'PAX Uploaded' || row.opstatus == 'Price offer' || row.opstatus == 'Ticketed' || row.opstatus == 'Offer Declined') {
             return false
         }
     }
@@ -158,11 +160,11 @@ function groupPAXUpload(row) { // can accept offer
 }
 function groupUploadedPAX(row) { // can view uploaded PAX details
     if (row.opstatus == null) {
-        if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'Accepted' || row.status == 'New Request') {
+        if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'Accepted' || row.status == 'New Request' || row.status == 'Offer Declined') {
             return false;
         }
     } else {
-        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'Price offer') {
+        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'Price offer' || row.opstatus == 'Offer Declined') {
             return false
         }
     }
@@ -171,11 +173,11 @@ function groupUploadedPAX(row) { // can view uploaded PAX details
 
 function generateEticket(row) { // can generate e-ticket
     if (row.opstatus == null) {
-        if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'Accepted' || row.status == 'New Request') {
+        if (row.status == 'Request Cancelled' || row.status == 'Approved' || row.status == 'Confirmed' || row.status == 'Decline' || row.status == 'Accepted' || row.status == 'New Request' || row.status == 'Offer Declined') {
             return false;
         }
     } else {
-        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'Price offer' || row.opstatus == 'Paid' || row.opstatus == 'PAX Partially Uploaded' || row.opstatus == 'PAX Uploaded') {
+        if (row.opstatus == 'Offer confirmed' || row.opstatus == 'Offer declined' || row.opstatus == 'Partial Paid' || row.opstatus == 'PNR Shared' || row.opstatus == 'Assigned' || row.opstatus == 'Price offer' || row.opstatus == 'Paid' || row.opstatus == 'PAX Partially Uploaded' || row.opstatus == 'PAX Uploaded' || row.opstatus == 'Offer Declined') {
             return false
         }
     }
@@ -964,7 +966,17 @@ async function handleEticketGenerated(data) {
     background: #fff2f2;
     border: 1px solid #f4c5c5;
 }
+.status-offer-decline{
+    color: #c89645;
+    background: #fff2f2;
+    border: 1px solid #f4e2c5;
+}
 
+[data-bs-theme="dark"] .status-offer-decline {
+    color: #f8cd71;
+    background: #ffd99d;
+    border-color: rgba(239, 173, 68, 0.3);
+}
 .status-assigned {
     color: #45c86a;
     background: #f2fff6;
