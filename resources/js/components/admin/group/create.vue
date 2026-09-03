@@ -130,7 +130,16 @@ function clearResolvedErrors() {
     if (e.preferredAirlines && form.value.preferredAirlines) delete e.preferredAirlines;
     if (e.preferredClass && form.value.preferredClass) delete e.preferredClass;
     if (e.code && form.value.code) delete e.code;
-    if (e.adult && Number(form.value.adult) >= 1) delete e.adult;
+    if (e.adult) {
+        const adultCount = Number(form.value.adult) || 0;
+        const childrenCount = Number(form.value.children) || 0;
+        const minAdultsForChildren = childrenCount > 0 ? Math.max(2, Math.ceil(childrenCount / 10)) : 1;
+        if (adultCount >= 1 && adultCount >= minAdultsForChildren) delete e.adult;
+    }
+    if (e.totalPassengers) {
+        const total = (Number(form.value.adult) || 0) + (Number(form.value.children) || 0) + (Number(form.value.infants) || 0);
+        if (total >= 10) delete e.totalPassengers;
+    }
     if (e.children && form.value.children !== '' && form.value.children !== null) delete e.children;
     if (e.infants && form.value.infants !== '' && form.value.infants !== null) delete e.infants;
     if (e.perPersonFare && form.value.perPersonFare) delete e.perPersonFare;
@@ -202,15 +211,24 @@ function validateForm() {
     // if (isEmpty(form.value.code)) newErrors.code = 'Code (RBD) is required.';
 
     // ---- Passengers (all trip types) ----
-    if (isEmpty(form.value.adult) || Number(form.value.adult) < 1) {
+    // Rules: min 10 total passengers; 1 adult per 10 children; min 2 adults when children present.
+    const adultCount = Number(form.value.adult) || 0;
+    const childrenCount = Number(form.value.children) || 0;
+    const infantCount = Number(form.value.infants) || 0;
+    const totalCount = adultCount + childrenCount + infantCount;
+    const minAdultsForChildren = childrenCount > 0 ? Math.max(2, Math.ceil(childrenCount / 10)) : 1;
+
+    if (isEmpty(form.value.adult) || adultCount < 1) {
         newErrors.adult = 'At least 1 adult is required.';
+    } else if (adultCount < minAdultsForChildren) {
+        newErrors.adult = childrenCount > 0 && adultCount < 2
+            ? 'Minimum 2 adults required when children are included.'
+            : `At least 1 adult per 10 children required (min ${minAdultsForChildren} adults for ${childrenCount} children).`;
     }
-    // if (isEmpty(form.value.children)) {
-    //     newErrors.children = 'Children is required (enter 0 if none).';
-    // }
-    // if (isEmpty(form.value.infants)) {
-    //     newErrors.infants = 'Infants is required (enter 0 if none).';
-    // }
+
+    if (totalCount < 10) {
+        newErrors.totalPassengers = 'Total passengers (adult + children + infants) must be at least 10 for group booking.';
+    }
 
     // ---- Fare (all trip types) ----
     // if (isEmpty(form.value.perPersonFare)) {
@@ -577,6 +595,7 @@ async function submitForm() {
                                     <label class="field-label">Total Passengers</label>
                                     <input :value="totalPassengers" type="text" readonly class="field-input total-field"
                                         placeholder="Total" />
+                                    <span v-if="errors.totalPassengers" class="error-text">{{ errors.totalPassengers }}</span>
                                 </div>
                             </div>
                         </div>
