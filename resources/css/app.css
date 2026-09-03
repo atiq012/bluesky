@@ -43,7 +43,9 @@
     border: 4px solid #027de2d5;
     animation: loader-circle-57-spin 1s infinite
 }
-
+.text-uppercase {
+  text-transform: uppercase;
+}
 
 @keyframes loader-circle-571-spin {
     50% {

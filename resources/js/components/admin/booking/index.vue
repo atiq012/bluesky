@@ -69,7 +69,7 @@ const columns = [
     { field: 'sector', title: 'Sector', sort: false },
     { field: 'date', title: 'Date', sort: false },
     { field: 'pax', title: 'No. of PAX', sort: false },
-    { field: 'pnr', title: 'PNR', sort: false },
+    { field: 'pnr', title: 'PNR', sort: false,headerClass: 'text-uppercase' },
     { field: 'total_fare', title: 'Total Fare', sort: false },
     { field: 'ticketing', title: 'Ticketing', sort: false },
     { field: 'airline', title: 'Airline', sort: false },

@@ -126,6 +126,7 @@ const fareTotals = computed(() => ({
     baseFare: Number(price.value?.base_fare ?? 0),
     tax: Number(price.value?.total_taxes ?? 0),
     grossFare: Number(price.value?.total_price ?? 0),
+    total: Number(price.value?.base_fare ?? 0) + Number(price.value?.total_taxes ?? 0),
 }));
 
 function paxTone(type) {
@@ -455,7 +456,7 @@ const activityTimeline = computed(() => [...activityLogs.value].reverse());
                             <div v-for="leg in journeyLegs" :key="leg.key" class="ps-leg">
                                 <div class="ps-leg__head">
                                     <span class="ps-leg__title"><i :class="leg.icon" aria-hidden="true" /> {{ leg.label
-                                    }} Flight</span>
+                                        }} Flight</span>
                                     <span class="ps-leg__sep">|</span>
                                     <span class="ps-leg__route" v-if="leg.segments.length">
                                         {{ titleCaseCity(leg.segments[0].departure_code) }}
@@ -489,7 +490,7 @@ const activityTimeline = computed(() => [...activityLogs.value].reverse());
                                             <span class="ps-seg__time-val">{{ seg.departure_time || '—' }}</span>
                                             <span class="ps-seg__time-sep">|</span>
                                             <span class="ps-seg__time-date">{{ formatReviewDate(seg.departure_date)
-                                            }}</span>
+                                                }}</span>
                                         </div>
                                         <div class="ps-seg__terminal">Terminal: {{ seg.originTerminal }}</div>
                                     </div>
@@ -511,7 +512,7 @@ const activityTimeline = computed(() => [...activityLogs.value].reverse());
                                             <span class="ps-seg__time-val">{{ seg.arrival_time || '—' }}</span>
                                             <span class="ps-seg__time-sep">|</span>
                                             <span class="ps-seg__time-date">{{ formatReviewDate(seg.arrival_date)
-                                            }}</span>
+                                                }}</span>
                                         </div>
                                         <div class="ps-seg__terminal">Terminal: {{ seg.destinationTerminal }}</div>
                                     </div>
@@ -522,10 +523,10 @@ const activityTimeline = computed(() => [...activityLogs.value].reverse());
                                                 || '—' }}</span>
                                         <span class="ps-seg__info-sep">|</span>
                                         <span class="ps-seg__info-fare">Fare Basis: {{ leg.fareBasisCode || '—'
-                                        }}</span>
+                                            }}</span>
                                         <span class="ps-seg__info-sep">|</span>
                                         <span class="ps-seg__info-bag">Baggage: {{ carryOnLabel(leg.baggageAllowance)
-                                        }}, {{
+                                            }}, {{
                                                 checkedLabel(leg.baggageAllowance) }}</span>
                                     </div>
                                 </article>
@@ -570,7 +571,7 @@ const activityTimeline = computed(() => [...activityLogs.value].reverse());
                                             <td>{{ p.passport }}</td>
                                             <td>
                                                 <span v-if="p.ticketNo" class="ps-pax__ticket">
-                                                     {{ p.ticketNo }}
+                                                    {{ p.ticketNo }}
                                                 </span>
                                                 <span v-else>—</span>
                                             </td>
@@ -611,8 +612,8 @@ const activityTimeline = computed(() => [...activityLogs.value].reverse());
                                                 <td>{{ bd.type }} × {{ bd.quantity }}</td>
                                                 <td>{{ fmtMoney(bd.baseFare) }}</td>
                                                 <td>
-                                                    <button v-if="bd.taxes?.length" type="button"
-                                                        class="ps-fd__tax-btn" @click="openTaxBreakdown(bd)">
+                                                    <button v-if="bd.taxes?.length" type="button" class="ps-fd__tax-btn"
+                                                        @click="openTaxBreakdown(bd)">
                                                         {{ fmtMoney(bd.tax) }}
                                                         <i class="fa-solid fa-circle-info" aria-hidden="true" />
                                                     </button>
@@ -629,14 +630,18 @@ const activityTimeline = computed(() => [...activityLogs.value].reverse());
                                                 <td>Total</td>
                                                 <td>{{ fmtMoney(fareTotals.baseFare) }}</td>
                                                 <td>{{ fmtMoney(fareTotals.tax) }}</td>
-                                                <td>{{ fmtMoney(fareTotals.grossFare) }}</td>
+                                                <td>{{ fmtMoney(fareTotals.total) }}</td>
+
                                             </tr>
                                         </tfoot>
                                     </table>
                                 </div>
                                 <div class="ps-fd__gross">
                                     <span class="ps-fd__gross-label">Gross Fare</span>
-                                    <span class="ps-fd__gross-val">{{ fmtMoney(fareTotals.grossFare) }}</span>
+                                    <span class="ps-fd__gross-val">
+                                        {{ fmtMoney(fareTotals.total) }}
+                                        <!-- {{ fmtMoney(fareTotals.grossFare) }} -->
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -666,7 +671,7 @@ const activityTimeline = computed(() => [...activityLogs.value].reverse());
                                     <i class="fa-solid fa-plane" aria-hidden="true" />
                                     <span>{{ ruleCardLabel(seg) }}</span>
                                     <span class="ps-rule-dir">{{ seg.direction === 'inbound' ? 'Return' : 'Outbound'
-                                    }}</span>
+                                        }}</span>
                                 </header>
 
                                 <div class="ps-rule-tables">
@@ -2311,10 +2316,22 @@ const activityTimeline = computed(() => [...activityLogs.value].reverse());
     border-top: 1px solid #e2e8f0;
 }
 
-.tax-modal-fade-enter-active { transition: opacity 0.2s ease, transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1); }
-.tax-modal-fade-leave-active { transition: opacity 0.15s ease; }
-.tax-modal-fade-enter-from { opacity: 0; transform: scale(0.94) translateY(10px); }
-.tax-modal-fade-leave-to { opacity: 0; }
+.tax-modal-fade-enter-active {
+    transition: opacity 0.2s ease, transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.tax-modal-fade-leave-active {
+    transition: opacity 0.15s ease;
+}
+
+.tax-modal-fade-enter-from {
+    opacity: 0;
+    transform: scale(0.94) translateY(10px);
+}
+
+.tax-modal-fade-leave-to {
+    opacity: 0;
+}
 </style>
 
 <style>

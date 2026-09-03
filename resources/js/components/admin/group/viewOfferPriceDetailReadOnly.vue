@@ -313,15 +313,15 @@ async function handleDecline() {
                                     <div class="policy-grid" v-if="tripType === 'oneway'">
                                         <div class="policy-field">
                                             <label class="policy-label">From</label>
-                                            <div class="readonly-field">{{ data.origin || '—' }}</div>
+                                            <div class="readonly-field">{{ offerData.origin || '—' }}</div>
                                         </div>
                                         <div class="policy-field">
                                             <label class="policy-label">To</label>
-                                            <div class="readonly-field">{{ data.destination || '—' }}</div>
+                                            <div class="readonly-field">{{ offerData.destination || '—' }}</div>
                                         </div>
                                         <div class="policy-field">
                                             <label class="policy-label">Departure Date & Time</label>
-                                            <div class="readonly-field">{{ formatDate(data.departure_date) }}</div>
+                                            <div class="readonly-field">{{ formatDate(offerData.departure_date) }}</div>
                                         </div>
                                     </div>
 
@@ -334,15 +334,15 @@ async function handleDecline() {
                                         <div class="row mb-3">
                                             <div class="col-md-4">
                                                 <label class="policy-label">From</label>
-                                                <div class="readonly-field">{{ data.origin || '—' }}</div>
+                                                <div class="readonly-field">{{ offerData.origin || '—' }}</div>
                                             </div>
                                             <div class="col-md-4">
                                                 <label class="policy-label">To</label>
-                                                <div class="readonly-field">{{ data.destination || '—' }}</div>
+                                                <div class="readonly-field">{{ offerData.destination || '—' }}</div>
                                             </div>
                                             <div class="col-md-4">
                                                 <label class="policy-label">Departure Date & Time</label>
-                                                <div class="readonly-field">{{ formatDate(data.departure_date) }}</div>
+                                                <div class="readonly-field">{{ formatDate(offerData.departure_date) }}</div>
                                             </div>
                                         </div>
 
@@ -353,22 +353,22 @@ async function handleDecline() {
                                         <div class="row">
                                             <div class="col-md-4">
                                                 <label class="policy-label">From</label>
-                                                <div class="readonly-field">{{ data.return_origin || '—' }}</div>
+                                                <div class="readonly-field">{{ offerData.return_origin || '—' }}</div>
                                             </div>
                                             <div class="col-md-4">
                                                 <label class="policy-label">To</label>
-                                                <div class="readonly-field">{{ data.return_destination || '—' }}</div>
+                                                <div class="readonly-field">{{ offerData.return_destination || '—' }}</div>
                                             </div>
                                             <div class="col-md-4">
                                                 <label class="policy-label">Return Date & Time</label>
-                                                <div class="readonly-field">{{ formatDate(data.return_date) }}</div>
+                                                <div class="readonly-field">{{ formatDate(offerData.return_date) }}</div>
                                             </div>
                                         </div>
                                     </div>
 
                                     <!-- MULTI CITY -->
                                     <div v-if="tripType === 'multicity'">
-                                        <div v-for="(seg, index) in segments" :key="index" class="mb-3">
+                                        <div v-for="(seg, index) in offerSegments" :key="index" class="mb-3">
                                             <div class="section-heading purple">
                                                 <span class="section-bar"></span>
                                                 <h6>Segment {{ index + 1 }}</h6>
@@ -770,6 +770,11 @@ async function handleDecline() {
                         <div class="gr-detail-row">
                             <span class="gr-label">Infant</span>
                             <span class="gr-value">{{ data.infant_traveler || 0 }}</span>
+                        </div>
+                        <div class="gr-detail-row">
+                            <span class="gr-label">Requested Fare Per PAX</span>
+                            <span class="gr-value" v-if="data.per_person_fare">{{ data.currency }} {{ data.per_person_fare }}</span>
+                            <span class="gr-value" v-else>—</span>
                         </div>
                     </div>
 
