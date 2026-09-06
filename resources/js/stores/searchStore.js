@@ -18,6 +18,7 @@ export const useSearchStore = defineStore('blueskySearch', () => {
     const selectedStops = ref([])
     const selectedRefundTypes = ref([])
     const selectedLayovers = ref([])
+    const selectedBaggages = ref([])
     const layoverSearch = ref('')
     const airlineSearch = ref('')
     const selectedScheduleSegment = ref(null)
@@ -72,6 +73,7 @@ export const useSearchStore = defineStore('blueskySearch', () => {
         selectedStops.value = []
         selectedRefundTypes.value = []
         selectedLayovers.value = []
+        selectedBaggages.value = []
         layoverSearch.value = ''
         airlineSearch.value = ''
         selectedScheduleSegment.value = null
@@ -93,13 +95,14 @@ export const useSearchStore = defineStore('blueskySearch', () => {
         selectedStops.value = []
         selectedRefundTypes.value = []
         selectedLayovers.value = []
+        selectedBaggages.value = []
     }
 
     return {
         savedForm, flights, totalFlights,
         catalogIdentifier, searchLogId, activeSearchAttemptId,
         sliderMin, sliderMax, priceRangeMin, priceRangeMax,
-        selectedAirlines, selectedStops, selectedRefundTypes, selectedLayovers,
+        selectedAirlines, selectedStops, selectedRefundTypes, selectedLayovers, selectedBaggages,
         layoverSearch, airlineSearch,
         selectedScheduleSegment, scheduleMode,
         selectedOriginDetails, selectedDestinationDetails,

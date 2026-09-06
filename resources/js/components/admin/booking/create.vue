@@ -22,9 +22,11 @@ import BookingTripSidebar from './BookingTripSidebar.vue';
 import BookingConfirmModal from './BookingConfirmModal.vue';
 import { buildReceiptFromCommit } from '../../../utils/buildReceiptFromCommit';
 import { useAuthStore } from '../../../stores/authStore';
+import { useSearchStore } from '../../../stores/searchStore';
 
 const router = useRouter();
 const bookingStore = useBookingStore();
+const searchStore = useSearchStore();
 const authStore = useAuthStore();
 const { submitTravelers, syncTravelerPreferences, isSubmitting: isSubmittingTravelers, error: travelerSubmitError } = useTpV2AddTraveler();
 const { shopAncillaries, bookAncillary, isAncillaryBooked, isShoppingAncillaries, isBookingAncillary, shopError, bookError } = useTpV2Ancillary();
@@ -567,11 +569,28 @@ async function openConfirmModal() {
     showConfirmModal.value = true
 }
 
+// Booked fare no longer valid — wipe search results + session timer immediately
+function stopLocalBookingTimer() {
+    if (timerInterval) {
+        clearInterval(timerInterval)
+        timerInterval = null
+    }
+}
+
+function clearSearchAfterBookingSuccess() {
+    searchStore.clearSearch()
+    bookingStore.timerStartedAt = null
+    stopLocalBookingTimer()
+}
+
 async function handleConfirmBooking() {
     if (isConfirmingBooking.value) return
     try {
         await confirmBooking()
         await openConfirmModal()
+        if (bookingFullyCommitted.value) {
+            clearSearchAfterBookingSuccess()
+        }
     } catch {
         // reviewError
     }
@@ -582,6 +601,9 @@ async function handleRetryCommit() {
     try {
         await retryCommit()
         await openConfirmModal()
+        if (bookingFullyCommitted.value) {
+            clearSearchAfterBookingSuccess()
+        }
     } catch {
         // reviewError
     }
@@ -589,10 +611,15 @@ async function handleRetryCommit() {
 
 function handleConfirmModalGoToList() {
     showConfirmModal.value = false
+    if (bookingFullyCommitted.value) {
+        clearSearchAfterBookingSuccess()
+        bookingStore.clearBookingSession()
+    }
     router.push({ name: 'bookingList' })
 }
 
 function handleStartNewSearch() {
+    clearSearchAfterBookingSuccess()
     bookingStore.clearBookingSession()
     router.push({ name: 'searchResult' })
 }

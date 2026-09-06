@@ -48,47 +48,57 @@ function goOTP() {
             <img src="../../../../public/theme/appimages/bubble.svg" class="buble" alt="rlogo">
         </div>
 
-        <p class="p1">Google Authentication Registration</p>
-        <p class="p2">Scan QR or enter below Red code to your phone authenticator, for receive a Authentication code</p>
-        <p class="p3">in Google authenticator app. After get the code click Enable 2FA</p>
-        <p class="p4">{{ authStore.getgoogle2fa_secret }}</p>
-
-        <!-- QR section -->
-        <div class="d-flex justify-content-center">
-            <div class="qr-box">
-                <vue-qrcode
-                    v-if="qrValue"
-                    :value="qrValue"
-                    tag="svg"
-                    :options="{ errorCorrectionLevel: 'H', width: 180 }"
-                />
-                <img src="../../../../public/theme/appimages/rqf.png" class="qr-frame" alt="qrfream">
-            </div>
-        </div>
-        <!--End QR section -->
-
-        <div class="row mt-5">
-            <div class="col-md-4">
-            </div>
-            <div class="col-md-4">
-                <div class="d-flex justify-content-between">
-                    <button @click="goOTP" class="btn btn-primary rounded-2">
-                        Enable 2FA
-                    </button>
-                    <button @click="BackLogin" class="btn btn-secondary rounded-2">
-                        Back To Login
-                    </button>
+        <div class="container mt-4">
+            <div class="row justify-content-center">
+                <!-- title sits outside the narrow column so it can stay on one line -->
+                <div class="col-12">
+                    <p class="p1">Google Authentication Registration</p>
                 </div>
             </div>
-            <div class="col-md-4">
+
+            <div class="row justify-content-center">
+                <div class="col-11 col-sm-8 col-md-6 col-lg-4">
+
+                    <p class="p2">
+                        Scan QR or enter the Setup Key to your phone authenticator
+                        for receive a Authentication code
+                    </p>
+
+                    <!-- setup key -->
+                    <p class="setup-key">{{ getgoogle2fa_secret }}</p>
+
+                    <!-- QR section -->
+                    <div class="d-flex justify-content-center">
+                        <div class="qr-box">
+                            <vue-qrcode
+                                v-if="qrValue"
+                                :value="qrValue"
+                                tag="svg"
+                                :options="{ errorCorrectionLevel: 'H', width: 220, margin: 0, color: { dark: '#000000', light: '#ffffff' } }"
+                            />
+                        </div>
+                    </div>
+                    <!--End QR section -->
+
+                    <button @click="goOTP" class="btn btn-primary w-100 mt-4">
+                        Enable 2FA
+                    </button>
+
+                    <div class="text-center mt-3">
+                        <p class="p3" @click="BackLogin"><i class="fas fa-angle-left"></i> Back to Login</p>
+                    </div>
+
+                    <p class="it">Information Technology | Galaxy Bangladesh</p>
+
+                </div>
             </div>
         </div>
 
-        <p class="it">Information Technology | Galaxy Bangladesh</p>
-
         <!-- below city -->
-        <img src="../../../../public/theme/appimages/bottomfullimage.svg" class="img-fluid imgBottom"
-            alt="leftcityBottom" />
+        <footer class="footer fixed-bottom">
+            <img src="../../../../public/theme/appimages/bottomfullimage.svg" class="img-fluid w-100"
+                alt="leftcityBottom" />
+        </footer>
     </div>
 </template>
 
@@ -98,28 +108,33 @@ function goOTP() {
     src: url('../../fonts/BeVietnamPro/BeVietnamPro-Regular.ttf');
 }
 
+/* white plate keeps the QR readable even if page ever renders on a dark surface */
 .qr-box {
-    position: relative;
-    width: 180px;
-    height: 180px;
+    background-color: #ffffff;
+    border: 2px solid #027DE2;
+    border-radius: 12px;
+    padding: 16px;
+    width: 252px;
+    max-width: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 .qr-box :deep(svg) {
-    width: 180px !important;
-    height: 180px !important;
+    width: 220px !important;
+    height: 220px !important;
+    max-width: 100%;
     display: block;
 }
 
-.qr-frame {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 2;
+.btn-primary {
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 16px;
+    background-color: #027DE2;
+    border-color: #027DE2;
 }
 
 .it {
@@ -129,52 +144,52 @@ function goOTP() {
     line-height: 14.52px;
     color: #5e6878;
     text-align: center;
-    margin-top: 100px;
+    margin-top: 40px;
 }
 
+/* one line always — font shrinks on narrow screens instead of wrapping */
 .p1 {
     font-family: Inter;
-    font-size: 24px;
+    font-size: clamp(14px, 4.2vw, 24px);
     font-weight: 900;
-    line-height: 26px;
+    line-height: 32px;
     letter-spacing: 0.5px;
-    margin-top: 5px;
+    margin-top: 20px;
     text-align: center;
     color: #077cdb;
+    white-space: nowrap;
 }
 
 .p2 {
     font-family: Inter;
     font-size: 14px;
+    line-height: 22px;
     letter-spacing: 0.5px;
     text-align: center;
     color: #5e6878;
+    margin-bottom: 12px;
+}
+
+/* setup key sits between the copy and the QR, styled as the one thing to read */
+.setup-key {
+    font-family: Inter;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-align: center;
+    color: #00AEEF;
+    margin-bottom: 16px;
+    word-break: break-all;
 }
 
 .p3 {
     font-family: Inter;
-    font-size: 14px;
+    font-size: 13px;
     letter-spacing: 0.5px;
     text-align: center;
-    color: #5e6878;
-    margin-top: -15px;
-}
-
-.p4 {
-    font-family: Inter;
-    font-size: 14px;
-    font-weight: 900;
-    letter-spacing: 0.5px;
-    text-align: center;
-    color: #f32525;
-    margin-top: 5px;
-}
-
-
-.imgBottom {
-    position: absolute;
-    bottom: 0px;
-    width: auto;
+    color: #5E6878;
+    cursor: pointer;
+    margin-bottom: 0;
 }
 
 .buble {

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\BaseController;
+use App\Jobs\BroadcastResourceEvent;
 use App\Jobs\Mail\SendAgentUserCreatedMailJob;
 use App\Models\Agent\Agent;
 use App\Models\Department\Department;
@@ -460,6 +461,19 @@ class UserController extends BaseController
         $user->is_active = $status === 1 ? 1 : 0;
         $user->updated_by = $auth->id;
         $user->save();
+
+        // Hold / Locked / Deactivated → kick any live session
+        if ($status !== 1) {
+            BroadcastResourceEvent::dispatchSync(
+                'user-session.'.$user->id,
+                'ForceLogout',
+                [
+                    'user_id' => (int) $user->id,
+                    'status'  => $status,
+                    'reason'  => $user->loginBlockMessage(),
+                ]
+            );
+        }
 
         return $this->SuccessResponse(['status' => $status], 'Successfully User status updated.');
     }
