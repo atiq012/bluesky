@@ -125,7 +125,7 @@ const simpleActions = computed(() => {
         { key: 'more', show: props.showMore, label: props.moreLabel || 'More Actions', icon: 'fa-solid fa-ellipsis-vertical', btnClass: 'action-btn-more' },
         { key: 'view', show: props.showView, label: props.viewLabel || 'View', icon: 'fa-solid fa-fire-flame-curved', btnClass: 'action-btn-view' },
         { key: 'view-group', show: props.showGroupAssign, label: props.viewLabel || 'Show Offer Price', icon: 'fa-solid fa-check', btnClass: 'action-btn-group-assign', disabled: props.viewDisabled },
-        { key: 'pax-upload', show: props.showPAXUpload, label:'Upload PAX Details', icon: 'fa-solid fa-user-plus', btnClass: 'action-btn-pax-upload', disabled: props.paxUploadDisabled },
+        { key: 'pax-upload', show: props.showPAXUpload, label:'Upload PAX Details', icon: 'fa-solid fa-user-plus', btnClass: 'action-btn-pax-upload-details', disabled: props.paxUploadDisabled },
         { key: 'uploaded-pax', show: props.showUploadedPAX, label:'Uploaded PAX Details', icon: 'fa-solid fa-users', btnClass: 'action-btn-uploaded-pax', disabled: props.uploadedPAXDisabled },
         { key: 'generate-eticket', show: props.generateEticket, label:'Generate E-Ticket', icon: 'fa-solid fa-ticket-alt', btnClass: 'action-btn-generate-eticket', disabled: props.generateEticketDisabled },
         { key: 'edit', show: props.showEdit, label: props.editLabel || 'Edit', icon: 'fa-solid fa-pencil', btnClass: 'action-btn-edit' },
@@ -224,7 +224,8 @@ function emitAction(action) {
 
 :deep(.action-btn-more) { --action-btn-color: #19c4db; --action-btn-bg: #e8f9fc; }
 :deep(.action-btn-view) { --action-btn-color: #0d9488; --action-btn-bg: #e6f5f3; }
-:deep(.action-btn-edit) { --action-btn-color: #e85d8a; --action-btn-bg: #fdeef4; }
+:deep(.action-btn-pax-upload-details) { --action-btn-color: #940d77; --action-btn-bg: #f2e6f5; }
+:deep(.action-btn-edit) { --action-btn-color: #e85d8a; --action-btn-bg: #fdeefb; }
 :deep(.action-btn-delete) { --action-btn-color: #dc2626; --action-btn-bg: #fdecec; }
 :deep(.action-btn-logs) { --action-btn-color: #1ba3f0; --action-btn-bg: #e8f4fe; }
 :deep(.action-btn-generate-eticket) { --action-btn-color: #0822b2 ; --action-btn-bg: #e6e8fa ; }
