@@ -107,6 +107,19 @@ function onBrandedFareSelect(brand) {
     selectFare(openFareFlight.value, brand)
 }
 
+// Round trip needs seats on both legs, so the bookable count is the smaller one
+function flightAvailableSeats(flight) {
+    const legs = [flight?.outbound?.available_seats, flight?.inbound?.available_seats]
+        .filter(n => typeof n === 'number' && n > 0)
+    return legs.length ? Math.min(...legs) : null
+}
+
+// Travelport caps availability at 9, so 9 means "9 or more"
+function formatAvailableSeats(seats) {
+    if (seats === null) return ''
+    return seats >= 9 ? '9+' : String(seats).padStart(2, '0')
+}
+
 const payableBreakdownOpen = ref(false)
 const payableBreakdownBrand = ref(null)
 
@@ -2474,9 +2487,10 @@ function handleCalendarEnterKey(event) {
                                         Non-refundable
                                     </div>
 
-                                    <div class="border text-center p-1 flight-badge flight-badge--seats"
+                                    <div v-if="flightAvailableSeats(flight) !== null"
+                                        class="border text-center p-1 flight-badge flight-badge--seats"
                                         style="background-color: #e4e3f6; color: #7944eb; font-size: 12px;">
-                                        <i class="fa-regular fa-seat-airline"></i> Available Seats: 09
+                                        <i class="fa-regular fa-seat-airline"></i> Available Seats: {{ formatAvailableSeats(flightAvailableSeats(flight)) }}
                                     </div>
 
                                     <div v-if="flight.outbound.segments.some(s => s.is_codeshare)" class="border text-center p-1"

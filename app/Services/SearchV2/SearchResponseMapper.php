@@ -225,6 +225,8 @@ class SearchResponseMapper
             'classOfService'     => $fp['classOfService'] ?? '',
             'fareBasisCode'      => $fp['fareBasisCode']  ?? '',
             'fareType'           => $fp['fareType']       ?? '',
+            // Travelport caps booking-class availability at 9, so 9 means "9 or more"
+            'available_seats'    => isset($product['Quantity']) ? (int) $product['Quantity'] : null,
             'validatingAirline'       => $tnc['ValidatingAirline'][0]['ValidatingAirline'] ?? $first['carrier_code'],
             'priceBreakdown'          => $this->buildPriceBreakdown($priceDetail['PriceBreakdown'] ?? []),
             'baggage_allowance'       => $this->extractBaggage($tnc),
@@ -300,6 +302,7 @@ class SearchResponseMapper
                 'fare_basis_code'  => $fp['fareBasisCode'] ?? '',
                 'cabin'            => $fp['cabin'] ?? 'Economy',
                 'class_of_service' => $fp['classOfService'] ?? '',
+                'available_seats'  => isset($product['Quantity']) ? (int) $product['Quantity'] : null,
                 'price'            => (float) ($priceDetail['TotalPrice']           ?? 0),
                 'currency'         => $priceDetail['CurrencyCode']['value']          ?? 'BDT',
                 'price_breakdown'  => $this->buildPriceBreakdown($priceDetail['PriceBreakdown'] ?? []),

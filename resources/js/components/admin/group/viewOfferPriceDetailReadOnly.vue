@@ -771,6 +771,11 @@ async function handleDecline() {
                             <span class="gr-label">Infant</span>
                             <span class="gr-value">{{ data.infant_traveler || 0 }}</span>
                         </div>
+                        <div class="gr-detail-row">
+                            <span class="gr-label">Requested Fare Per PAX</span>
+                            <span class="gr-value" v-if="data.per_person_fare">{{ data.currency }} {{ data.per_person_fare }}</span>
+                            <span class="gr-value" v-else>—</span>
+                        </div>
                     </div>
 
                     <!-- Sector & Dates -->
