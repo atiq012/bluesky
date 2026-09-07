@@ -61,7 +61,7 @@ Route::get('/migrate', function () {
     return Artisan::output();
 })->name('migrate');
 
-Route::middleware(['auth:api'])->group(function () {
+Route::middleware(['auth:api', 'user.active'])->group(function () {
     Route::get('logout', [AuthController::class, 'logout'])->name('logout');
     Route::get('refresh', [AuthController::class, 'refresh'])->name('refresh');
     Route::get('me', [AuthController::class, 'me'])->name('me');

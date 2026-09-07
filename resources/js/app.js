@@ -13,6 +13,7 @@ import router from "./routers.js";
 import piniaPluginPersistedstate from "pinia-plugin-persistedstate";
 import { useAuthStore } from "./stores/authStore.js";
 import { installLogoutSync } from "./Helpers/logout.js";
+import { installForceLogoutListener } from "./composables/useForceLogoutListener.js";
 import { useSearchStore } from "./stores/searchStore.js";
 import { useBookingStore } from "./stores/bookingStore.js";
 import VueQrcode from "@chenfengyuan/vue-qrcode";
@@ -88,6 +89,7 @@ app.use(VueTippy, {
 
 const authStore = useAuthStore();
 installLogoutSync();
+installForceLogoutListener();
 
 app.mount("#app");
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin\PNR;
 
 use App\Http\Controllers\BaseController;
+use App\Models\Agent\Agent;
 use App\Models\BookingAttempt;
 use App\Services\SearchV2\BookingListMapper;
 use App\Services\SearchV2\BookingSnapshotBuilder;
@@ -22,34 +23,25 @@ class PNRSearchController extends BaseController
             'pnr' => ['required', 'string', 'max:30'],
         ]);
 
-        $pnr  = strtoupper(trim($validated['pnr']));
-        $user = $request->user();
+        $pnr = strtoupper(trim($validated['pnr']));
 
-        $query = BookingAttempt::query()
-            ->where(function ($q) use ($pnr) {
-                // MUST be grouped — otherwise the agency scope below
-                // is bypassed by the OR and other agencies' PNRs leak
-                $q->where('gds_pnr', $pnr)
-                  ->orWhere('airline_pnr', $pnr);
-            })
-            ->latest('id');
-
-        // Same rule as the booking list: only PNRs booked/ticketed
-        // inside the user's own agency
-        BookingListMapper::applyAgencyScope($query, $user);
-
-        $attempt = $query->first();
+        $attempt = BookingAttempt::query()
+            ->where('gds_pnr', $pnr)
+            ->orWhere('airline_pnr', $pnr)
+            ->latest('id')
+            ->first();
 
         if (!$attempt) {
             return $this->ErrorResponse('No booking found for this PNR.', [], 404);
         }
 
-        // Resolves agency for both owner and staff users (users.agent_id / agents.user_id)
-        BookingListMapper::attachAgencyNames([$attempt]);
-        BookingListMapper::attachBookerNamesAgent([$attempt]);
-
-        $snapshot         = $this->snapshotBuilder->build($attempt);
+        $snapshot = $this->snapshotBuilder->build($attempt);
         $fareRuleSegments = $this->fareRulesService->getSavedFareRulesForAttempt($attempt->id);
+
+        $agencyUserId = $attempt->user_id ?: $attempt->created_by;
+        $agencyName = $agencyUserId
+            ? Agent::query()->where('user_id', $agencyUserId)->value('name')
+            : null;
 
         $activityLogs = $attempt->activityLogs()
             ->orderByDesc('created_at')
@@ -63,21 +55,12 @@ class PNRSearchController extends BaseController
                 'metadata'      => $log->metadata,
                 'created_at'    => optional($log->created_at)->format('Y-m-d H:i:s'),
             ]);
-
-        // Who ticketed it: newest log entry that moved the attempt into "ticketed"
-        // (adjust the match if your action_type naming differs)
-        $ticketedBy = $activityLogs
-            ->first(fn ($log) => ($log['status_after'] ?? null) === 'ticketed')['user_name'] ?? null;
-
+        // dd($snapshot);
         return $this->SuccessResponse([
             'attempt' => [
                 'id'                     => $attempt->id,
                 'booking_code'           => BookingListMapper::bookingCode($attempt->id),
-                'agency_name'            => $attempt->agency_name ?? '—',
-                'agency_code'            => $attempt->agency_code,
-                'booked_by'              => $attempt->booked_by_name ?? '—',
-                'booked_by_id'           => (int) ($attempt->user_id ?: $attempt->created_by),
-                'ticketed_by'            => $ticketedBy,
+                'agency_name'            => $agencyName,
                 'status'                 => $attempt->status,
                 'gds_pnr'                => $attempt->gds_pnr,
                 'airline_pnr'            => $attempt->airline_pnr,
