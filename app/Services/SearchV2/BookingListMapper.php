@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Services\SearchV2;
 
 use App\Models\Agent\Agent;
@@ -66,7 +65,7 @@ class BookingListMapper
         }
 
         if ($status === self::LIST_STATUS_CONFIRMED) {
-            if (!empty($row->commit_error)) {
+            if (! empty($row->commit_error)) {
                 return ['label' => 'Booking Failed', 'raw' => self::LIST_STATUS_BOOKING_FAILED];
             }
 
@@ -88,7 +87,7 @@ class BookingListMapper
     {
         $reservation = data_get($commitResponse, 'ReservationResponse.Reservation', []);
         $receipts    = data_get($reservation, 'Receipt', []);
-        if (!is_array($receipts)) {
+        if (! is_array($receipts)) {
             return ['gds_pnr' => null, 'airline_pnr' => null];
         }
 
@@ -121,17 +120,17 @@ class BookingListMapper
         $reservation = data_get($commitResponse, 'ReservationResponse.Reservation', []);
         $offer       = data_get($reservation, 'Offer.0', data_get($reservation, 'Offer'));
         $terms       = data_get($offer, 'TermsAndConditionsFull', []);
-        if (!is_array($terms)) {
+        if (! is_array($terms)) {
             return null;
         }
         if (isset($terms['@type'])) {
             $terms = [$terms];
         }
         foreach ($terms as $term) {
-            if (!empty($term['PaymentTimeLimit'])) {
+            if (! empty($term['PaymentTimeLimit'])) {
                 return (string) $term['PaymentTimeLimit'];
             }
-            if (!empty($term['ExpiryDate'])) {
+            if (! empty($term['ExpiryDate'])) {
                 return (string) $term['ExpiryDate'];
             }
         }
@@ -142,8 +141,7 @@ class BookingListMapper
     public static function resolveRefundStatus(BookingAttempt $attempt): string
     {
         $selection = $attempt->selection_json ?? [];
-        $type      = data_get($selection, 'refund_type')
-            ?? data_get($attempt->snapshot_json, 'selection.refund_type');
+        $type      = data_get($selection, 'refund_type') ?? data_get($attempt->snapshot_json, 'selection.refund_type');
 
         return match ($type) {
             'refundable'     => 'Refundable',
@@ -206,14 +204,13 @@ class BookingListMapper
 
     private static function journeysFromPricePayload(mixed $payload): array
     {
-        if (!is_array($payload)) {
+        if (! is_array($payload)) {
             return [];
         }
 
-        $products = data_get($payload, 'mapped.products')
-            ?? data_get($payload, 'products', []);
+        $products = data_get($payload, 'mapped.products') ?? data_get($payload, 'products', []);
 
-        if (!is_array($products) || $products === []) {
+        if (! is_array($products) || $products === []) {
             return [];
         }
 
@@ -248,10 +245,9 @@ class BookingListMapper
             return [];
         }
 
-        $offer    = data_get($commitResponse, 'ReservationResponse.Reservation.Offer.0')
-            ?? data_get($commitResponse, 'ReservationResponse.Reservation.Offer');
+        $offer    = data_get($commitResponse, 'ReservationResponse.Reservation.Offer.0') ?? data_get($commitResponse, 'ReservationResponse.Reservation.Offer');
         $products = data_get($offer, 'Product', []);
-        if (!is_array($products) || $products === []) {
+        if (! is_array($products) || $products === []) {
             return [];
         }
         if (isset($products['@type'])) {
@@ -276,7 +272,7 @@ class BookingListMapper
         }
 
         $products = data_get($snapshot, 'price.products', []);
-        if (!is_array($products) || $products === []) {
+        if (! is_array($products) || $products === []) {
             return [];
         }
 
@@ -308,7 +304,7 @@ class BookingListMapper
     private static function parseProductSegments(array $product): ?array
     {
         $segments = data_get($product, 'FlightSegment', []);
-        if (!is_array($segments) || $segments === []) {
+        if (! is_array($segments) || $segments === []) {
             return null;
         }
         if (isset($segments['@type'])) {
@@ -350,7 +346,7 @@ class BookingListMapper
         $depTime = self::formatTimeValue($firstDep['time'] ?? null, $firstDep['date'] ?? null);
 
         return [
-            'sector'           => "{$firstFrom}-{$lastTo}",
+            'sector' => "{$firstFrom}-{$lastTo}",
             'departure_at_fmt' => self::formatDateTimeParts($depDate, $depTime),
             'legs'             => $legs,
         ];
@@ -394,7 +390,7 @@ class BookingListMapper
             // Travelport sends these as UTC instants ("2026-07-31T17:59:00Z"). Formatting without
             // converting prints the UTC wall-clock, which is 6 hours early for a Dhaka agency —
             // an 11:59 PM deadline was showing as 05:59 PM.
-            $dt = Carbon::parse($iso)->setTimezone(config('app.timezone'));
+            $dt   = Carbon::parse($iso)->setTimezone(config('app.timezone'));
             $date = $dt->format('d-M-Y');
             $time = $dt->format('h:i A');
 
@@ -439,7 +435,7 @@ class BookingListMapper
         $apiStep   = $attempt->last_api_step;
         $apiError  = $attempt->last_api_error;
 
-        if (!$stage || !$apiStatus) {
+        if (! $stage || ! $apiStatus) {
             $derived   = self::deriveOutcome($attempt);
             $stage     = $stage ?: ($derived['stage_raw'] ?? null);
             $apiStatus = $apiStatus ?: ($derived['last_api_raw'] ?? null);
@@ -448,12 +444,12 @@ class BookingListMapper
         }
 
         return [
-            'stage'            => BookingAttemptOutcome::stageLabel($stage),
-            'stage_raw'        => $stage,
-            'last_api_status'  => BookingAttemptOutcome::apiStatusLabel($apiStatus),
-            'last_api_raw'     => $apiStatus,
-            'last_api_step'    => $apiStep,
-            'last_api_error'   => $apiError,
+            'stage'           => BookingAttemptOutcome::stageLabel($stage),
+            'stage_raw'       => $stage,
+            'last_api_status' => BookingAttemptOutcome::apiStatusLabel($apiStatus),
+            'last_api_raw'    => $apiStatus,
+            'last_api_step'   => $apiStep,
+            'last_api_error'  => $apiError,
         ];
     }
 
@@ -485,20 +481,20 @@ class BookingListMapper
     public static function statusLabel(string $status): string
     {
         return match ($status) {
-            'committed'        => 'Booking Confirmed',
-            'confirmed'        => 'Confirmed',
-            'booking_failed'   => 'Booking Failed',
-            'ticketed'         => 'Ticketed',
-            'ticketing'        => 'Ticketing',
-            'cancelled'        => 'Cancelled',
-            'voided'           => 'Voided',
-            'ready_for_review' => 'Ready for Review',
-            'in_progress'      => 'In Progress',
-            'priced'              => 'Priced',
-            'complete_on_price'   => 'Complete On Price',
-            'searching'           => 'Searching',
-            'complete_on_search'  => 'Complete On Search',
-            default            => ucfirst(str_replace('_', ' ', $status)),
+            'committed'          => 'Booking Confirmed',
+            'confirmed'          => 'Confirmed',
+            'booking_failed'     => 'Booking Failed',
+            'ticketed'           => 'Ticketed',
+            'ticketing'          => 'Ticketing',
+            'cancelled'          => 'Cancelled',
+            'voided'             => 'Voided',
+            'ready_for_review'   => 'Ready for Review',
+            'in_progress'        => 'In Progress',
+            'priced'             => 'Priced',
+            'complete_on_price'  => 'Complete On Price',
+            'searching'          => 'Searching',
+            'complete_on_search' => 'Complete On Search',
+            default              => ucfirst(str_replace('_', ' ', $status)),
         };
     }
 
@@ -513,104 +509,102 @@ class BookingListMapper
             $search,
             $price?->price_payload
         );
-        $wayBadge     = self::resolveWayBadge($search?->way, $journeyLines);
+        $wayBadge = self::resolveWayBadge($search?->way, $journeyLines);
         // The live PNR read wins over the commit body, which often reports the offer's fare validity
         // (weeks out) rather than the airline's real ticketing deadline
-        $deadline     = self::formatDeadlineParts(
-            $row->ticketing_time_limit?->toIso8601String()
-                ?? self::extractPaymentDeadline($commitResponse)
+        $deadline = self::formatDeadlineParts(
+            $row->ticketing_time_limit?->toIso8601String() ?? self::extractPaymentDeadline($commitResponse)
         );
 
-        $adt = (int) ($search?->adt ?? 0);
-        $cnn = (int) ($search?->cnn ?? 0);
-        $kid = (int) ($search?->kid ?? 0);
-        $inf = (int) ($search?->inf ?? 0);
-        $ins = (int) ($search?->ins ?? 0);
+        $adt      = (int) ($search?->adt ?? 0);
+        $cnn      = (int) ($search?->cnn ?? 0);
+        $kid      = (int) ($search?->kid ?? 0);
+        $inf      = (int) ($search?->inf ?? 0);
+        $ins      = (int) ($search?->ins ?? 0);
         $paxCount = $adt + $cnn + $kid + $inf + $ins;
 
-        $gdsPnr      = $row->gds_pnr;
-        $airlinePnr  = $row->airline_pnr;
-        $airlineCode = $row->airline_code;
-        $currency    = $price?->currency ?? 'BDT';
-        $totalFare  = $price?->total_price;
-        $creator    = $row->creator_name ?? '—';
+        $gdsPnr        = $row->gds_pnr;
+        $airlinePnr    = $row->airline_pnr;
+        $airlineCode   = $row->airline_code;
+        $currency      = $price?->currency ?? 'BDT';
+        $totalFare     = $price?->total_price;
+        $creator       = $row->creator_name ?? '—';
         $creatorAvatar = $row->creator_avatar ?? null;
-        $outcome    = self::resolveOutcome($row);
-        $listStatus = self::resolveListStatus($row);
+        $outcome       = self::resolveOutcome($row);
+        $listStatus    = self::resolveListStatus($row);
 
         return [
-            'DT_RowIndex'            => $index + 1,
-            'id'                     => hashid_encode(HashIdService::BOOKING_ATTEMPT, (int) $row->id),
-            'attempt_ref'            => (int) $row->id,
-            'booking_code'           => self::bookingCode((int) $row->id),
-            'agency_name'            => $row->agency_name ?? '—',
-            'agency_code'            => $row->agency_code ?? null,
-            'journey_lines'          => $journeyLines,
-            'sector'                 => collect($journeyLines)->pluck('sector')->implode(' / '),
-            'dep_date'               => optional($search?->dep_date)->format('d-M-Y'),
-            'booking_date'           => optional($row->confirmed_at ?? $row->created_at)->format('d-M-Y'),
-            'pax_count'              => $paxCount,
-            'pax_adt'                => $adt,
-            'pax_cnn'                => $cnn,
-            'pax_kid'                => $kid,
-            'pax_inf'                => $inf,
-            'pax_ins'                => $ins,
-            'gds_pnr'                => $gdsPnr,
-            'airline_pnr'            => $airlinePnr,
-            'airline_code'           => $airlineCode,
-            'airline_name'           => $row->airline_name,
-            'cabin_class'            => $row->cabin_class,
-            'total_fare'             => $totalFare,
-            'currency'               => $currency,
-            'total_fare_label'       => $totalFare !== null ? number_format((float) $totalFare, 0, '.', ',') : '—',
-            'payment_deadline'       => $row->ticketing_time_limit?->toIso8601String()
-                ?? self::extractPaymentDeadline($commitResponse),
-            'payment_deadline_date'  => $deadline['date'],
-            'payment_deadline_time'  => $deadline['time'],
-            'payment_deadline_fmt'   => $deadline['full'],
-            'way_type'               => $wayBadge,
-            'way_badge_class'        => self::wayBadgeClass($wayBadge),
-            'ticket_no'              => is_array($row->ticket_numbers) && !empty($row->ticket_numbers)
+            'DT_RowIndex'           => $index + 1,
+            'id'                    => hashid_encode(HashIdService::BOOKING_ATTEMPT, (int) $row->id),
+            'attempt_ref'           => (int) $row->id,
+            'booking_code'          => self::bookingCode((int) $row->id),
+            'agency_name'           => $row->agency_name ?? '—',
+            'agency_code'           => $row->agency_code ?? null,
+            'journey_lines'         => $journeyLines,
+            'sector'                => collect($journeyLines)->pluck('sector')->implode(' / '),
+            'dep_date'              => optional($search?->dep_date)->format('d-M-Y'),
+            'booking_date'          => optional($row->confirmed_at ?? $row->created_at)->format('d-M-Y'),
+            'pax_count'             => $paxCount,
+            'pax_adt'               => $adt,
+            'pax_cnn'               => $cnn,
+            'pax_kid'               => $kid,
+            'pax_inf'               => $inf,
+            'pax_ins'               => $ins,
+            'gds_pnr'               => $gdsPnr,
+            'airline_pnr'           => $airlinePnr,
+            'airline_code'          => $airlineCode,
+            'airline_name'          => $row->airline_name,
+            'cabin_class'           => $row->cabin_class,
+            'total_fare'            => $totalFare,
+            'currency'              => $currency,
+            'total_fare_label'      => $totalFare !== null ? number_format((float) $totalFare, 0, '.', ',') : '—',
+            'payment_deadline'      => $row->ticketing_time_limit?->toIso8601String() ?? self::extractPaymentDeadline($commitResponse),
+            'payment_deadline_date' => $deadline['date'],
+            'payment_deadline_time' => $deadline['time'],
+            'payment_deadline_fmt'  => $deadline['full'],
+            'way_type'              => $wayBadge,
+            'way_badge_class'       => self::wayBadgeClass($wayBadge),
+            'ticket_no'             => is_array($row->ticket_numbers) && ! empty($row->ticket_numbers)
                 ? implode(', ', $row->ticket_numbers)
                 : null,
-            'ticket_numbers'         => is_array($row->ticket_numbers) ? $row->ticket_numbers : [],
-            'ticket_pax_map'         => self::buildTicketPaxMap($row),
-            'ticket_date'            => optional($row->ticketed_at)->toIso8601String(),
-            'ticket_at_fmt'          => optional($row->ticketed_at ?? $row->confirmed_at ?? $row->created_at)->format('d-M-Y h:i A'),
-            'cancelled_at_fmt'       => optional($row->cancelled_at)->format('d-M-Y h:i A'),
-            'cancelled_at_iso'       => optional($row->cancelled_at)->toIso8601String(),
-            'voided_at_fmt'          => optional($row->voided_at)->format('d-M-Y h:i A'),
-            'voided_at_iso'          => optional($row->voided_at)->toIso8601String(),
-            'refund_status'          => self::resolveRefundStatus($row),
-            'status'                 => $outcome['stage'],
-            'status_raw'             => $outcome['stage_raw'] ?? $row->status,
-            'stage'                  => $outcome['stage'],
-            'stage_raw'              => $outcome['stage_raw'],
-            'last_api_status'        => $outcome['last_api_status'],
-            'last_api_raw'           => $outcome['last_api_raw'],
-            'last_api_step'          => $outcome['last_api_step'],
-            'last_api_error'         => $outcome['last_api_error'],
-            'legacy_status'          => $listStatus['label'],
-            'legacy_status_raw'      => $listStatus['raw'],
-            'attempt_status'         => $row->status,
-            'created_by'             => $creator,
-            'created_by_initials'    => self::creatorInitials($creator !== '—' ? $creator : null),
-            'created_by_avatar'      => $creatorAvatar,
-            'created_at'             => optional($row->created_at)->format('d-M-Y H:i'),
-            'created_at_iso'         => optional($row->created_at)?->format('Y-m-d H:i:s'),
-            'created_at_date'        => optional($row->created_at)->format('d-M-Y'),
-            'created_at_time'        => optional($row->created_at)->format('H:i'),
-            'route'                  => $search
+            'ticket_numbers'        => is_array($row->ticket_numbers) ? $row->ticket_numbers : [],
+            'ticket_pax_map'        => self::buildTicketPaxMap($row),
+            'ticket_date'           => optional($row->ticketed_at)->toIso8601String(),
+            'ticket_at_fmt'         => optional($row->ticketed_at ?? $row->confirmed_at ?? $row->created_at)->format('d-M-Y h:i A'),
+            'cancelled_at_fmt'      => optional($row->cancelled_at)->format('d-M-Y h:i A'),
+            'cancelled_at_iso'      => optional($row->cancelled_at)->toIso8601String(),
+            'voided_at_fmt'         => optional($row->voided_at)->format('d-M-Y h:i A'),
+            'voided_at_iso'         => optional($row->voided_at)->toIso8601String(),
+            'refund_status'         => self::resolveRefundStatus($row),
+            'status'                => $outcome['stage'],
+            'status_raw'            => $outcome['stage_raw'] ?? $row->status,
+            'stage'                 => $outcome['stage'],
+            'stage_raw'             => $outcome['stage_raw'],
+            'last_api_status'       => $outcome['last_api_status'],
+            'last_api_raw'          => $outcome['last_api_raw'],
+            'last_api_step'         => $outcome['last_api_step'],
+            'last_api_error'        => $outcome['last_api_error'],
+            'legacy_status'         => $listStatus['label'],
+            'legacy_status_raw'     => $listStatus['raw'],
+            'attempt_status'        => $row->status,
+            'created_by'            => $creator,
+            'created_by_initials'   => self::creatorInitials($creator !== '—' ? $creator : null),
+            'created_by_avatar'     => $creatorAvatar,
+            'created_at'            => optional($row->created_at)->format('d-M-Y H:i'),
+            'created_at_iso'        => optional($row->created_at)?->format('Y-m-d H:i:s'),
+            'created_at_date'       => optional($row->created_at)->format('d-M-Y'),
+            'created_at_time'       => optional($row->created_at)->format('H:i'),
+            'route'                 => $search
                 ? $search->from_airport . ' → ' . $search->to_airport
                 : null,
-            'from_airport'           => $search?->from_airport
+            'from_airport'          => $search?->from_airport
                 ? strtoupper((string) $search->from_airport)
                 : null,
-            'to_airport'             => $search?->to_airport
+            'to_airport'            => $search?->to_airport
                 ? strtoupper((string) $search->to_airport)
                 : null,
-            'arrival_date'           => optional($search?->arrival_date)->format('d-M-Y'),
-            'workbench_identifier'   => $row->workbench_identifier,
+            'arrival_date'          => optional($search?->arrival_date)->format('d-M-Y'),
+            'workbench_identifier'  => $row->workbench_identifier,
         ];
     }
 
@@ -627,7 +621,7 @@ class BookingListMapper
 
         $map = [];
         foreach ($tickets as $i => $ticketNo) {
-            $pax = $paxes->get($i);
+            $pax            = $paxes->get($i);
             $map[$ticketNo] = $pax
                 ? trim($pax->first_name . ' ' . $pax->last_name)
                 : null;
@@ -660,28 +654,52 @@ class BookingListMapper
         }
 
         $users = User::query()->whereIn('id', $ids)->get(['id', 'name', 'img_path']);
-        $byId = $users->keyBy('id');
+        $byId  = $users->keyBy('id');
 
         foreach ($rows as $row) {
-            if (!$row->created_by) {
-                $row->creator_name = '—';
+            if (! $row->created_by) {
+                $row->creator_name   = '—';
                 $row->creator_avatar = null;
                 continue;
             }
 
-            $user = $byId->get($row->created_by);
-            $row->creator_name = $user?->name ?? '—';
+            $user                = $byId->get($row->created_by);
+            $row->creator_name   = $user?->name ?? '—';
             $row->creator_avatar = $user?->img_path;
+        }
+    }
+
+    public static function attachBookerAgencyName($rows): void
+    {
+        $ids = collect($rows)
+            ->map(fn($row) => $row->user_id ?: $row->created_by)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($ids->isEmpty()) {
+            return;
+        }
+
+        $users = User::query()->whereIn('id', $ids)->get(['id', 'name', 'img_path']);
+        $byId  = $users->keyBy('id');
+
+        foreach ($rows as $row) {
+            $userId = $row->user_id ?: $row->created_by;
+            $user   = $byId->get($userId);
+
+            $row->booked_by_name   = $user?->name ?? '—';
+            $row->booked_by_avatar = $user?->img_path;
         }
     }
 
     public static function resolveAgencyIdForUser(?User $user): ?int
     {
-        if (!$user) {
+        if (! $user) {
             return null;
         }
 
-        if (!empty($user->agent_id)) {
+        if (! empty($user->agent_id)) {
             return (int) $user->agent_id;
         }
 
@@ -692,11 +710,11 @@ class BookingListMapper
 
     public static function agencyUserIds(?int $agencyId): array
     {
-        if (!$agencyId) {
+        if (! $agencyId) {
             return [];
         }
 
-        $ids = User::query()->where('agent_id', $agencyId)->pluck('id')->all();
+        $ids     = User::query()->where('agent_id', $agencyId)->pluck('id')->all();
         $ownerId = Agent::where('id', $agencyId)->value('user_id');
 
         if ($ownerId) {
@@ -708,7 +726,7 @@ class BookingListMapper
 
     public static function applyAgencyScope($query, ?User $user): void
     {
-        if (config('app.booking_list_all_users', false) || !$user) {
+        if (config('app.booking_list_all_users', false) || ! $user) {
             return;
         }
 
@@ -725,7 +743,7 @@ class BookingListMapper
 
     public static function userCanAccessAttempt(BookingAttempt $attempt, ?User $user): bool
     {
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
@@ -754,13 +772,13 @@ class BookingListMapper
             return;
         }
 
-        $users = User::query()->whereIn('id', $userIds)->get(['id', 'agent_id']);
+        $users          = User::query()->whereIn('id', $userIds)->get(['id', 'agent_id']);
         $agentsByUserId = Agent::query()
             ->whereIn('user_id', $userIds)
             ->get(['id', 'user_id', 'name', 'agent_code'])
             ->keyBy('user_id');
 
-        $agentIds = $users->pluck('agent_id')->filter()->unique()->values();
+        $agentIds   = $users->pluck('agent_id')->filter()->unique()->values();
         $agentsById = Agent::query()
             ->whereIn('id', $agentIds)
             ->get(['id', 'user_id', 'name', 'agent_code'])
@@ -770,10 +788,10 @@ class BookingListMapper
 
         foreach ($rows as $row) {
             $userId = $row->user_id ?: $row->created_by;
-            $agent = $userId ? $agentsByUserId->get($userId) : null;
+            $agent  = $userId ? $agentsByUserId->get($userId) : null;
 
-            if (!$agent && $userId) {
-                $user = $usersById->get($userId);
+            if (! $agent && $userId) {
+                $user  = $usersById->get($userId);
                 $agent = $user?->agent_id ? $agentsById->get($user->agent_id) : null;
             }
 
