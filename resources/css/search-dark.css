@@ -277,6 +277,22 @@
 [data-bs-theme="dark"] .refund-card--non_refundable:hover,
 [data-bs-theme="dark"] .refund-card--non_refundable.refund-card--active { background: rgba(206, 18, 18, 0.12) !important; }
 
+/* ── Baggage filter rows ───────────────────────────────────── */
+[data-bs-theme="dark"] .baggage-filter-row:hover {
+    background: rgba(74, 144, 226, 0.1) !important;
+    border-color: rgba(74, 144, 226, 0.35) !important;
+}
+[data-bs-theme="dark"] .baggage-filter-row--active {
+    background: rgba(74, 144, 226, 0.18) !important;
+    border-color: #4a90e2 !important;
+}
+[data-bs-theme="dark"] .baggage-filter-icon { color: #9aa4b2 !important; }
+[data-bs-theme="dark"] .baggage-filter-row--active .baggage-filter-icon { color: #6eb0f5 !important; }
+[data-bs-theme="dark"] .baggage-filter-label { color: var(--bs-body-color) !important; }
+[data-bs-theme="dark"] .baggage-filter-row--active .baggage-filter-label { color: #6eb0f5 !important; }
+[data-bs-theme="dark"] .baggage-filter-count { color: #9aa4b2 !important; }
+[data-bs-theme="dark"] .baggage-filter-row--active .baggage-filter-count { color: #6eb0f5 !important; }
+
 /* ── Layover filter rows ───────────────────────────────────── */
 [data-bs-theme="dark"] .layover-row:hover {
     background: rgba(74, 144, 226, 0.12) !important;

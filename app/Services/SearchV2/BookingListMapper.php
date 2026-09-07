@@ -545,6 +545,8 @@ class BookingListMapper
             'booking_code'           => self::bookingCode((int) $row->id),
             'agency_name'            => $row->agency_name ?? '—',
             'agency_code'            => $row->agency_code ?? null,
+            // Spendable wallet at list load — modal shows balance / fare / remain
+            'agency_balance'         => $row->agency_balance ?? null,
             'journey_lines'          => $journeyLines,
             'sector'                 => collect($journeyLines)->pluck('sector')->implode(' / '),
             'dep_date'               => optional($search?->dep_date)->format('d-M-Y'),
@@ -754,16 +756,18 @@ class BookingListMapper
             return;
         }
 
+        $balanceCols = ['id', 'user_id', 'name', 'agent_code', 'net_balance', 'reserved_balance'];
+
         $users = User::query()->whereIn('id', $userIds)->get(['id', 'agent_id']);
         $agentsByUserId = Agent::query()
             ->whereIn('user_id', $userIds)
-            ->get(['id', 'user_id', 'name', 'agent_code'])
+            ->get($balanceCols)
             ->keyBy('user_id');
 
         $agentIds = $users->pluck('agent_id')->filter()->unique()->values();
         $agentsById = Agent::query()
             ->whereIn('id', $agentIds)
-            ->get(['id', 'user_id', 'name', 'agent_code'])
+            ->get($balanceCols)
             ->keyBy('id');
 
         $usersById = $users->keyBy('id');
@@ -779,6 +783,9 @@ class BookingListMapper
 
             $row->agency_name = $agent?->name;
             $row->agency_code = $agent?->agent_code;
+            $row->agency_balance = $agent
+                ? (float) ($agent->net_balance ?? 0) - (float) ($agent->reserved_balance ?? 0)
+                : null;
         }
     }
 }

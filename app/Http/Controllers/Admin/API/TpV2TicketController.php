@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin\API;
 use Exception;
 use Illuminate\Http\Request;
 use App\Http\Controllers\BaseController;
+use App\Jobs\BroadcastResourceEvent;
 use App\Models\BookingAttempt;
 use App\Services\AgentBalanceService;
 use App\Services\HashIdService;
@@ -76,6 +77,15 @@ class TpV2TicketController extends BaseController
                     $alreadyIssued
                         ? $this->balanceService->releaseReservation($agent, $attempt, $userId)
                         : $this->balanceService->settleReservation($agent, $attempt, $userId);
+
+                    // Net balance only moves on settle — notify other agency tabs via deposits channel
+                    if (!$alreadyIssued) {
+                        BroadcastResourceEvent::dispatch('deposits', 'Updated', [
+                            'id'       => $agent->id,
+                            'actor_id' => $userId,
+                            'agent_id' => $agent->id,
+                        ]);
+                    }
                 } catch (Exception $e) {
                     // Tickets exist at the airline and cannot be pulled back, so the response
                     // must not claim a clean success. The hold stays in place — the money is

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin\API;
 use Exception;
 use Illuminate\Http\Request;
 use App\Http\Controllers\BaseController;
+use App\Jobs\BroadcastResourceEvent;
 use App\Models\BookingAttempt;
 use App\Services\AgentBalanceService;
 use App\Services\HashIdService;
@@ -63,6 +64,12 @@ class TpV2VoidController extends BaseController
             if ($agent) {
                 $amount = $this->balanceService->resolveBookingAmount($attempt);
                 $this->balanceService->creditForVoid($agent, $amount, $attempt, $userId);
+                // Refund moved net balance — agency Topbar listens on deposits channel
+                BroadcastResourceEvent::dispatch('deposits', 'Updated', [
+                    'id'       => $agent->id,
+                    'actor_id' => $userId,
+                    'agent_id' => $agent->id,
+                ]);
             }
         } catch (Exception $e) {
             report($e);

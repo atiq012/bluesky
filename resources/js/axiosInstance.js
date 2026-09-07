@@ -1,5 +1,7 @@
 import axios from "axios";
 import { useAuthStore } from "./stores/authStore";
+import { performLogout } from "./Helpers/logout";
+import Notification from "./Helpers/Notification";
 
 //creating an axios instance
 const urls = document.head.querySelector('meta[name="api-base-url"]').content;
@@ -22,6 +24,19 @@ async function refresh_token() {
         },
     };
     return axios.get("/api/refresh", config);
+}
+
+// Hold / Locked / Deactivated → kick even if Pusher missed the event
+function handleForceLogoutResponse(error) {
+    if (!error?.response?.data?.data?.force_logout) {
+        return false;
+    }
+
+    const message = error.response.data.message
+        || 'Your account status has changed. You have been logged out.';
+    Notification.showToast('w', message);
+    void performLogout({ callApi: false, showToast: false });
+    return true;
 }
 
 axiosInstance.interceptors.request.use(
@@ -56,11 +71,20 @@ axiosInstance.interceptors.request.use(
     }
 );
 
+axiosInstance.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        handleForceLogoutResponse(error);
+        return Promise.reject(error);
+    }
+);
+
 axios.interceptors.response.use(
     function (response) {
         return response;
     },
     function (error) {
+        handleForceLogoutResponse(error);
         return Promise.reject(error);
     }
 );

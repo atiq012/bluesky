@@ -25,13 +25,20 @@ class PNRSearchController extends BaseController
 
         $pnr = strtoupper(trim($validated['pnr']));
 
+        // Group orWhere so later filters cannot widen PNR match across rows
         $attempt = BookingAttempt::query()
-            ->where('gds_pnr', $pnr)
-            ->orWhere('airline_pnr', $pnr)
+            ->where(function ($q) use ($pnr) {
+                $q->where('gds_pnr', $pnr)->orWhere('airline_pnr', $pnr);
+            })
             ->latest('id')
             ->first();
 
         if (!$attempt) {
+            return $this->ErrorResponse('No booking found for this PNR.', [], 404);
+        }
+
+        // Same agency scope as booking detail — other agency PNR → pretend missing (no existence leak)
+        if (!BookingListMapper::userCanAccessAttempt($attempt, $request->user())) {
             return $this->ErrorResponse('No booking found for this PNR.', [], 404);
         }
 

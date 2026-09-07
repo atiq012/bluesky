@@ -40,7 +40,7 @@ const {
     flights, totalFlights,
     catalogIdentifier, searchLogId, activeSearchAttemptId,
     sliderMin, sliderMax, priceRangeMin, priceRangeMax,
-    selectedAirlines, selectedStops, selectedRefundTypes, selectedLayovers,
+    selectedAirlines, selectedStops, selectedRefundTypes, selectedLayovers, selectedBaggages,
     layoverSearch, airlineSearch,
     selectedScheduleSegment, scheduleMode,
     selectedOriginDetails, selectedDestinationDetails,
@@ -234,6 +234,43 @@ const filteredAirlineList = computed(() => {
     return q ? distinctAirlines.value.filter(a => a.name.toLowerCase().includes(q)) : distinctAirlines.value
 })
 
+// Checked bag key from outbound allowance — weight ("20 kg") or piece ("02 Piece")
+function checkedBaggageKey(flight) {
+    const bags = flight?.outbound?.baggage_allowance ?? []
+    const checked = bags.find(b => b.type === 'checked')
+    if (!checked) return null
+    if (checked.weight) {
+        const m = String(checked.weight).match(/(\d+)\s*kg/i)
+        if (m) return `${m[1]} kg`
+    }
+    if (checked.quantity) {
+        return `${String(checked.quantity).padStart(2, '0')} Piece`
+    }
+    return null
+}
+
+const distinctBaggages = computed(() => {
+    const map = {}
+    flights.value.forEach(f => {
+        const key = checkedBaggageKey(f)
+        if (!key) return
+        if (!map[key]) map[key] = { key, label: key, count: 0 }
+        map[key].count++
+    })
+    // Weight first (numeric), then piece options
+    return Object.values(map).sort((a, b) => {
+        const aw = a.key.match(/^(\d+)\s*kg$/i)
+        const bw = b.key.match(/^(\d+)\s*kg$/i)
+        if (aw && bw) return Number(aw[1]) - Number(bw[1])
+        if (aw) return -1
+        if (bw) return 1
+        const ap = a.key.match(/^(\d+)\s*Piece$/i)
+        const bp = b.key.match(/^(\d+)\s*Piece$/i)
+        if (ap && bp) return Number(ap[1]) - Number(bp[1])
+        return a.key.localeCompare(b.key)
+    })
+})
+
 const filteredFlights = computed(() => {
     if (!showSearchResults.value) return [];
     return flights.value.filter(f => {
@@ -245,6 +282,8 @@ const filteredFlights = computed(() => {
         const refundOk = !selectedRefundTypes.value.length || selectedRefundTypes.value.includes(f.outbound?.refund_type)
         const flightStopCodes = (f.outbound?.connections?.stops ?? []).map(s => s.airport_code)
         const layoverOk = !selectedLayovers.value.length || selectedLayovers.value.some(code => flightStopCodes.includes(code))
+        const bagKey = checkedBaggageKey(f)
+        const baggageOk = !selectedBaggages.value.length || (bagKey && selectedBaggages.value.includes(bagKey))
         let scheduleOk = true
         if (selectedScheduleSegment.value) {
             const seg = scheduleSegments.find(s => s.key === selectedScheduleSegment.value)
@@ -256,7 +295,7 @@ const filteredFlights = computed(() => {
                 scheduleOk = h >= seg.min && h <= seg.max
             }
         }
-        return airlineOk && priceOk && stopOk && refundOk && layoverOk && scheduleOk
+        return airlineOk && priceOk && stopOk && refundOk && layoverOk && baggageOk && scheduleOk
     })
 })
 
@@ -1006,6 +1045,7 @@ function stageSearchResult(searchResult) {
     selectedStops.value = [];
     selectedRefundTypes.value = [];
     selectedLayovers.value = [];
+    selectedBaggages.value = [];
     layoverSearch.value = '';
     selectedScheduleSegment.value = null;
     startBookingTimer();
@@ -1193,6 +1233,7 @@ function clearAllFilters() {
     selectedStops.value = []
     selectedRefundTypes.value = []
     selectedLayovers.value = []
+    selectedBaggages.value = []
     selectedScheduleSegment.value = null
     scheduleMode.value = 'departure'
     airlineSearch.value = ''
@@ -2090,7 +2131,7 @@ function handleCalendarEnterKey(event) {
                         </div>
                     </div>
 
-                    <!-- Baggage -->
+                    <!-- Baggage — options from outbound checked allowance in results -->
                     <div class="accordion" id="baggage">
                         <div class="accordion-item filter-accordion-gap">
                             <h2 class="accordion-header" id="headingSeven">
@@ -2104,31 +2145,19 @@ function handleCalendarEnterKey(event) {
                             </h2>
                             <div id="collapseSeven" class="accordion-collapse collapse"
                                 aria-labelledby="headingSeven" data-bs-parent="#accordionExample">
-                                <div class="accordion-body">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" value="" id="flexCheckDefault">
-                                        <label class="form-check-label" for="flexCheckDefault">
-                                            10 kg
-                                        </label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" value="" id="flexCheckDefault">
-                                        <label class="form-check-label" for="flexCheckDefault">
-                                            20 kg
-                                        </label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" value="" id="flexCheckDefault">
-                                        <label class="form-check-label" for="flexCheckDefault">
-                                            30 kg
-                                        </label>
-                                    </div>
-
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" value="" id="flexCheckDefault">
-                                        <label class="form-check-label" for="flexCheckDefault">
-                                            02 Piece
-                                        </label>
+                                <div class="accordion-body p-2">
+                                    <div class="d-flex flex-column gap-1">
+                                        <div
+                                            v-for="b in distinctBaggages" :key="b.key"
+                                            :class="['baggage-filter-row cursor-pointer d-flex align-items-center gap-2', selectedBaggages.includes(b.key) ? 'baggage-filter-row--active' : '']"
+                                            @click="selectedBaggages.includes(b.key) ? selectedBaggages.splice(selectedBaggages.indexOf(b.key), 1) : selectedBaggages.push(b.key)"
+                                            role="checkbox" :aria-checked="selectedBaggages.includes(b.key)"
+                                        >
+                                            <i class="bx bxs-briefcase baggage-filter-icon"></i>
+                                            <span class="baggage-filter-label">{{ b.label }}</span>
+                                            <span class="baggage-filter-count ms-auto">{{ String(b.count).padStart(2, '0') }}</span>
+                                        </div>
+                                        <div v-if="!distinctBaggages.length" class="text-muted px-1" style="font-size: 12px;">No data</div>
                                     </div>
                                 </div>
                             </div>
@@ -3714,6 +3743,35 @@ body:has(.search-page-layout) {
     flex-shrink: 0;
 }
 .layover-row--active .layover-flight-count { color: #4a90e2; }
+
+/* ── Baggage filter rows ─────────────────────────── */
+.baggage-filter-row {
+    padding: 6px 8px;
+    border-radius: 7px;
+    border: 1.5px solid transparent;
+    transition: background 0.15s, border-color 0.15s;
+}
+.baggage-filter-row:hover { background: #f0f4ff; border-color: #c7d7f5; }
+.baggage-filter-row--active { background: #e8f0fe; border-color: #4a90e2; }
+.baggage-filter-icon {
+    font-size: 15px;
+    color: #5e6878;
+    flex-shrink: 0;
+}
+.baggage-filter-row--active .baggage-filter-icon { color: #4a90e2; }
+.baggage-filter-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #3e4957;
+}
+.baggage-filter-row--active .baggage-filter-label { color: #1a5fb4; }
+.baggage-filter-count {
+    font-size: 11px;
+    font-weight: 700;
+    color: #5e6878;
+    flex-shrink: 0;
+}
+.baggage-filter-row--active .baggage-filter-count { color: #4a90e2; }
 
 /* Airline search clear button */
 .airline-search-clear {

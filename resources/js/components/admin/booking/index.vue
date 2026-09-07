@@ -8,11 +8,13 @@ import { buildReceiptFromAttemptDetail } from '../../../utils/buildReceiptFromCo
 import { useTpV2Ticket } from '../../../composables/useTpV2Ticket'
 import { useTpV2Cancel } from '../../../composables/useTpV2Cancel'
 import { useTpV2Void } from '../../../composables/useTpV2Void'
+import { useRealtimeList } from '../../../composables/useRealtimeList'
 import AppTooltip from '../../common/AppTooltip.vue'
 import BookingReceiptModal from './BookingReceiptModal.vue'
 import TicketResultModal from './TicketResultModal.vue'
 import CancelResultModal from './CancelResultModal.vue'
 import CancelConfirmModal from './CancelConfirmModal.vue'
+import IssueTicketConfirmModal from './IssueTicketConfirmModal.vue'
 import VoidConfirmModal from './VoidConfirmModal.vue'
 import VoidResultModal from './VoidResultModal.vue'
 import BookingHistoryModal from './BookingHistoryModal.vue'
@@ -52,6 +54,10 @@ const voidModalData = ref({ pnr: null, voidedAt: null, voidedTickets: [] })
 
 const showTicketErrorModal = ref(false)
 const ticketErrorData = ref({ pnr: null, message: null })
+
+const showIssueTicketConfirmModal = ref(false)
+const issueTicketTargetRow = ref(null)
+const issueTicketConfirmLoading = ref(false)
 
 const { issueTicket } = useTpV2Ticket()
 const { cancelBooking } = useTpV2Cancel()
@@ -366,15 +372,40 @@ async function buildTicketPrintReceipt(attemptId, ticketedAt) {
     }
 }
 
-async function onIssueTicket(row) {
+function sectorLabel(row) {
+    const lines = journeyLines(row)
+    if (lines.length) {
+        return lines.map((l) => l.sector).filter(Boolean).join(' · ') || null
+    }
+    return row?.sector || null
+}
+
+function onIssueTicket(row) {
+    if (!row?.id) return
+    issueTicketTargetRow.value = row
+    showIssueTicketConfirmModal.value = true
+}
+
+function handleIssueTicketConfirmDismiss() {
+    if (issueTicketConfirmLoading.value) return
+    showIssueTicketConfirmModal.value = false
+    issueTicketTargetRow.value = null
+}
+
+async function onIssueTicketConfirmed() {
+    const row = issueTicketTargetRow.value
     if (!row?.id) return
 
+    issueTicketConfirmLoading.value = true
     loadingItemId.value = row.id
     loadingAction.value = 'issue-ticket'
     issueTicketOverlay.value = true
 
     try {
         const res = await issueTicket(row.id)
+
+        showIssueTicketConfirmModal.value = false
+        issueTicketTargetRow.value = null
 
         ticketModalData.value = {
             ticketNumbers: res.ticket_numbers ?? [],
@@ -388,11 +419,16 @@ async function onIssueTicket(row) {
             load(),
         ])
         ticketPrintReceipt.value = receipt
+        // Wallet settled on issue — Topbar skips own Pusher actor, so refresh local header now
+        window.dispatchEvent(new Event('balance:refresh'))
     } catch (e) {
         const msg = e?.response?.data?.message || 'Ticketing failed. Please try again.'
         ticketErrorData.value = { pnr: row?.gds_pnr ?? row?.pnr ?? null, message: msg }
         showTicketErrorModal.value = true
+        showIssueTicketConfirmModal.value = false
+        issueTicketTargetRow.value = null
     } finally {
+        issueTicketConfirmLoading.value = false
         loadingItemId.value = null
         loadingAction.value = null
         issueTicketOverlay.value = false
@@ -493,6 +529,8 @@ async function onVoidConfirmed(selectedTickets) {
         }
         showVoidModal.value = true
         await load()
+        // Void refund hits wallet — refresh Topbar Credit/Balance for this tab
+        window.dispatchEvent(new Event('balance:refresh'))
     } catch (e) {
         Notification.showToast('e', e?.response?.data?.message || 'Ticket void failed. Please try again.')
     } finally {
@@ -507,6 +545,9 @@ function handleVoidModalClose() {
 }
 
 onMounted(() => load())
+
+// Peer portal confirm/ticket/cancel/void → refresh rows + summary cards
+useRealtimeList('booking-attempts', () => load(true), { actorIdKey: 'actor_id' })
 </script>
 <template>
     <Teleport to="body">
@@ -870,6 +911,19 @@ onMounted(() => load())
         :loading="cancelConfirmLoading"
         @confirm="onCancelConfirmed"
         @cancel="handleCancelConfirmDismiss"
+    />
+
+    <IssueTicketConfirmModal
+        :visible="showIssueTicketConfirmModal"
+        :pnr="issueTicketTargetRow?.gds_pnr ?? issueTicketTargetRow?.pnr ?? null"
+        :booking-code="issueTicketTargetRow?.booking_code ?? null"
+        :sector="issueTicketTargetRow ? sectorLabel(issueTicketTargetRow) : null"
+        :pax-count="issueTicketTargetRow ? paxTotal(issueTicketTargetRow) : null"
+        :agency-balance="issueTicketTargetRow?.agency_balance ?? null"
+        :ticket-price="issueTicketTargetRow?.total_fare ?? null"
+        :loading="issueTicketConfirmLoading"
+        @confirm="onIssueTicketConfirmed"
+        @cancel="handleIssueTicketConfirmDismiss"
     />
 
     <BookingHistoryModal
