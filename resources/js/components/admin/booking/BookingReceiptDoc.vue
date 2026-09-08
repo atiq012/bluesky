@@ -458,8 +458,12 @@ defineExpose({ print, download, downloading, getPrintHtml })
                 </div>
             </div>
 
-            <!-- Passenger details -->
-            <section class="voucher-section voucher-keep">
+            <!-- Passenger details — not voucher-keep: with many PAX the table is taller than
+                 one page, and forcing the whole block to "stay together" just pushes it
+                 entirely onto page 2, leaving page 1 blank under the header. Rows themselves
+                 stay intact via .voucher-table tbody tr's own break-inside:avoid below, and
+                 the browser repeats <thead> on each page the table spans. -->
+            <section class="voucher-section">
                 <div class="voucher-section__title">PASSENGER DETAILS</div>
                 <table class="voucher-table">
                     <thead>
@@ -978,6 +982,15 @@ defineExpose({ print, download, downloading, getPrintHtml })
     border-bottom: 1px solid #f1f5f9;
     color: #334155;
     vertical-align: middle;
+}
+
+.voucher-table thead {
+    display: table-header-group;
+}
+
+.voucher-table tbody tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
 }
 
 .voucher-table__contact {
