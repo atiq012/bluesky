@@ -566,7 +566,7 @@ useRealtimeList('booking-attempts', () => load(true), { actorIdKey: 'actor_id' }
             { label: 'Booking & Ticketing List' },
         ]"
     >
-        <template #actions>
+        <!-- <template #actions>
             <div class="btn-group">
                 <router-link :to="{ name: 'CreateAgency' }" class="btn btn-outline-primary btn-sm pt-2">
                     <i class="fa fa-file-import"></i> Import PNR
@@ -577,7 +577,7 @@ useRealtimeList('booking-attempts', () => load(true), { actorIdKey: 'actor_id' }
                 </router-link>
 
             </div>
-        </template>
+        </template> -->
     </AppBreadcrumbs>
 
     <div class="row">

@@ -265,6 +265,7 @@ const eticketGroupItem = ref(null);
 const eticketDocRef = ref(null);
 const eticketGroupData = ref(null);
 const eticketPaxList = ref([]);
+const eticketPriceOffer = ref(null);
 
 function handleGenerateETicket(item) {
     eticketGroupItem.value = item;
@@ -281,6 +282,7 @@ async function handleEticketGenerated(data) {
     eticketGroupItem.value = null;
     eticketGroupData.value = data?.group ?? null;
     eticketPaxList.value = data?.pax ?? [];
+    eticketPriceOffer.value = data?.price_offer ?? null;
 
     await nextTick();
     try {
@@ -650,7 +652,7 @@ async function handleEticketGenerated(data) {
 
     <!-- Off-screen print doc -->
     <div class="eticket-print-offstage" aria-hidden="true">
-        <GroupETicketDoc ref="eticketDocRef" :group="eticketGroupData" :pax-list="eticketPaxList" />
+        <GroupETicketDoc ref="eticketDocRef" :group="eticketGroupData" :pax-list="eticketPaxList" :price-offer="eticketPriceOffer" />
     </div>
 </template>
 

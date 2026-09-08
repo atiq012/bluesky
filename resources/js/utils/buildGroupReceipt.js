@@ -9,6 +9,8 @@ const DEFAULT_AGENCY = {
     logo: null,
 }
 
+const DEFAULT_AIRLINE_LOGO = '/uploads/airlines/default.svg'
+
 async function resolveAgency() {
     try {
         const res = await axiosInstance.get('getActiveCompany')
@@ -24,6 +26,34 @@ async function resolveAgency() {
     } catch {
         return DEFAULT_AGENCY
     }
+}
+
+// Same directory the airline-settings admin (AirlineLogoController) writes to —
+// matched by code first, then by display name, since assigned_group.airline /
+// segment metadata may hold either depending on how the PNR was assigned.
+async function resolveAirlineIndex() {
+    try {
+        const res = await axiosInstance.get('getAllAirlines')
+        const list = Array.isArray(res.data) ? res.data : []
+        const byCode = new Map()
+        const byName = new Map()
+        for (const a of list) {
+            const rawLogo = a?.logo ? String(a.logo) : ''
+            const logo = rawLogo ? (rawLogo.startsWith('/') ? rawLogo : `/${rawLogo}`) : null
+            if (!logo) continue
+            if (a.code) byCode.set(String(a.code).trim().toUpperCase(), logo)
+            if (a.a_name) byName.set(String(a.a_name).trim().toUpperCase(), logo)
+        }
+        return { byCode, byName }
+    } catch {
+        return { byCode: new Map(), byName: new Map() }
+    }
+}
+
+function resolveAirlineLogo(identifier, airlineIndex) {
+    const key = String(identifier ?? '').trim().toUpperCase()
+    if (!key) return DEFAULT_AIRLINE_LOGO
+    return airlineIndex.byCode.get(key) || airlineIndex.byName.get(key) || DEFAULT_AIRLINE_LOGO
 }
 
 function minutesBetween(from, to) {
@@ -82,14 +112,15 @@ function baggageLabel(segment) {
     return [cabin, checkIn].filter(Boolean).join(', ') || '—'
 }
 
-function mapSegment(raw, assignedGroup) {
+function mapSegment(raw, assignedGroup, airlineIndex) {
     const durationMin = minutesBetween(raw.departure_datetime, raw.arrival_datetime)
+    const airlineIdentifier = raw.metadata?.airline || assignedGroup?.airline
 
     return {
-        airline_name: raw.metadata?.airline || assignedGroup?.airline || '—',
+        airline_name: airlineIdentifier || '—',
         flight_number: raw.flight_no || '—',
         equipment: raw.metadata?.aircraft || raw.metadata?.aircraft_model || '—',
-        logo_path: '/uploads/airlines/default.svg',
+        logo_path: resolveAirlineLogo(airlineIdentifier, airlineIndex),
         cabin_class: raw.class_type || assignedGroup?.class_type || 'Economy',
         booking_code: raw.booking_class || assignedGroup?.code_rbd || '',
         fare_basis: raw.fare_basis || '',
@@ -126,15 +157,15 @@ function attachLayovers(segments) {
     return segments
 }
 
-function buildLeg(key, rawSegments, assignedGroup) {
-    const segments = attachLayovers(rawSegments.map((s) => mapSegment(s, assignedGroup)))
+function buildLeg(key, rawSegments, assignedGroup, airlineIndex, legLabel) {
+    const segments = attachLayovers(rawSegments.map((s) => mapSegment(s, assignedGroup, airlineIndex)))
     const totalMin = segments.reduce((n, s) => n + (s.duration_minutes || 0), 0)
     const stops = Math.max(segments.length - 1, 0)
     const first = segments[0]
 
     return {
         key,
-        label: key === 'inbound' ? 'Return Flight' : 'Outbound Flight',
+        label: legLabel ?? (key === 'inbound' ? 'Return Flight' : 'Outbound Flight'),
         duration: longDuration(totalMin),
         stopLabel: stops === 0 ? 'Non-stop' : `${stops} Stop${stops > 1 ? 's' : ''}`,
         cabin: first?.cabin_class,
@@ -152,20 +183,66 @@ function paxTypeCode(type) {
     return 'ADT'
 }
 
+function countByPaxType(ticketedPax) {
+    const counts = { ADT: 0, CHD: 0, INF: 0 }
+    for (const p of ticketedPax) counts[paxTypeCode(p.pax_type)]++
+    return counts
+}
+
+// price_offers carries the per-pax-type base/tax/AIT actually quoted to the agent
+// (same source the group list's Total Fare column reads) — this is the real fare,
+// unlike group_pnrs.base_fare/tax which is a legacy single figure.
+function buildFareFromPriceOffer(priceOffer, counts) {
+    const typeMeta = [
+        { code: 'ADT', label: 'Adult', base: 'adult_base_fare', tax: 'adult_tax', ait: 'adult_ait' },
+        { code: 'CHD', label: 'Child', base: 'child_base_fare', tax: 'child_tax', ait: 'child_ait' },
+        { code: 'INF', label: 'Infant', base: 'infant_base_fare', tax: 'infant_tax', ait: 'infant_ait' },
+    ]
+    let grossFare = 0
+    let totalTax = 0
+    const rows = []
+    for (const t of typeMeta) {
+        const qty = counts[t.code] || 0
+        if (!qty) continue
+        const base = Number(priceOffer?.[t.base] ?? 0) * qty
+        const tax = (Number(priceOffer?.[t.tax] ?? 0) + Number(priceOffer?.[t.ait] ?? 0)) * qty
+        grossFare += base
+        totalTax += tax
+        rows.push({ label: `${t.label} X ${qty}`, base, tax })
+    }
+    return { rows, grossFare, totalTax }
+}
+
+function wayTitleFromType(wayType) {
+    const w = String(wayType || '').toLowerCase()
+    if (w.includes('multi')) return 'MULTI CITY'
+    if (w.includes('round')) return 'ROUND WAY'
+    if (w.includes('one')) return 'ONE WAY'
+    return null
+}
+
 // Maps the /group-eticket/{id} response (group + assigned PNR/segments + selected PAX)
 // onto the same `receipt` shape BookingReceiptDoc.vue already knows how to render —
 // so group e-tickets get the exact same voucher layout as individual bookings.
-export async function buildGroupReceipt({ group, paxList, bookedBy }) {
+export async function buildGroupReceipt({ group, paxList, bookedBy, priceOffer }) {
     const assignedGroup = group?.assigned_group ?? null
     const allSegments = [...(assignedGroup?.segments ?? [])]
         .sort((a, b) => (a.segment_order ?? 0) - (b.segment_order ?? 0))
 
-    const outboundSegs = allSegments.filter((s) => s.segment_type !== 'return')
+    const [agency, airlineIndex] = await Promise.all([resolveAgency(), resolveAirlineIndex()])
+
+    const departureSegs = allSegments.filter((s) => s.segment_type === 'departure')
     const returnSegs = allSegments.filter((s) => s.segment_type === 'return')
+    const multiCitySegs = allSegments.filter((s) => s.segment_type === 'multi_city')
 
     const legs = []
-    if (outboundSegs.length) legs.push(buildLeg('outbound', outboundSegs, assignedGroup))
-    if (returnSegs.length) legs.push(buildLeg('inbound', returnSegs, assignedGroup))
+    if (departureSegs.length) legs.push(buildLeg('outbound', departureSegs, assignedGroup, airlineIndex))
+    if (returnSegs.length) legs.push(buildLeg('inbound', returnSegs, assignedGroup, airlineIndex))
+    // Each multi-city segment is its own unrelated city-pair, not a connecting flight of
+    // one leg, so every one gets its own leg card instead of being lumped together.
+    multiCitySegs.forEach((seg, idx) => {
+        legs.push(buildLeg(`multicity-${idx}`, [seg], assignedGroup, airlineIndex, `Flight ${idx + 1}`))
+    })
 
     const ticketedPax = (paxList ?? []).filter((p) => !!p.ticket_no)
     if (!ticketedPax.length) {
@@ -182,10 +259,31 @@ export async function buildGroupReceipt({ group, paxList, bookedBy }) {
     }))
     const ticketNumbers = ticketedPax.map((p) => p.ticket_no)
 
-    const agency = await resolveAgency()
-    const perPerson = Number(group?.per_person_fare ?? 0)
-    const currency = group?.currency || 'BDT'
-    const grossFare = perPerson * ticketedPax.length
+    const currency = priceOffer?.currency || group?.currency || assignedGroup?.currency || 'BDT'
+
+    let breakdown = []
+    let grossFare = 0
+    let totalTax = 0
+    let totalPayable = 0
+
+    if (priceOffer) {
+        const counts = countByPaxType(ticketedPax)
+        const built = buildFareFromPriceOffer(priceOffer, counts)
+        breakdown = built.rows
+        grossFare = built.grossFare
+        totalTax = built.totalTax
+        totalPayable = grossFare + totalTax
+    } else {
+        // No price offer on record — fall back to the group PNR's own base_fare/tax.
+        const baseUnit = Number(assignedGroup?.base_fare ?? 0)
+        const taxUnit = Number(assignedGroup?.tax ?? 0)
+        grossFare = baseUnit * ticketedPax.length
+        totalTax = taxUnit * ticketedPax.length
+        totalPayable = grossFare + totalTax
+        if (baseUnit || taxUnit) {
+            breakdown = [{ label: `Passenger X ${ticketedPax.length}`, base: grossFare, tax: totalTax }]
+        }
+    }
 
     const receipt = {
         bookingId: group?.group_code || '—',
@@ -196,17 +294,18 @@ export async function buildGroupReceipt({ group, paxList, bookedBy }) {
         bookedOn: formatBookedOn(group?.created_at),
         bookedBy: bookedBy || '—',
         route: {
-            wayTitle: returnSegs.length ? 'ROUND WAY' : 'ONE WAY',
+            wayTitle: wayTitleFromType(assignedGroup?.way_type)
+                ?? (multiCitySegs.length ? 'MULTI CITY' : returnSegs.length ? 'ROUND WAY' : 'ONE WAY'),
         },
         legs,
         passengers,
         fare: {
             currency,
             grossFare,
-            tax: 0,
+            tax: totalTax,
             discount: 0,
-            totalPayable: grossFare,
-            breakdown: perPerson ? [{ label: `Passenger X ${ticketedPax.length}`, base: grossFare, tax: 0 }] : [],
+            totalPayable,
+            breakdown,
         },
         paymentDeadline: '—',
         paymentDeadlineLong: null,

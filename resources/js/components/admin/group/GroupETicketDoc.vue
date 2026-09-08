@@ -7,6 +7,7 @@ import { useAuthStore } from "../../../stores/authStore";
 const props = defineProps({
     group: { type: Object, default: null },
     paxList: { type: Array, default: () => [] },
+    priceOffer: { type: Object, default: null },
 });
 
 const authStore = useAuthStore();
@@ -26,13 +27,14 @@ async function rebuild() {
         group: props.group,
         paxList: props.paxList,
         bookedBy: authStore.name,
+        priceOffer: props.priceOffer,
     });
     if (token !== buildToken) return; // a newer build superseded this one
     receipt.value = result.receipt;
     ticketNumbers.value = result.ticketNumbers;
 }
 
-watch(() => [props.group, props.paxList], () => {
+watch(() => [props.group, props.paxList, props.priceOffer], () => {
     rebuild().catch(() => {
         receipt.value = null;
         ticketNumbers.value = [];

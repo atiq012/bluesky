@@ -293,11 +293,14 @@ class GroupPAXController extends Controller
             return response()->json(['message' => 'No PAX found to generate e-ticket for.'], 422);
         }
 
+        $priceOffer = PriceOffer::where('group_req_id', $id)->latest()->first();
+
         return response()->json([
             'message' => 'E-Ticket generated successfully.',
             'data'    => [
-                'group' => $groupData,
-                'pax'   => $paxList,
+                'group'       => $groupData,
+                'pax'         => $paxList,
+                'price_offer' => $priceOffer,
             ],
         ], 200);
     }
