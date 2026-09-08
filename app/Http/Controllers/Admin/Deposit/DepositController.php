@@ -52,10 +52,12 @@ class DepositController extends BaseController
                 Rule::requiredIf(fn () => in_array($request->payment_type, ['MFS', 'Cheque', 'Bank_Transfer'])),
                 'nullable'
             ],
-            'reference_number' => ['required', 'string', 'max:100'],
+            'reference_number' => ['required', 'string', 'max:100', 'unique:deposits,reference_no'],
             'remarks'          => ['nullable', 'string', 'max:500'],
             'referenceFile'    => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ]);
+
+
 
         // $request->validate([
         //     'referenceFile' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],

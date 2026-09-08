@@ -419,7 +419,7 @@ async function submitForm(type) {
                             <div class="row">
                                 <div class="col-md-9">
                                     <div class="d-flex gap-2 justify-content-end">
-                                        <AppButton variant="cancel" tag="router-link" :to="{ name: 'depositList' }" />
+                                        <AppButton variant="cancel" @click="$router.go(-1)" />
                                         <AppButton variant="save" label="Submit" :loading="submitting"
                                             loading-text="Submitting..." @click="submitForm('Cash')" />
                                     </div>
